@@ -27,6 +27,7 @@
 'use client';
 
 import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Link } from 'waku';
 import { ctxFmt } from '../../lib/format';
 import { I } from '../../lib/icons';
 import { isChattable, modelSearchText } from '../../lib/models';
@@ -290,7 +291,14 @@ function ThinkingSetting() {
   } else if (model.thinkingLevels === undefined) {
     body = (
       <span className="text-[12px] muted">
-        Not reported by this provider — set manually in Settings → Models
+        Not reported by this provider — set manually in{' '}
+        <Link
+          to={`/settings/providers?model=${encodeURIComponent(model.id)}`}
+          className="text-[var(--accent)] hover:underline"
+          onClick={() => actions.closeModelBarPopover(false)}
+        >
+          Settings → Models
+        </Link>
       </span>
     );
   } else if (

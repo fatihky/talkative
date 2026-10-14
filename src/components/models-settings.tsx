@@ -23,7 +23,8 @@
  */
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'waku';
 import { ctxFmt, humanBytes } from '../lib/format';
 import { I } from '../lib/icons';
 import { modelSearchText } from '../lib/models';
@@ -31,7 +32,13 @@ import { useModelsStore } from '../stores';
 
 export function ModelsSettings() {
   const models = useModelsStore((s) => s.items);
-  const [modelQuery, setModelQuery] = useState('');
+  const router = useRouter();
+  /* a ?model=<id> deep link (from the composer's thinking note) prefills the search */
+  const modelParam = useMemo(
+    () => new URLSearchParams(router.query).get('model') ?? '',
+    [router.query],
+  );
+  const [modelQuery, setModelQuery] = useState(modelParam);
   /* every whitespace-separated term must hit the name, id or provider */
   const terms = modelQuery.toLowerCase().split(/\s+/).filter(Boolean);
   const shownModels = terms.length
