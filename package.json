@@ -1,8 +1,29 @@
 {
-  "name": "talkative-auth",
+  "name": "@fatihky/talkative",
   "version": "0.0.0",
+  "description": "Self-hosted multi-provider AI chat app",
+  "license": "MIT",
+  "author": "Fatih Kaya <1994274@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fatihky/talkative.git"
+  },
   "type": "module",
-  "private": true,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "bin": {
+    "talkative": "./bin/talkative.mjs"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "drizzle/*.sql",
+    "drizzle/meta/_journal.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "waku dev",
     "build": "waku build && rolldown -c rolldown.config.mjs",

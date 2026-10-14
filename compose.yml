@@ -13,6 +13,11 @@ services:
       # On Coolify-based deployments this can be set to $SERVICE_URL_APP (Coolify
       # injects the app service's public URL into that variable).
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in the deployment environment}
+      # required: signs session tokens; must be set in the deployment environment
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in the deployment environment}
+      # optional: client IP resolution for auth rate limiting (see .env.example)
+      BETTER_AUTH_IP_HEADERS: ${BETTER_AUTH_IP_HEADERS:-}
+      BETTER_AUTH_TRUSTED_PROXIES: ${BETTER_AUTH_TRUSTED_PROXIES:-}
       # optional: encrypts provider api keys at rest; empty means plaintext storage
       PROVIDER_KEY_ENC_KEYS: ${PROVIDER_KEY_ENC_KEYS:-}
       PROVIDER_KEY_ENC_ACTIVE: ${PROVIDER_KEY_ENC_ACTIVE:-}

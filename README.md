@@ -52,6 +52,48 @@ Generate a secret with:
 openssl rand -base64 32
 ```
 
+## CLI
+
+The package ships a `talkative` bin that serves the production build and runs the
+maintenance tasks. You need Node.js 22.12+, PostgreSQL, and (optionally) Redis.
+
+```sh
+npm install -g @fatihky/talkative
+
+mkdir talkative && cd talkative
+cat > .env <<'ENV'
+DATABASE_URL=postgres://localhost:5432/talkative
+BETTER_AUTH_SECRET=<openssl rand -base64 32>
+BETTER_AUTH_URL=http://localhost:3000
+ENV
+
+talkative migrate                    # creates the database if needed, applies migrations
+talkative                            # serves on http://127.0.0.1:3000
+talkative admin grant you@example.com
+```
+
+`talkative` works from the directory you run it in: it loads `.env` from there
+(variables already present in the environment win) and stores uploads in `./uploads`
+unless `UPLOADS_DIR` says otherwise. See [Environment variables](#environment-variables)
+for the full list. Run `talkative migrate` again after every upgrade.
+
+From a checkout, `pnpm build` and then `node bin/talkative.mjs` does the same.
+
+| Command | What it does |
+| --- | --- |
+| `talkative [start]` | Start the server. |
+| `talkative migrate` | Create the database if it's missing and apply pending migrations. |
+| `talkative admin grant\|revoke <email\|id>` | Grant or revoke admin rights. |
+| `talkative keys:rekey [--dry-run \| --decrypt]` | See [Provider API key encryption](#provider-api-key-encryption). |
+| `talkative uploads:gc [--days N] [--dry-run]` | Remove orphaned uploads. |
+
+| Flag | Env var | Default | What it does |
+| --- | --- | --- | --- |
+| `-p`, `--port` | `PORT` | `3000` | Port to listen on. |
+| `--host` | `HOST` | `127.0.0.1` | Host to bind to; use `0.0.0.0` to listen on all interfaces. |
+| `-h`, `--help` | — | — | Show usage and exit. |
+| `-v`, `--version` | — | — | Print the version and exit. |
+
 ## Environment variables
 
 | Variable | Required | Description |
@@ -63,6 +105,7 @@ openssl rand -base64 32
 | `BETTER_AUTH_IP_HEADERS` | no | Comma-separated headers Better Auth reads the client IP from, in order (used for rate limiting). Defaults to `x-forwarded-for`. Use `cf-connecting-ip` behind Cloudflare (only if the origin isn't reachable directly) or `x-real-ip` behind nginx. |
 | `BETTER_AUTH_TRUSTED_PROXIES` | no | Comma-separated IPs/CIDRs of your reverse proxies. Required when `x-forwarded-for` carries more than one hop (e.g. Cloudflare → Traefik → app); the chain is walked right to left and the first untrusted hop is the client. Unset, a multi-value header is ignored and all clients share one rate-limit bucket. List only the proxies' own addresses, not a broad private range. |
 | `REDIS_URL` | no | Redis connection string for catalog caching. Defaults to `redis://localhost:6379`; the app runs without Redis. |
+| `CATALOG_REFRESH_MS` | no | How often (ms) provider model catalogs are refetched in the background to keep the cache warm. Defaults to `300000` (5 minutes); `0` disables the sweep. |
 | `UPLOADS_DIR` | no | Directory for uploaded images. Defaults to a local `uploads/` directory for Node-based deployments; Docker-based deployments should point it at the mounted `uploads-data` volume. |
 | `PROVIDER_KEY_ENC_KEYS` | no | Versioned keyring: comma-separated `version:base64-32-byte-key` pairs (e.g. `v1:<key>,v2:<key>`). Unset means provider keys are stored in plaintext. |
 | `PROVIDER_KEY_ENC_ACTIVE` | no | Version **label** used for new writes (e.g. `v1`), not a key. Unset defaults to the last entry in `PROVIDER_KEY_ENC_KEYS`. |
@@ -73,6 +116,8 @@ openssl rand -base64 32
 | `EXA_API_KEY` | no | Enables the Exa `web_search` backend. |
 | `SCRAPEDO_API_KEY` | no | Enables the Scrape.do `web_search` / `http_fetch` backends. |
 | `GITHUB_PAT` | no | GitHub token for the GitHub search tools. Optional, but recommended for higher rate limits (required for discussion search). |
+
+The tool keys above are shared with users according to the admin-only "environment key access" setting: `all`, `admins` (default) or `none`. Users can also add their own keys under **Settings → Tool keys**; those are stored encrypted.
 
 ## Provider API key encryption
 
@@ -165,11 +210,16 @@ select left(api_key, 8) v, count(*)
 | `pnpm db:generate` | Generate Drizzle migrations from the schema. |
 | `pnpm db:migrate` | Apply migrations. |
 | `pnpm db:studio` | Open Drizzle Studio. |
+| `pnpm admin:grant <email\|id>` / `pnpm admin:revoke <email\|id>` | Grant or revoke admin rights. |
 | `pnpm keys:rekey` | Re-seal (or `--decrypt`) provider API keys. See [Provider API key encryption](#provider-api-key-encryption). |
+| `pnpm uploads:gc` | Remove orphaned uploads (`--days N`, `--dry-run`). |
 
 ## Project structure
 
 ```
+bin/                 # talkative CLI entry point
+scripts/             # maintenance scripts (admin, rekey, uploads-gc)
+drizzle/             # SQL migrations
 src/
   pages/            # routes (Waku file-based routing)
     _api/api/       # server API routes (mounted at /api/*)
@@ -185,3 +235,7 @@ src/
 
 - **Single-instance only.** Live generations and pending `ask_user` questions are held in process memory, so a second server process won't see in-flight runs.
 - Adding a new environment variable? Also add it to `.env.example`.
+
+## License
+
+[MIT](LICENSE)
