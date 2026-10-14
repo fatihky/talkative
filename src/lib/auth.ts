@@ -11,6 +11,11 @@
  *   (comma-separated), empties filtered out: the deployed origin has to be
  *   listed or better-auth rejects requests from it, and there is no
  *   localhost default any more.
+ * - The client IP (rate limiting, session ipAddress) is read from
+ *   BETTER_AUTH_IP_HEADERS (comma-separated, default x-forwarded-for).
+ *   BETTER_AUTH_TRUSTED_PROXIES (comma-separated IPs/CIDRs) lets a
+ *   multi-hop x-forwarded-for chain resolve to the first untrusted hop;
+ *   unset, only single-value headers are trusted.
  * - A user.create database hook makes the very first registration the admin
  *   and immediately turns registrationEnabled off in site settings, so a
  *   public instance can't grow its own user base.
@@ -27,6 +32,16 @@ import {
   patchSiteSettings,
 } from '../server/settings';
 
+/* comma-separated env var -> trimmed, non-empty entries */
+function envList(name: string): string[] {
+  return (process.env[name]?.split(',') ?? [])
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+const ipAddressHeaders = envList('BETTER_AUTH_IP_HEADERS');
+const trustedProxies = envList('BETTER_AUTH_TRUSTED_PROXIES');
+
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
@@ -36,6 +51,13 @@ export const auth = betterAuth({
   ].filter((origin): origin is string => Boolean(origin)),
   database: drizzleAdapter(db, { provider: 'pg', schema }),
   emailAndPassword: { enabled: true },
+  advanced: {
+    /* unset keeps better-auth's defaults (x-forwarded-for, no proxies) */
+    ipAddress: {
+      ...(ipAddressHeaders.length && { ipAddressHeaders }),
+      ...(trustedProxies.length && { trustedProxies }),
+    },
+  },
   databaseHooks: {
     user: {
       create: {

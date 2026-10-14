@@ -60,6 +60,8 @@ openssl rand -base64 32
 | `BETTER_AUTH_SECRET` | yes | Secret used by Better Auth. |
 | `BETTER_AUTH_URL` | yes | Public base URL of the app (scheme + host), used by Better Auth as its base URL and as a trusted origin. No default; you must set it. On Coolify-based deployments this can be set to `$SERVICE_URL_APP`. |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | no | Comma-separated list of additional origins to trust. |
+| `BETTER_AUTH_IP_HEADERS` | no | Comma-separated headers Better Auth reads the client IP from, in order (used for rate limiting). Defaults to `x-forwarded-for`. Use `cf-connecting-ip` behind Cloudflare (only if the origin isn't reachable directly) or `x-real-ip` behind nginx. |
+| `BETTER_AUTH_TRUSTED_PROXIES` | no | Comma-separated IPs/CIDRs of your reverse proxies. Required when `x-forwarded-for` carries more than one hop (e.g. Cloudflare → Traefik → app); the chain is walked right to left and the first untrusted hop is the client. Unset, a multi-value header is ignored and all clients share one rate-limit bucket. List only the proxies' own addresses, not a broad private range. |
 | `REDIS_URL` | no | Redis connection string for catalog caching. Defaults to `redis://localhost:6379`; the app runs without Redis. |
 | `UPLOADS_DIR` | no | Directory for uploaded images. Defaults to a local `uploads/` directory for Node-based deployments; Docker-based deployments should point it at the mounted `uploads-data` volume. |
 | `PROVIDER_KEY_ENC_KEYS` | no | Versioned keyring: comma-separated `version:base64-32-byte-key` pairs (e.g. `v1:<key>,v2:<key>`). Unset means provider keys are stored in plaintext. |
