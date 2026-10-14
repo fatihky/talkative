@@ -1,0 +1,48 @@
+{
+  "name": "talkative-auth",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "waku dev",
+    "build": "waku build",
+    "start": "waku start",
+    "typegen": "waku router typegen",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --experimental-strip-types src/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "admin:grant": "node --experimental-strip-types scripts/admin.ts grant",
+    "admin:revoke": "node --experimental-strip-types scripts/admin.ts revoke",
+    "keys:rekey": "node --experimental-strip-types scripts/rekey.ts",
+    "uploads:gc": "node --experimental-strip-types scripts/uploads-gc.ts"
+  },
+  "dependencies": {
+    "@streamdown/mermaid": "^1.0.3",
+    "better-auth": "^1.7.7",
+    "dotenv": "^18.0.5",
+    "drizzle-orm": "^0.45.3",
+    "hono": "^4.12.14",
+    "ioredis": "^6.0.0",
+    "lucide-react": "^1.54.0",
+    "nanoid": "^6.0.2",
+    "pg": "^8.23.1",
+    "react": "~19.3.0",
+    "react-dom": "~19.3.0",
+    "react-server-dom-webpack": "~19.3.0",
+    "streamdown": "^2.7.0",
+    "waku": "1.0.0-rc.3",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@rolldown/plugin-babel": "^0.2.4",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "drizzle-kit": "^0.31.11",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
+  }
+}

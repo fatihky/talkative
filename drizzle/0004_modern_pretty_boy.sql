@@ -1,0 +1,1 @@
+ALTER TABLE "chats" ADD COLUMN "branch_count" integer DEFAULT 1 NOT NULL;

@@ -1,0 +1,188 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791477522873,
+      "tag": "0000_classy_karen_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791478502416,
+      "tag": "0001_lean_maverick",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791484401656,
+      "tag": "0002_yielding_silvermane",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791491166271,
+      "tag": "0003_serious_menace",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791491692799,
+      "tag": "0004_modern_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791492701561,
+      "tag": "0005_lyrical_drax",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791616681720,
+      "tag": "0006_bizarre_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791617354838,
+      "tag": "0007_ancient_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791641568411,
+      "tag": "0008_add_folders_notes_tool_prefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791673854812,
+      "tag": "0009_add_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791674477184,
+      "tag": "0010_add_is_admin_and_app_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791751480180,
+      "tag": "0011_add_message_refusal_and_annotations",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791818377233,
+      "tag": "0012_add_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791819892749,
+      "tag": "0013_alter_artifacts_published_default_false",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791832500997,
+      "tag": "0014_add_bifrost_compatibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791833233303,
+      "tag": "0015_store_images_on_filesystem",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791839247626,
+      "tag": "0016_add_message_usage_details_and_routing",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791839951495,
+      "tag": "0017_add_todos",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791874119930,
+      "tag": "0018_add_tool_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791886077334,
+      "tag": "0019_drop_artifacts_slug",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791901092155,
+      "tag": "0020_add_tool_result_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791902180230,
+      "tag": "0022_add_tool_concurrency",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791904918447,
+      "tag": "0022_add_chat_pinned_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791917899521,
+      "tag": "0023_alter_artifacts_id_to_integer",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791928098662,
+      "tag": "0024_add_decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791989900647,
+      "tag": "0025_add_decision_kind_for_systemone",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.claude
+old-app
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.cache
+.DS_Store
+uploads

@@ -1,0 +1,1 @@
+ALTER TABLE "tool_preferences" ADD COLUMN "result_count" integer;

@@ -1,0 +1,62 @@
+services:
+  app:
+    build: .
+    expose:
+      - 8080
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/talkative
+      REDIS_URL: redis://redis:6379
+      # required: public origin users reach the app at, e.g. https://chat.example.com
+      # On Coolify-based deployments this can be set to $SERVICE_URL_APP (Coolify
+      # injects the app service's public URL into that variable).
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in the deployment environment}
+      # optional: encrypts provider api keys at rest; empty means plaintext storage
+      PROVIDER_KEY_ENC_KEYS: ${PROVIDER_KEY_ENC_KEYS:-}
+      PROVIDER_KEY_ENC_ACTIVE: ${PROVIDER_KEY_ENC_ACTIVE:-}
+      # uploaded images are written here; a volume keeps them across restarts
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - uploads-data:/data/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: talkative
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d talkative"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  uploads-data:

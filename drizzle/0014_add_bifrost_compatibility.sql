@@ -1,0 +1,1 @@
+ALTER TYPE "public"."compatibility" ADD VALUE 'bifrost';

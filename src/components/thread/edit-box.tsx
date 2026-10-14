@@ -1,0 +1,72 @@
+/*
+ * EditBox — inline editor for a user message.
+ *
+ * Business logic:
+ * - saving doesn't mutate the turn: it sends the edited copy as a
+ *   sibling branch, preserving the original and its replies.
+ * - empty or whitespace-only text can't be saved.
+ * - Enter follows the enterToSend pref, ⌘/Ctrl+Enter always saves,
+ *   Escape cancels.
+ * - opens focused with the caret at the end of the text; the box fits
+ *   2–12 rows of content.
+ */
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { usePrefsStore } from '../../stores';
+
+export function EditBox({
+  initial,
+  onSave,
+  onCancel,
+}: {
+  initial: string;
+  onSave: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState(initial);
+  const enterToSend = usePrefsStore((s) => s.enterToSend);
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+  const save = () => {
+    if (text.trim() !== '') onSave(text);
+  };
+  return (
+    <div className="flex w-full max-w-[92%] flex-col gap-2 rounded-[8px] border border-[var(--accent)] bg-[var(--raised)] p-2">
+      <textarea
+        ref={ref}
+        value={text}
+        rows={Math.min(12, Math.max(2, text.split('\n').length))}
+        aria-label="Edit message"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          const mod = e.metaKey || e.ctrlKey;
+          if (e.key === 'Enter' && (mod || (!e.shiftKey && enterToSend))) {
+            e.preventDefault();
+            save();
+          }
+          if (e.key === 'Escape') onCancel();
+        }}
+        className="scroll-thin w-full resize-none bg-transparent text-[13px] leading-[1.55] outline-none"
+      />
+      <div className="flex justify-end gap-2">
+        <button type="button" className="ctl h-7 px-3" onClick={onCancel}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="ctl-primary h-7 px-3"
+          disabled={text.trim() === ''}
+          onClick={save}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}

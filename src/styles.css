@@ -1,0 +1,339 @@
+@import "tailwindcss";
+@import "streamdown/styles.css";
+@source "../node_modules/streamdown/dist/*.js";
+
+/* streamdown is styled with shadcn color names; point them at our tokens */
+@theme inline {
+  --color-background: var(--raised);
+  --color-foreground: var(--text);
+  --color-muted: var(--sunken);
+  --color-muted-foreground: var(--text-3);
+  --color-border: var(--border);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--text-inv);
+  --color-sidebar: var(--panel);
+}
+
+/* ── Design tokens (solid & compact) ─────────────────────────────── */
+:root {
+  /* surfaces — flat, opaque, no translucency, no gradients */
+  --bg: #ffffff;
+  --panel: #fafafa;
+  --sunken: #f4f4f5;
+  --raised: #ffffff;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+
+  /* text */
+  --text: #18181b;
+  --text-2: #52525b;
+  --text-3: #71717a;
+  --text-inv: #ffffff;
+
+  /* accent + semantics */
+  --accent: #2f6fed;
+  --accent-weak: #eaf0fe;
+  --ok: #1f9254;
+  --warn: #b4761a;
+  --danger: #c6382f;
+  /* the private-chat badge accent */
+  --binding: #8a63d2;
+
+  /* radii — small and consistent, never pill */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+
+  /* type scale */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --lh-tight: 1.35;
+  --lh-body: 1.55;
+
+  /* spacing — strict 4px grid */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+
+  /* elevation — solid only. max one shadow, used for popovers */
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.1);
+  --ring: 0 0 0 2px var(--accent-weak), 0 0 0 3px var(--accent);
+
+  /* fixed region heights */
+  --h-topbar: 40px;
+  --h-statusbar: 24px;
+  --w-sidebar: 264px;
+  --w-rail: 48px;
+  --stage-max: 640px;
+  --composer-min: 96px;
+
+  /* scrim for sheet overlay (solid, no blur) */
+  --scrim: rgba(0, 0, 0, 0.32);
+}
+
+[data-theme="dark"] {
+  --bg: #0b0b0c;
+  --panel: #121214;
+  --sunken: #17171a;
+  --raised: #1a1a1d;
+  --border: #2a2a2e;
+  --border-strong: #3a3a40;
+  --text: #e4e4e7;
+  --text-2: #a1a1aa;
+  --text-3: #7c7c86;
+  --accent: #5b8def;
+  --accent-weak: #16233c;
+  --ok: #34c47a;
+  --warn: #e0a63f;
+  --danger: #f0625b;
+  --binding: #a98ae0;
+  --shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.5);
+}
+
+/* private-chat theme: a purple accent marks the unsaved context */
+[data-private="true"] {
+  --accent: #7c3aed;
+  --accent-weak: #ede9fe;
+}
+[data-theme="dark"][data-private="true"] {
+  --accent: #a78bfa;
+  --accent-weak: #2a2140;
+}
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--fs-13);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+#root,
+body {
+  margin: 0;
+}
+
+::selection {
+  background: var(--accent-weak);
+  color: var(--text);
+}
+
+/* Visible focus ring everywhere, never bare outline:none */
+:where(button, a, [role="switch"], [role="radio"], [tabindex]):focus-visible {
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+/* No focus styling on text inputs */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s;
+    animation-duration: 0.001s;
+  }
+}
+
+/* Touch devices: enforce ≥32px targets even where the desktop spec says 28px */
+@media (pointer: coarse) {
+  .ctl,
+  .ctl-icon,
+  .ctl-ghost,
+  .ctl-primary,
+  .ctl-danger {
+    min-height: 32px;
+    min-width: 32px;
+  }
+}
+
+/* iOS Safari zooms in when focusing a field whose font-size is < 16px.
+   Force 16px on touch devices so the viewport never auto-zooms. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* ── Shared component classes ─────────────────────────────────────── */
+@layer components {
+  .ctl {
+    @apply h-7 rounded-[6px] border px-2 text-[13px] font-medium transition-colors focus-visible:outline-none;
+    border-color: var(--border);
+    background: var(--raised);
+    color: var(--text);
+  }
+  .ctl:hover {
+    background: var(--sunken);
+  }
+  .ctl:active {
+    border-color: var(--border-strong);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  }
+  .ctl-icon {
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border p-0 transition-colors focus-visible:outline-none;
+    border-color: var(--border);
+    background: var(--raised);
+    color: var(--text);
+  }
+  .ctl-icon:hover {
+    background: var(--sunken);
+  }
+  .ctl-icon:active {
+    border-color: var(--border-strong);
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  }
+  .ctl-ghost {
+    @apply inline-flex h-7 items-center rounded-[6px] border px-2 text-[13px] font-medium transition-colors focus-visible:outline-none;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-2);
+  }
+  .ctl-ghost:hover {
+    color: var(--text);
+    background: var(--sunken);
+  }
+  .ctl-primary {
+    @apply inline-flex h-7 items-center justify-center gap-2 rounded-[6px] border px-3 text-[13px] font-medium transition-colors focus-visible:outline-none;
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--text-inv);
+  }
+  .ctl-primary:hover {
+    opacity: 0.92;
+  }
+  .ctl-danger {
+    @apply inline-flex h-7 items-center justify-center gap-2 rounded-[6px] border px-3 text-[13px] font-medium transition-colors focus-visible:outline-none;
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #fff;
+  }
+  .ctl-danger:hover {
+    opacity: 0.92;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .sec-label {
+    @apply text-[11px] font-semibold;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+  }
+  .pop {
+    @apply rounded-[8px] border text-[13px];
+    background: var(--raised);
+    border-color: var(--border-strong);
+    color: var(--text);
+    box-shadow: var(--shadow-pop);
+  }
+  .muted {
+    color: var(--text-3);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+}
+
+/* ── Markdown (streamdown) ────────────────────────────────────────── */
+/* unlayered so it beats streamdown's utilities; scaled to the 13px bubble */
+.md {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.md > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.md :is(h1, h2, h3, h4, h5, h6) {
+  line-height: var(--lh-tight);
+}
+.md h1 {
+  font-size: var(--fs-20);
+}
+.md h2 {
+  font-size: var(--fs-16);
+}
+.md :is(h3, h4, h5, h6) {
+  font-size: var(--fs-14);
+}
+.md :is(p, li, td, th, pre, code, blockquote) {
+  font-size: inherit;
+}
+.md :is(ul, ol) {
+  padding-left: 1.25em;
+}
+.md ul {
+  list-style: disc;
+}
+.md ol {
+  list-style: decimal;
+}
+.md li + li {
+  margin-top: 2px;
+}
+.md a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md :not(pre) > code {
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: var(--r-xs);
+}
+.md [data-streamdown="code-block"],
+.md [data-streamdown="table-wrapper"] {
+  border-radius: var(--r-sm);
+}
+.md :is(td, th) {
+  padding: var(--s1) var(--s2);
+}
+
+/* streamdown's code blocks contain too many paddings and spaces. styles below remove them. */
+[data-streamdown="code-block"] {
+  @apply gap-0;
+}
+
+[data-streamdown="code-block"],
+[data-streamdown="code-block-body"] {
+  padding: 0.5em;
+}
+
+[data-streamdown="code-block-header"],
+[data-streamdown="code-block-actions"] {
+  padding: 0;
+}
