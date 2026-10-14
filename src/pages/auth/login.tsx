@@ -7,14 +7,18 @@
  * - registrationEnabled = "no users yet" || settings.registrationEnabled;
  *   the first user may always register, later sign-ups obey the admin
  *   toggle. It only controls whether the sign-up link is offered.
- * - no session check and no AuthGuard: a signed-in visitor still gets the
- *   form, and the shell then wraps it in the normal app chrome (signed-out
- *   visitors get the bare layout).
+ * - a signed-in visitor is redirected to / before anything renders, so the
+ *   form never shows up inside the app chrome.
  */
+import { unstable_redirect } from 'waku/router/server';
+import { getSession } from '../../server/auth';
 import { getSiteSettings, isFirstUser } from '../../server/settings';
 import { LoginForm } from './login-form';
 
 export default async function LoginPage() {
+  if (await getSession()) {
+    throw unstable_redirect('/');
+  }
   const [settings, first] = await Promise.all([
     getSiteSettings(),
     isFirstUser(),

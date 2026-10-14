@@ -11,14 +11,18 @@
  * - the first account created is made admin and turns registration off
  *   automatically; admins re-enable it from /settings/site, or add users
  *   from /settings/users instead.
- * - no AuthGuard and no session check; the auth layout keeps it bare for
- *   signed-out visitors.
+ * - a signed-in visitor is redirected to / first; signed-out visitors get
+ *   the bare auth layout.
  */
 import { unstable_redirect } from 'waku/router/server';
+import { getSession } from '../../server/auth';
 import { getSiteSettings, isFirstUser } from '../../server/settings';
 import { RegisterForm } from './register-form';
 
 export default async function RegisterPage() {
+  if (await getSession()) {
+    throw unstable_redirect('/');
+  }
   const [settings, first] = await Promise.all([
     getSiteSettings(),
     isFirstUser(),
