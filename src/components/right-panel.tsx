@@ -3,9 +3,14 @@
  *
  * Business logic:
  * - Three tabs (context, artifact, preview) over two panel modes; a
- *   closed panel renders nothing at all.
- * - Inline from 1440px up, a scrim overlay below it that closes on an
- *   outside click; Esc inside the panel closes it either way.
+ *   closed panel plays a short exit animation before it unmounts
+ *   (useExitDelay), re-rendering the last open mode's content while it
+ *   goes.
+ * - Inline from 1440px up: it reveals by animating its width from 0
+ *   (content stays at full width and is clipped, so nothing squishes).
+ *   A scrim overlay below that: the sheet slides in from the right
+ *   over a fading scrim, and it closes on an outside click; Esc inside
+ *   the panel closes it either way.
  * - The width drags between 280 and 720px, snaps to the nearest of six
  *   stops on release, resets to 420 on double-click, and is persisted —
  *   but the drag handle only exists inline.
@@ -26,6 +31,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'waku/router/client';
 import { timeAgo } from '../lib/format';
 import { I } from '../lib/icons';
+import { useExitDelay } from '../lib/motion';
 import {
   actions,
   useChatsStore,
@@ -46,6 +52,10 @@ export function RightPanel() {
   const setWidth = actions.setRightPanelWidth;
   const escRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
+  const { mounted, exiting } = useExitDelay(mode !== 'closed');
+  /* the exit animation keeps showing the mode that was open */
+  const lastOpen = useRef(mode);
+  if (mode !== 'closed') lastOpen.current = mode;
 
   useEffect(() => {
     if (!dragging) return;
@@ -66,38 +76,50 @@ export function RightPanel() {
     };
   }, [dragging]);
 
-  if (mode === 'closed') return null;
+  if (!mounted) return null;
   const inline = vw >= 1440;
+  const shown = mode === 'closed' ? lastOpen.current : mode;
+  const panelWidth: number | string = inline ? width : `min(${width}px, 100vw)`;
+  const asideAnim = inline
+    ? exiting
+      ? 'anim-panel-out pointer-events-none'
+      : 'anim-panel-in'
+    : '';
 
   const panel = (
     <aside
       ref={escRef}
-      aria-label={mode === 'artifact' ? 'Artifact panel' : 'Chat context panel'}
+      aria-label={shown === 'artifact' ? 'Artifact panel' : 'Chat context panel'}
       tabIndex={-1}
-      className="flex h-full min-h-0 shrink-0 flex-col border-l border-border bg-sidebar"
-      style={inline ? { width } : { width: `min(${width}px, 100vw)` }}
+      className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar ${asideAnim}`}
+      style={{ width: panelWidth }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') actions.closePanel();
       }}
     >
-      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border px-2">
-        <PanelTabs />
-        <button
-          type="button"
-          aria-label="Close panel"
-          onClick={() => actions.closePanel()}
-          className="ctl-icon ml-auto border-transparent bg-transparent text-muted-foreground hover:bg-muted"
-        >
-          <I n="x" s={13} />
-        </button>
-      </div>
-      {mode === 'artifact' ? (
-        <PanelArtifact />
-      ) : (
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-          <ContextPanel />
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        style={{ width: panelWidth }}
+      >
+        <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border px-2">
+          <PanelTabs />
+          <button
+            type="button"
+            aria-label="Close panel"
+            onClick={() => actions.closePanel()}
+            className="ctl-icon ml-auto border-transparent bg-transparent text-muted-foreground hover:bg-muted"
+          >
+            <I n="x" s={13} />
+          </button>
         </div>
-      )}
+        {shown === 'artifact' ? (
+          <PanelArtifact />
+        ) : (
+          <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
+            <ContextPanel />
+          </div>
+        )}
+      </div>
 
       {/* resize handle — only in inline mode */}
       {inline && (
@@ -108,7 +130,7 @@ export function RightPanel() {
           aria-label="Resize panel"
           onPointerDown={() => setDragging(true)}
           onDoubleClick={() => setWidth(420)}
-          className="absolute -left-0.5 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-(--accent-weak)"
+          className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-(--accent-weak)"
           style={{ background: dragging ? 'var(--accent)' : undefined }}
         />
       )}
@@ -118,14 +140,18 @@ export function RightPanel() {
   if (inline) return panel;
   return (
     <div
-      className="fixed inset-0 z-50"
+      className={`fixed inset-0 z-50 ${
+        exiting ? 'anim-scrim-out pointer-events-none' : 'anim-scrim-in'
+      }`}
       style={{ background: 'var(--scrim)' }}
       onPointerDown={(e) => {
         if (e.target === e.currentTarget) actions.closePanel();
       }}
     >
       <div
-        className="absolute right-0 top-0 h-full"
+        className={`absolute right-0 top-0 h-full ${
+          exiting ? 'anim-out-right pointer-events-none' : 'anim-in-right'
+        }`}
         onKeyDownCapture={() => undefined}
       >
         {panel}

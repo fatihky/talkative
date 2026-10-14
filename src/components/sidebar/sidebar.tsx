@@ -5,6 +5,11 @@
  * - Collapses to an icon rail (new chat, expand, notes/decisions/
  *   settings) when sidebarCollapsed is set — never inside the mobile drawer,
  *   which always renders full width.
+ * - Collapsing/expanding animates: the nav's width slides between
+ *   var(--w-rail) and the stored width while a clipping layer reveals
+ *   the fixed-width content, so nothing inside reflows. The width
+ *   transition is suspended while the resizer drags and never applies
+ *   in the drawer.
  * - The edge resizer follows the pointer and snaps to the nearest of
  *   200/264/320/360 on release; double-click resets to 264. It only
  *   exists outside the drawer.
@@ -59,125 +64,134 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
     };
   }, [dragging]);
 
-  if (collapsed) {
-    return (
-      <nav
-        aria-label="Sidebar"
-        className="flex h-full shrink-0 flex-col items-center gap-1 border-r border-[var(--border)] bg-[var(--panel)] py-1.5"
-        style={{ width: 'var(--w-rail)' }}
-      >
-        <Tip label={`New chat ${mod}N`} side="bottom">
-          <button
-            type="button"
-            aria-label="New chat"
-            onClick={() => actions.newChat()}
-            className="flex size-8 items-center justify-center rounded-[6px] bg-[var(--accent)] text-[var(--text-inv)] hover:opacity-90"
-          >
-            <I n="plus" s={15} />
-          </button>
-        </Tip>
-        <Tip label="Chats" side="bottom">
-          <button
-            type="button"
-            aria-label="Expand sidebar"
-            onClick={() => actions.toggleSidebar()}
-            className="ctl-icon border-transparent bg-transparent"
-          >
-            <I n="chat" s={15} />
-          </button>
-        </Tip>
-        <Tip label="Private chat" side="bottom">
-          <button
-            type="button"
-            aria-label="Private chat"
-            onClick={() => actions.navigateTo('/p')}
-            className="ctl-icon border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-          >
-            <I n="lock" s={15} />
-          </button>
-        </Tip>
-        <div className="my-1 h-px w-6 bg-[var(--border)]" />
-        <RailLink to="/notes" label="Notes" icon="note" />
-        <RailLink to="/decisions" label="Decisions" icon="decision" />
-        <RailLink to="/settings" label="Settings" icon="settings" />
-      </nav>
-    );
-  }
-
   return (
     <nav
       aria-label="Sidebar"
-      className="relative flex h-full min-w-0 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)]"
-      style={{ width }}
+      className={`relative flex h-full shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)] ${
+        !inDrawer && !dragging ? 'anim-width' : ''
+      }`}
+      style={{ width: collapsed ? 'var(--w-rail)' : width }}
     >
-      <div className="px-2 pt-2 pb-1 flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={() => {
-            actions.newChat();
-            actions.setMobileNav(false);
-          }}
-          className="ctl-primary h-8 w-full"
-          aria-label="New chat"
-        >
-          <I n="plus" s={14} /> New chat
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            actions.navigateTo('/p');
-            actions.setMobileNav(false);
-          }}
-          className="ctl-ghost h-8 w-full justify-center"
-          aria-label="Private chat"
-        >
-          <I n="lock" s={14} /> Private chat
-        </button>
-      </div>
-
-      <div className="flex items-center gap-1 px-2 pb-1.5">
-        <div className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2">
-          <I n="search" s={12} className="muted shrink-0" />
-          <input
-            value={filterValue}
-            onChange={(e) => actions.setChatFilter(e.target.value)}
-            placeholder="Filter chats…"
-            aria-label="Filter chats"
-            spellCheck={false}
-            className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--text-3)]"
-          />
-        </div>
-        <Tip label="New folder" side="bottom">
-          <button
-            type="button"
-            aria-label="New folder"
-            onClick={() => actions.createFolder()}
-            className="ctl-icon size-7 shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
+      {/* clip layer — tracks the animating nav width and hides the
+          fixed-width content while the nav slides between rail and full */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {collapsed ? (
+          <div
+            key="rail"
+            className="anim-fade flex flex-1 flex-col items-center gap-1 py-1.5"
           >
-            <I n="folder-plus" s={14} />
-          </button>
-        </Tip>
+            <Tip label={`New chat ${mod}N`} side="bottom">
+              <button
+                type="button"
+                aria-label="New chat"
+                onClick={() => actions.newChat()}
+                className="flex size-8 items-center justify-center rounded-[6px] bg-[var(--accent)] text-[var(--text-inv)] hover:opacity-90"
+              >
+                <I n="plus" s={15} />
+              </button>
+            </Tip>
+            <Tip label="Chats" side="bottom">
+              <button
+                type="button"
+                aria-label="Expand sidebar"
+                onClick={() => actions.toggleSidebar()}
+                className="ctl-icon border-transparent bg-transparent"
+              >
+                <I n="chat" s={15} />
+              </button>
+            </Tip>
+            <Tip label="Private chat" side="bottom">
+              <button
+                type="button"
+                aria-label="Private chat"
+                onClick={() => actions.navigateTo('/p')}
+                className="ctl-icon border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
+              >
+                <I n="lock" s={15} />
+              </button>
+            </Tip>
+            <div className="my-1 h-px w-6 bg-[var(--border)]" />
+            <RailLink to="/notes" label="Notes" icon="note" />
+            <RailLink to="/decisions" label="Decisions" icon="decision" />
+            <RailLink to="/settings" label="Settings" icon="settings" />
+          </div>
+        ) : (
+          <div
+            key="full"
+            className="anim-fade flex min-h-0 flex-1 flex-col"
+            style={{ width }}
+          >
+            <div className="px-2 pt-2 pb-1 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  actions.newChat();
+                  actions.setMobileNav(false);
+                }}
+                className="ctl-primary h-8 w-full"
+                aria-label="New chat"
+              >
+                <I n="plus" s={14} /> New chat
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  actions.navigateTo('/p');
+                  actions.setMobileNav(false);
+                }}
+                className="ctl-ghost h-8 w-full justify-center"
+                aria-label="Private chat"
+              >
+                <I n="lock" s={14} /> Private chat
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1 px-2 pb-1.5">
+              <div className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2">
+                <I n="search" s={12} className="muted shrink-0" />
+                <input
+                  value={filterValue}
+                  onChange={(e) => actions.setChatFilter(e.target.value)}
+                  placeholder="Filter chats…"
+                  aria-label="Filter chats"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[var(--text-3)]"
+                />
+              </div>
+              <Tip label="New folder" side="bottom">
+                <button
+                  type="button"
+                  aria-label="New folder"
+                  onClick={() => actions.createFolder()}
+                  className="ctl-icon size-7 shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
+                >
+                  <I n="folder-plus" s={14} />
+                </button>
+              </Tip>
+            </div>
+
+            <ChatList items={chatItems} activeId={activeId} />
+
+            <nav
+              className="mt-auto grid grid-cols-4 border-t border-[var(--border)]"
+              aria-label="Sections"
+            >
+              {(
+                [
+                  ['/', 'Chats', 'chat'],
+                  ['/notes', 'Notes', 'note'],
+                  ['/decisions', 'Decisions', 'decision'],
+                  ['/settings', 'Settings', 'settings'],
+                ] as const
+              ).map(([to, label, icon]) => (
+                <NavItem key={label} to={to} label={label} icon={icon} />
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
 
-      <ChatList items={chatItems} activeId={activeId} />
-
-      <nav
-        className="mt-auto grid grid-cols-4 border-t border-[var(--border)]"
-        aria-label="Sections"
-      >
-        {(
-          [
-            ['/', 'Chats', 'chat'],
-            ['/notes', 'Notes', 'note'],
-            ['/decisions', 'Decisions', 'decision'],
-            ['/settings', 'Settings', 'settings'],
-          ] as const
-        ).map(([to, label, icon]) => (
-          <NavItem key={label} to={to} label={label} icon={icon} />
-        ))}
-      </nav>
-
-      {!inDrawer && (
+      {!inDrawer && !collapsed && (
         // biome-ignore lint/a11y/useSemanticElements: draggable splitter, not a thematic break
         <div
           ref={resizer}

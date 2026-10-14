@@ -75,6 +75,10 @@
 
   /* scrim for sheet overlay (solid, no blur) */
   --scrim: rgba(0, 0, 0, 0.32);
+
+  /* motion — one duration/easing shared by sheets and panel widths */
+  --t-slide: 200ms;
+  --ease-slide: cubic-bezier(0.25, 0, 0, 1);
 }
 
 [data-theme="dark"] {
@@ -150,12 +154,101 @@ select:focus-visible {
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────── */
+/* !important so it also beats animation utility classes (.anim-*, animate-*) */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    transition-duration: 0s;
-    animation-duration: 0.001s;
+    transition-duration: 0s !important;
+    animation-duration: 0.001s !important;
+  }
+}
+
+/* ── Sheet & panel motion ─────────────────────────────────────────── */
+/* Enter/exit classes for the sidebar drawer and the right panel. The
+   `out` classes hold their end state (fill forwards) until the exit
+   timer in lib/motion.ts unmounts the tree; the `in` classes fill
+   backwards only, so once finished they stop overriding the element's
+   own styles (a filled enter would freeze the panel width against the
+   resize drag). The width keyframes declare only one end, so they
+   animate to/from whatever width the element carries. */
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes sheet-out-left {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes sheet-out-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes scrim-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes panel-in {
+  from {
+    width: 0;
+  }
+}
+@keyframes panel-out {
+  to {
+    width: 0;
+  }
+}
+
+@layer components {
+  .anim-in-left {
+    animation: sheet-in-left var(--t-slide) var(--ease-slide) backwards;
+  }
+  .anim-out-left {
+    animation: sheet-out-left var(--t-slide) var(--ease-slide) forwards;
+  }
+  .anim-in-right {
+    animation: sheet-in-right var(--t-slide) var(--ease-slide) backwards;
+  }
+  .anim-out-right {
+    animation: sheet-out-right var(--t-slide) var(--ease-slide) forwards;
+  }
+  .anim-scrim-in {
+    animation: scrim-in var(--t-slide) ease-out backwards;
+  }
+  .anim-scrim-out {
+    animation: scrim-out var(--t-slide) ease-in forwards;
+  }
+  .anim-fade {
+    animation: fade-in 150ms ease-out;
+  }
+  .anim-panel-in {
+    animation: panel-in var(--t-slide) var(--ease-slide) backwards;
+  }
+  .anim-panel-out {
+    animation: panel-out var(--t-slide) var(--ease-slide) forwards;
+  }
+  /* sidebar rail ↔ full: width slides, content stays put and is clipped */
+  .anim-width {
+    transition: width var(--t-slide) var(--ease-slide);
   }
 }
 

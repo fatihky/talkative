@@ -7,6 +7,9 @@
  * - §10 responsive: crossing below 1100px collapses the sidebar to a rail
  *   and crossing back restores it; below 768px the sidebar becomes a
  *   scrim drawer and an open drawer closes.
+ * - The mobile drawer slides in/out with its scrim (useExitDelay keeps
+ *   it mounted while the exit animation runs); the right panel manages
+ *   its own enter/exit animations the same way.
  * - /settings and public artifact links (/a/*) render standalone with no
  *   sidebar, composer, or panels; note and decision detail routes also drop
  *   the composer (both are editors, not a chat).
@@ -24,6 +27,7 @@ import { type ComponentProps, useCallback, useEffect, useRef } from 'react';
 import { type Link, useRouter } from 'waku';
 import { I } from '../lib/icons';
 import { useKeyboardScope } from '../lib/keyboard';
+import { useExitDelay } from '../lib/motion';
 import { actions, useLayoutStore, useUIStore } from '../stores';
 import { Composer } from './composer/composer';
 import { ConfirmDialog } from './confirm-dialog';
@@ -43,9 +47,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const vw = useLayoutStore((s) => s.vw);
   const _sidebarCollapsed = useLayoutStore((s) => s.sidebarCollapsed);
   const mobileNav = useLayoutStore((s) => s.mobileNav);
-  const rightPanel = useLayoutStore((s) => s.rightPanel);
   const paletteOpen = useUIStore((s) => s.palette);
   const context = useUIStore((s) => s.context);
+  const drawer = useExitDelay(mobileNav);
 
   /* the private chat theme (distinct accent) follows the active context */
   useEffect(() => {
@@ -206,22 +210,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* inline at ≥1440, sheet overlay below (decided inside RightPanel) */}
-        {rightPanel !== 'closed' && <RightPanel />}
+        {/* inline at ≥1440, sheet overlay below (decided inside RightPanel);
+            it delays its own unmount through the exit animation */}
+        <RightPanel />
       </div>
 
       <GlobalStatusBar />
 
-      {/* mobile drawer */}
-      {isMobile && mobileNav && (
+      {/* mobile drawer — slides in from the left over a fading scrim */}
+      {isMobile && drawer.mounted && (
         <div
-          className="fixed inset-0 z-50"
+          className={`fixed inset-0 z-50 ${
+            drawer.exiting ? 'anim-scrim-out pointer-events-none' : 'anim-scrim-in'
+          }`}
           style={{ background: 'var(--scrim)' }}
           onPointerDown={(e) => {
             if (e.target === e.currentTarget) actions.setMobileNav(false);
           }}
         >
-          <div className="absolute left-0 top-0 h-full">
+          <div
+            className={`absolute left-0 top-0 h-full ${
+              drawer.exiting ? 'anim-out-left pointer-events-none' : 'anim-in-left'
+            }`}
+          >
             <div className="flex h-10 w-64 items-center justify-end border-b border-[var(--border)] bg-[var(--panel)] pr-2">
               <button
                 type="button"

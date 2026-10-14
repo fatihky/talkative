@@ -30,7 +30,8 @@
  * - title edits patch the draft at once and queue one debounced PATCH (500ms)
  *   for a run that already exists; flushDecisionTitle sends it on the way out
  *   of the editor, and a blank title is never sent (the server rejects it).
- * - deleteDecision removes locally first and restores the list on failure.
+ * - deleteDecision removes locally first and restores the list on failure;
+ *   a draft that was never run has no row, so it is only discarded locally.
  */
 'use client';
 
@@ -327,6 +328,8 @@ export const decisionsActions = {
 
   async deleteDecision(id: string) {
     const prev = get().items;
+    /* a draft that was never run has no row: discarding it is local only */
+    const stored = prev.some((r) => r.id === id);
     /* a rename queued for this run must not fire once the row is gone */
     if (pendingTitle?.id === id) {
       if (titleTimer) clearTimeout(titleTimer);
@@ -338,6 +341,7 @@ export const decisionsActions = {
       LS.del('decisions.draft');
       set({ draft: null, runError: undefined });
     }
+    if (!stored) return;
     try {
       await decisionsApi.remove(id);
     } catch (e) {

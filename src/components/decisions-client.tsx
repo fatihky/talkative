@@ -4,10 +4,14 @@
  *
  * Business logic:
  * - The list is the user's stored runs, newest edit first; it refetches on
- *   mount (never cached locally) and marks a run that never answered, or
- *   whose last attempt failed, so the row says what opening it will show.
+ *   mount (never cached locally). Each row previews its answers, or says the
+ *   run never answered or that its last attempt failed, so the row tells you
+ *   what opening it will show.
+ * - Examples are the empty state: with no runs they are the page; once runs
+ *   exist they fold into a "Start from an example" disclosure under the list.
  * - "New decision" mints a run client-side and routes into its editor before
- *   anything is stored: a draft only reaches the database when it is run.
+ *   anything is stored: a draft only reaches the database when it is run, so
+ *   deleting one that was never run only discards it.
  * - The editor sets the UI context to 'new' and the route drops the composer
  *   (a decision is a form, not a chat), and leaving it flushes a pending
  *   debounced rename so the last keystrokes reach the server.
@@ -18,16 +22,21 @@
  *   chosen kind (ollama for decisions, bifrost/openai for System One) is
  *   refused by the route and its message lands in the run's error.
  * - Questions are edited in place: the type control swaps the shape and seeds
- *   the two entries its type needs, choices and levels grow and shrink, and a
- *   name is an identifier because it is the key the answer comes back under.
- * - Run is gated on decisionProblems(), so the button explains the first
- *   missing piece instead of spending a request on a 400; a failure — upstream
- *   or transport — shows in the error card while the stored run keeps its
- *   questions.
- * - Answers render per question in the order asked: the headline value, its
- *   bar, the distribution the provider reported, and confidence. A score's
- *   probabilities are labelled from its legend, falling back to the question's
- *   own levels.
+ *   the two entries its type needs, choices and levels grow and shrink within
+ *   the server's limits, and a name is an identifier because it is the key the
+ *   answer comes back under.
+ * - Run (or ⌘/Ctrl+Enter) is gated on decisionProblems(): the first missing
+ *   piece is spelled out under the header instead of spending a request on a
+ *   400; a failure — upstream or transport — shows in the error card right
+ *   there while the stored run keeps its questions.
+ * - An answer renders inside the card of the question it answers (matched by
+ *   name): the headline value, its bar, the distribution the provider
+ *   reported, and confidence. A score's headline names its nearest level, and
+ *   its probabilities are labelled from its legend, falling back to the
+ *   question's own levels. An answer whose question was renamed or removed is
+ *   still listed below the questions.
+ * - Answers belong to the stored run, so once the input, model or questions
+ *   drift from it they are dimmed and marked stale until the next run.
  */
 'use client';
 
@@ -37,8 +46,12 @@ import {
   answerBar,
   answerValue,
   DECISION_EXAMPLES,
+  type DecisionDraft,
   decisionProblems,
   levelLabels,
+  MAX_DECISION_CHOICES,
+  MAX_DECISION_LEVELS,
+  MAX_DECISION_QUESTIONS,
   pct,
   QUESTION_TYPES,
 } from '../lib/decisions';
@@ -50,6 +63,7 @@ import type {
   DecisionAnswer,
   DecisionQuestion,
   DecisionQuestionType,
+  DecisionRun,
   Model,
 } from '../types';
 import { SegmentedControl } from '../ui/primitives';
@@ -59,6 +73,36 @@ const inputCls =
   'h-8 w-full rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]';
 const areaCls =
   'w-full resize-y rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] p-2 text-[13px] leading-[1.55] outline-none placeholder:text-[var(--text-3)] focus:border-[var(--accent)]';
+const smallBtnCls =
+  'ctl inline-flex h-6 items-center gap-1 px-2 text-[11px] disabled:opacity-50';
+const iconBtnCls =
+  'ctl-icon shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]';
+const pageCls = 'scroll-thin min-h-0 flex-1 overflow-y-auto p-4 sm:px-6';
+const colCls = 'mx-auto flex w-full max-w-[720px] flex-col';
+
+const modelName = (models: Model[], id: string): string =>
+  models.find((m) => m.id === id)?.shortName ?? id;
+
+/** a score's nearest level label, when one is known */
+const scoreLevel = (
+  a: DecisionAnswer,
+  q: DecisionQuestion | undefined,
+): string | undefined =>
+  a.type === 'score' && a.score !== undefined
+    ? levelLabels(a, q)[String(Math.round(a.score))]
+    : undefined;
+
+/** the answer's headline, with a score's level name in front of its index */
+const headline = (a: DecisionAnswer, q: DecisionQuestion | undefined) => {
+  const level = scoreLevel(a, q);
+  return level ? `${level} · ${answerValue(a)}` : answerValue(a);
+};
+
+/** the stored run no longer reflects what is on screen */
+const drifted = (d: DecisionDraft, r: DecisionRun): boolean =>
+  d.input !== r.input ||
+  d.modelId !== r.modelId ||
+  JSON.stringify(d.questions) !== JSON.stringify(r.questions);
 
 /* ── list ─────────────────────────────────────────────────────────── */
 
@@ -73,9 +117,12 @@ export function DecisionsClient() {
     void actions.loadDecisions();
   }, []);
 
+  const empty = items.length === 0;
+  const settled = status === 'ready' || status === 'error';
+
   return (
-    <main className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-3">
+    <main className={pageCls}>
+      <div className={`${colCls} gap-4`}>
         <div className="flex items-end gap-2">
           <div className="min-w-0 flex-1">
             <h1 className="text-[20px] leading-[1.35] font-semibold">
@@ -97,87 +144,131 @@ export function DecisionsClient() {
 
         {error && (
           <div className="text-[12px] text-[var(--danger)]" role="alert">
-            {error}
+            Couldn’t load decisions — {error}
           </div>
         )}
 
-        {items.length === 0 && status !== 'ready' && (
+        {empty && !settled && (
           <div className="py-10 text-center text-[12px] muted">
-            {status === 'loading'
-              ? 'Loading decisions…'
-              : error
-                ? 'Couldn’t load decisions.'
-                : 'No decisions yet.'}
+            Loading decisions…
           </div>
         )}
 
-        <section className="flex flex-col gap-2 border-t border-[var(--border)] pt-3">
-          <div className="sec-label">Examples</div>
-          <p className="text-[11px] muted">
-            Start from one of these, then swap in your own input and model.
-          </p>
-          <div className="flex flex-col">
-            {DECISION_EXAMPLES.map((e) => (
-              <button
-                key={e.title}
-                type="button"
-                className="flex flex-col gap-0.5 rounded-[6px] px-2.5 py-2 text-left hover:bg-[var(--sunken)]"
-                onClick={() => actions.newDecisionFromExample(e)}
-              >
-                <span className="text-[13px]">{e.title}</span>
-                <span className="text-[11px] muted">{e.blurb}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+        {!empty && (
+          <section className="flex flex-col gap-1">
+            <div className="sec-label">
+              Runs
+              <span className="num ml-1.5 text-[11px] font-normal">
+                {items.length}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              {items.map((r) => (
+                <RunRow key={r.id} r={r} models={models} />
+              ))}
+            </div>
+          </section>
+        )}
 
-        <div className="flex flex-col">
-          {items.map((r) => (
-            <Link
-              key={r.id}
-              to={`/decisions/${r.id}`}
-              className="flex items-center gap-2 rounded-[6px] px-2.5 py-2 hover:bg-[var(--sunken)]"
-            >
-              <I n="decision" s={13} className="shrink-0 text-[var(--text-3)]" />
-              <span className="min-w-0 flex-1 truncate text-[13px]">
-                {r.title || 'Untitled decision'}
-              </span>
-              {r.kind === 'systemone' && (
-                <span className="shrink-0 rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
-                  system one
-                </span>
-              )}
-              <span className="num hidden shrink-0 text-[11px] muted sm:inline">
-                {modelName(models, r.modelId)}
-              </span>
-              <span className="num shrink-0 text-[11px] muted">
-                {r.questions.length} q
-              </span>
-              {r.error ? (
-                <span className="shrink-0 text-[10px] text-[var(--danger)]">
-                  failed
-                </span>
-              ) : (
-                !r.answers && (
-                  <span className="shrink-0 text-[10px] muted">not run</span>
-                )
-              )}
-              <span
-                className="num w-[62px] shrink-0 text-right text-[11px] muted"
-                title={fullTimestamp(r.updatedAt)}
-              >
-                {timeAgo(r.updatedAt)}
-              </span>
-            </Link>
-          ))}
-        </div>
+        {empty && settled ? (
+          <section className="flex flex-col gap-2">
+            <div className="sec-label">Start from an example</div>
+            <p className="text-[11px] muted">
+              No decisions yet. Open one of these, then swap in your own input
+              and model — or start blank with New decision.
+            </p>
+            <ExampleList />
+          </section>
+        ) : (
+          !empty && (
+            <details className="group border-t border-[var(--border)] pt-3">
+              <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12px] muted hover:text-[var(--text)] [&::-webkit-details-marker]:hidden">
+                <I
+                  n="chevron-right"
+                  s={12}
+                  className="transition-transform group-open:rotate-90"
+                />
+                Start from an example
+              </summary>
+              <div className="mt-2">
+                <ExampleList />
+              </div>
+            </details>
+          )
+        )}
       </div>
     </main>
   );
 }
 
-const modelName = (models: Model[], id: string): string =>
-  models.find((m) => m.id === id)?.shortName ?? id;
+function RunRow({ r, models }: { r: DecisionRun; models: Model[] }) {
+  const preview = (r.answers ?? [])
+    .map((a) => {
+      const q = r.questions.find((x) => x.name === a.name);
+      return `${a.name} ${a.type === 'refusal' ? 'refused' : headline(a, q)}`;
+    })
+    .join(' · ');
+  return (
+    <Link
+      to={`/decisions/${r.id}`}
+      className="flex items-start gap-2 rounded-[6px] px-2.5 py-2 hover:bg-[var(--sunken)]"
+    >
+      <I
+        n="decision"
+        s={13}
+        className="mt-[3px] shrink-0 text-[var(--text-3)]"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-[13px]">
+            {r.title || 'Untitled decision'}
+          </span>
+          {r.kind === 'systemone' && (
+            <span className="shrink-0 rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
+              system one
+            </span>
+          )}
+          <span className="num hidden shrink-0 text-[11px] muted sm:inline">
+            {modelName(models, r.modelId)}
+          </span>
+          <span
+            className="num w-[62px] shrink-0 text-right text-[11px] muted"
+            title={fullTimestamp(r.updatedAt)}
+          >
+            {timeAgo(r.updatedAt)}
+          </span>
+        </div>
+        <div className="num truncate text-[11px] muted">
+          {r.error ? (
+            <span className="text-[var(--danger)]">Failed — {r.error}</span>
+          ) : preview ? (
+            preview
+          ) : (
+            `Not run · ${r.questions.length} question${r.questions.length === 1 ? '' : 's'}`
+          )}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function ExampleList() {
+  return (
+    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+      {DECISION_EXAMPLES.map((e) => (
+        <button
+          key={e.title}
+          type="button"
+          className="flex flex-col gap-0.5 rounded-[6px] border border-[var(--border)] px-2.5 py-2 text-left hover:bg-[var(--sunken)]"
+          onClick={() => actions.newDecisionFromExample(e)}
+        >
+          <span className="text-[13px]">{e.title}</span>
+          <span className="text-[11px] muted">{e.blurb}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ── editor ───────────────────────────────────────────────────────── */
 
@@ -206,8 +297,8 @@ export function DecisionEditor() {
 
   if (!draft)
     return (
-      <main className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4 sm:px-6">
-        <div className="mx-auto w-full max-w-[720px] py-10 text-center text-[12px] muted">
+      <main className={pageCls}>
+        <div className={`${colCls} py-10 text-center text-[12px] muted`}>
           {status === 'loading' || status === 'idle'
             ? 'Loading…'
             : status === 'error'
@@ -219,62 +310,78 @@ export function DecisionEditor() {
 
   const problems = decisionProblems(draft);
   const answers = run?.answers ?? [];
+  const stale = answers.length > 0 && !!run && drifted(draft, run);
+  const orphans = answers.filter(
+    (a) => !draft.questions.some((q) => q.name === a.name),
+  );
+  const atMax = draft.questions.length >= MAX_DECISION_QUESTIONS;
 
   return (
-    <main className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Link
-            to="/decisions"
-            className="ctl-icon border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-            aria-label="Back to decisions"
-          >
-            <I n="arrow-left" s={14} />
-          </Link>
-          <input
-            value={draft.title}
-            aria-label="Decision title"
-            placeholder="Untitled decision"
-            onChange={(e) => actions.setDecisionTitle(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold outline-none placeholder:text-[var(--text-3)]"
-          />
-          <div className="flex shrink-0 items-center gap-2">
-            {problems.length > 0 && !running && (
-              <span className="hidden max-w-[220px] truncate text-[11px] muted sm:inline">
-                {problems[0]}
-              </span>
-            )}
-            <button
-              type="button"
-              className="ctl-primary h-7"
-              disabled={running || problems.length > 0}
-              onClick={() => void actions.runDecision()}
+    <main
+      className={pageCls}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+          e.preventDefault();
+          void actions.runDecision();
+        }
+      }}
+    >
+      <div className={`${colCls} gap-4`}>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/decisions"
+              className={iconBtnCls}
+              aria-label="Back to decisions"
             >
-              <I n={running ? 'retry' : 'play'} s={12} />
-              {running ? 'Running…' : 'Run'}
-            </button>
-            <Tip label="Delete decision" side="bottom">
+              <I n="arrow-left" s={14} />
+            </Link>
+            <input
+              value={draft.title}
+              aria-label="Decision title"
+              placeholder="Untitled decision"
+              onChange={(e) => actions.setDecisionTitle(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold outline-none placeholder:text-[var(--text-3)]"
+            />
+            <Tip label="Run · ⌘↵" side="bottom">
               <button
                 type="button"
-                className="ctl-icon border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-                aria-label="Delete decision"
-                onClick={async () => {
-                  const ok = await actions.confirm({
-                    title: `Delete “${draft.title || 'Untitled decision'}”?`,
-                    body: 'The run, its questions and its answers are removed. This can’t be undone.',
-                    confirmLabel: 'Delete',
-                    danger: true,
-                  });
-                  if (!ok) return;
-                  await actions.deleteDecision(draft.id);
-                  actions.navigateTo('/decisions');
-                }}
+                className="ctl-primary h-7 shrink-0"
+                disabled={running || problems.length > 0}
+                onClick={() => void actions.runDecision()}
               >
-                <I n="trash" s={13} />
+                {running ? (
+                  <span className="block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <I n="play" s={12} />
+                )}
+                {running ? 'Running…' : run ? 'Run again' : 'Run'}
               </button>
             </Tip>
+            <DeleteButton id={draft.id} title={draft.title} stored={!!run} />
           </div>
+          {problems.length > 0 && !running && (
+            <p className="pl-9 text-[11px] muted" aria-live="polite">
+              To run: {problems[0]}
+              {problems.length > 1 && ` (+${problems.length - 1} more)`}
+            </p>
+          )}
         </div>
+
+        {runError && (
+          <div
+            className="rounded-[8px] border border-[var(--danger)] bg-[var(--panel)] p-3"
+            role="alert"
+            aria-live="assertive"
+          >
+            <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--danger)]">
+              <I n="alert" s={14} /> Decision failed
+            </div>
+            <div className="num mt-1 text-[11px] break-words muted">
+              {runError}
+            </div>
+          </div>
+        )}
 
         <section className="flex flex-col gap-1.5">
           <div className="sec-label">Model</div>
@@ -303,61 +410,66 @@ export function DecisionEditor() {
             <div className="sec-label">
               Questions
               <span className="num ml-1.5 text-[11px] font-normal">
-                {draft.questions.length}
+                {draft.questions.length}/{MAX_DECISION_QUESTIONS}
               </span>
             </div>
-            <div className="ml-auto flex items-center gap-1">
-              {QUESTION_TYPES.map((t) => (
-                <button
-                  key={t.type}
-                  type="button"
-                  className="ctl h-6 px-2 text-[11px]"
-                  title={t.hint}
-                  onClick={() => actions.addDecisionQuestion(t.type)}
-                >
-                  <I n="plus" s={11} /> {t.label}
-                </button>
-              ))}
-            </div>
+            {stale && (
+              <span className="ml-auto text-[11px] text-[var(--warn)]">
+                Edited since the last run — answers are stale
+              </span>
+            )}
           </div>
           {draft.questions.map((q, i) => (
             /* keyed by position: a card keyed on its name would remount — and lose
                focus — on every keystroke of the name field */
-            <QuestionCard key={i} q={q} index={i} />
+            <QuestionCard
+              key={i}
+              q={q}
+              index={i}
+              answer={answers.find((a) => a.name === q.name)}
+              stale={stale}
+            />
           ))}
           {draft.questions.length === 0 && (
-            <div className="py-4 text-center text-[12px] muted">
-              No questions yet.
+            <div className="rounded-[8px] border border-dashed border-[var(--border)] py-4 text-center text-[12px] muted">
+              No questions yet — add one below.
             </div>
           )}
+          <div className="flex flex-wrap items-center gap-1">
+            {QUESTION_TYPES.map((t) => (
+              <Tip key={t.type} label={t.hint} side="top">
+                <button
+                  type="button"
+                  className={smallBtnCls}
+                  disabled={atMax}
+                  onClick={() => actions.addDecisionQuestion(t.type)}
+                >
+                  <I n="plus" s={11} /> {t.label}
+                </button>
+              </Tip>
+            ))}
+            {atMax && (
+              <span className="ml-1 text-[11px] muted">
+                {MAX_DECISION_QUESTIONS} questions per run at most
+              </span>
+            )}
+          </div>
         </section>
 
-        {runError && (
-          <div
-            className="rounded-[8px] border border-[var(--danger)] bg-[var(--panel)] p-3"
-            role="alert"
-            aria-live="assertive"
-          >
-            <div className="flex items-center gap-2 text-[13px] font-medium text-[var(--danger)]">
-              <I n="alert" s={14} /> Decision failed
-            </div>
-            <div className="num mt-1 text-[11px] muted">{runError}</div>
-          </div>
-        )}
-
-        {answers.length > 0 && (
+        {orphans.length > 0 && (
           <section className="flex flex-col gap-2">
-            <div className="sec-label">Answers</div>
-            {draft.questions.map((q, i) => {
-              const a = answers.find((x) => x.name === q.name);
-              return a ? <AnswerCard key={i} a={a} q={q} /> : null;
-            })}
-            {/* an answer whose question was edited away still gets shown */}
-            {answers
-              .filter((a) => !draft.questions.some((q) => q.name === a.name))
-              .map((a) => (
-                <AnswerCard key={a.name} a={a} q={undefined} />
-              ))}
+            <div className="sec-label">Answers without a question</div>
+            <p className="text-[11px] muted">
+              From the last run, under names no current question has.
+            </p>
+            {orphans.map((a) => (
+              <div
+                key={a.name}
+                className="rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5"
+              >
+                <AnswerBlock a={a} q={undefined} stale named />
+              </div>
+            ))}
           </section>
         )}
 
@@ -384,13 +496,61 @@ export function DecisionEditor() {
   );
 }
 
+function DeleteButton({
+  id,
+  title,
+  stored,
+}: {
+  id: string;
+  title: string;
+  stored: boolean;
+}) {
+  const label = stored ? 'Delete decision' : 'Discard draft';
+  return (
+    <Tip label={label} side="bottom">
+      <button
+        type="button"
+        className={iconBtnCls}
+        aria-label={label}
+        onClick={async () => {
+          const ok = await actions.confirm({
+            title: stored
+              ? `Delete “${title || 'Untitled decision'}”?`
+              : 'Discard this draft?',
+            body: stored
+              ? 'The run, its questions and its answers are removed. This can’t be undone.'
+              : 'It was never run, so nothing is stored — the input and questions are thrown away.',
+            confirmLabel: stored ? 'Delete' : 'Discard',
+            danger: true,
+          });
+          if (!ok) return;
+          await actions.deleteDecision(id);
+          actions.navigateTo('/decisions');
+        }}
+      >
+        <I n="trash" s={13} />
+      </button>
+    </Tip>
+  );
+}
+
 /* ── question ─────────────────────────────────────────────────────── */
 
-function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
-  const setChoices = (choices: DecisionQuestion['choices']) =>
-    actions.updateDecisionQuestion(index, { choices });
-  const setLevels = (levels: DecisionQuestion['levels']) =>
-    actions.updateDecisionQuestion(index, { levels });
+function QuestionCard({
+  q,
+  index,
+  answer,
+  stale,
+}: {
+  q: DecisionQuestion;
+  index: number;
+  answer: DecisionAnswer | undefined;
+  stale: boolean;
+}) {
+  const update = (patch: Parameters<typeof actions.updateDecisionQuestion>[1]) =>
+    actions.updateDecisionQuestion(index, patch);
+  const choices = q.choices ?? [];
+  const levels = q.levels ?? [];
 
   return (
     <div className="flex flex-col gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5">
@@ -401,7 +561,7 @@ function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
           placeholder="name"
           spellCheck={false}
           onChange={(e) => actions.renameDecisionQuestion(index, e.target.value)}
-          className="num h-7 w-[150px] shrink-0 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[12px] outline-none focus:border-[var(--accent)]"
+          className="num h-7 w-[150px] min-w-0 shrink rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[12px] outline-none focus:border-[var(--accent)]"
         />
         <SegmentedControl
           ariaLabel={`Question type for ${q.name || 'this question'}`}
@@ -419,13 +579,13 @@ function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
           label={QUESTION_TYPES.find((t) => t.type === q.type)?.hint ?? ''}
           side="top"
         >
-          <span className="muted flex shrink-0 items-center">
+          <span className="muted hidden shrink-0 items-center sm:flex">
             <I n="info" s={13} />
           </span>
         </Tip>
         <button
           type="button"
-          className="ctl-icon ml-auto shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
+          className={`${iconBtnCls} ml-auto`}
           aria-label={`Remove question ${q.name || index + 1}`}
           onClick={() => actions.removeDecisionQuestion(index)}
         >
@@ -438,11 +598,7 @@ function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
         aria-label={`Instructions for ${q.name}`}
         placeholder="What should the model decide?"
         rows={2}
-        onChange={(e) =>
-          actions.updateDecisionQuestion(index, {
-            instructions: e.target.value,
-          })
-        }
+        onChange={(e) => update({ instructions: e.target.value })}
         className={areaCls}
       />
 
@@ -456,9 +612,7 @@ function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
                 aria-label={`What counts as ${k}`}
                 placeholder={`What counts as ${k} (optional)`}
                 onChange={(e) =>
-                  actions.updateDecisionQuestion(index, {
-                    criteria: { ...q.criteria, [k]: e.target.value },
-                  })
+                  update({ criteria: { ...q.criteria, [k]: e.target.value } })
                 }
                 className={inputCls}
               />
@@ -471,148 +625,183 @@ function QuestionCard({ q, index }: { q: DecisionQuestion; index: number }) {
       )}
 
       {q.type === 'choice' && (
-        <div className="flex flex-col gap-1.5">
-          {(q.choices ?? []).map((c, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <input
-                value={c.value}
-                aria-label={`Choice ${i + 1} value`}
-                placeholder="value"
-                onChange={(e) =>
-                  setChoices(
-                    (q.choices ?? []).map((x, j) =>
-                      j === i ? { ...x, value: e.target.value } : x,
-                    ),
-                  )
-                }
-                className={`${inputCls} w-[150px] shrink-0`}
-              />
-              <input
-                value={c.description ?? ''}
-                aria-label={`Choice ${i + 1} description`}
-                placeholder="When does it apply? (optional)"
-                onChange={(e) =>
-                  setChoices(
-                    (q.choices ?? []).map((x, j) =>
-                      j === i ? { ...x, description: e.target.value } : x,
-                    ),
-                  )
-                }
-                className={inputCls}
-              />
-              <button
-                type="button"
-                className="ctl-icon shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-                aria-label={`Remove choice ${i + 1}`}
-                onClick={() =>
-                  setChoices((q.choices ?? []).filter((_, j) => j !== i))
-                }
-              >
-                <I n="x" s={12} />
-              </button>
-            </div>
-          ))}
-          <div>
-            <button
-              type="button"
-              className="ctl h-6 px-2 text-[11px]"
-              onClick={() => setChoices([...(q.choices ?? []), { value: '' }])}
-            >
-              <I n="plus" s={11} /> Add option
-            </button>
-          </div>
-        </div>
+        <EntryList
+          rows={choices.map((c) => ({ key: c.value, desc: c.description }))}
+          keyPlaceholder="value"
+          descPlaceholder="When does it apply? (optional)"
+          noun="option"
+          max={MAX_DECISION_CHOICES}
+          onKey={(i, value) =>
+            update({
+              choices: choices.map((x, j) => (j === i ? { ...x, value } : x)),
+            })
+          }
+          onDesc={(i, description) =>
+            update({
+              choices: choices.map((x, j) =>
+                j === i ? { ...x, description } : x,
+              ),
+            })
+          }
+          onRemove={(i) =>
+            update({ choices: choices.filter((_, j) => j !== i) })
+          }
+          onAdd={() => update({ choices: [...choices, { value: '' }] })}
+        />
       )}
 
       {q.type === 'score' && (
-        <div className="flex flex-col gap-1.5">
-          {(q.levels ?? []).map((l, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <span className="num w-4 shrink-0 text-right text-[11px] muted">
-                {i}
-              </span>
-              <input
-                value={l.label}
-                aria-label={`Level ${i} label`}
-                placeholder="label"
-                onChange={(e) =>
-                  setLevels(
-                    (q.levels ?? []).map((x, j) =>
-                      j === i ? { ...x, label: e.target.value } : x,
-                    ),
-                  )
-                }
-                className={`${inputCls} w-[150px] shrink-0`}
-              />
-              <input
-                value={l.description ?? ''}
-                aria-label={`Level ${i} description`}
-                placeholder="What belongs here? (optional)"
-                onChange={(e) =>
-                  setLevels(
-                    (q.levels ?? []).map((x, j) =>
-                      j === i ? { ...x, description: e.target.value } : x,
-                    ),
-                  )
-                }
-                className={inputCls}
-              />
-              <button
-                type="button"
-                className="ctl-icon shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-                aria-label={`Remove level ${i}`}
-                onClick={() =>
-                  setLevels((q.levels ?? []).filter((_, j) => j !== i))
-                }
-              >
-                <I n="x" s={12} />
-              </button>
-            </div>
-          ))}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="ctl h-6 px-2 text-[11px]"
-              onClick={() => setLevels([...(q.levels ?? []), { label: '' }])}
-            >
-              <I n="plus" s={11} /> Add level
-            </button>
-            <span className="text-[11px] muted">
-              Ordered lowest first; the score is the weighted index.
-            </span>
-          </div>
+        <EntryList
+          rows={levels.map((l) => ({ key: l.label, desc: l.description }))}
+          keyPlaceholder="label"
+          descPlaceholder="What belongs here? (optional)"
+          noun="level"
+          numbered
+          max={MAX_DECISION_LEVELS}
+          hint="Ordered lowest first; the score is the weighted index."
+          onKey={(i, label) =>
+            update({
+              levels: levels.map((x, j) => (j === i ? { ...x, label } : x)),
+            })
+          }
+          onDesc={(i, description) =>
+            update({
+              levels: levels.map((x, j) =>
+                j === i ? { ...x, description } : x,
+              ),
+            })
+          }
+          onRemove={(i) => update({ levels: levels.filter((_, j) => j !== i) })}
+          onAdd={() => update({ levels: [...levels, { label: '' }] })}
+        />
+      )}
+
+      {answer && (
+        <div className="border-t border-[var(--border)] pt-2">
+          <AnswerBlock a={answer} q={q} stale={stale} />
         </div>
       )}
     </div>
   );
 }
 
+/* a choice's options or a score's levels: a short key, an optional description */
+function EntryList({
+  rows,
+  keyPlaceholder,
+  descPlaceholder,
+  noun,
+  numbered = false,
+  max,
+  hint,
+  onKey,
+  onDesc,
+  onRemove,
+  onAdd,
+}: {
+  rows: { key: string; desc: string | undefined }[];
+  keyPlaceholder: string;
+  descPlaceholder: string;
+  noun: string;
+  numbered?: boolean;
+  max: number;
+  hint?: string;
+  onKey: (i: number, v: string) => void;
+  onDesc: (i: number, v: string) => void;
+  onRemove: (i: number) => void;
+  onAdd: () => void;
+}) {
+  const full = rows.length >= max;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          {numbered && (
+            <span className="num w-4 shrink-0 text-right text-[11px] muted">
+              {i}
+            </span>
+          )}
+          <input
+            value={r.key}
+            aria-label={`${noun} ${numbered ? i : i + 1} ${keyPlaceholder}`}
+            placeholder={keyPlaceholder}
+            onChange={(e) => onKey(i, e.target.value)}
+            className={`${inputCls} w-[150px] min-w-0 shrink`}
+          />
+          <input
+            value={r.desc ?? ''}
+            aria-label={`${noun} ${numbered ? i : i + 1} description`}
+            placeholder={descPlaceholder}
+            onChange={(e) => onDesc(i, e.target.value)}
+            className={inputCls}
+          />
+          <button
+            type="button"
+            className={iconBtnCls}
+            aria-label={`Remove ${noun} ${numbered ? i : i + 1}`}
+            onClick={() => onRemove(i)}
+          >
+            <I n="x" s={12} />
+          </button>
+        </div>
+      ))}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className={smallBtnCls}
+          disabled={full}
+          onClick={onAdd}
+        >
+          <I n="plus" s={11} /> Add {noun}
+        </button>
+        <span className="text-[11px] muted">
+          {full ? `${max} ${noun}s at most.` : hint}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ── answer ───────────────────────────────────────────────────────── */
 
-function AnswerCard({
+function AnswerBlock({
   a,
   q,
+  stale,
+  named = false,
 }: {
   a: DecisionAnswer;
   q: DecisionQuestion | undefined;
+  stale: boolean;
+  /* outside a question card nothing else says which question this answers */
+  named?: boolean;
 }) {
   const bar = answerBar(a);
   const dist = a.probabilities ?? [];
   const labels = levelLabels(a, q);
   return (
-    <div className="flex flex-col gap-1.5 rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5">
+    <div
+      className={`flex flex-col gap-1.5 ${stale ? 'opacity-55' : ''}`}
+      title={stale ? 'From the last run, before your edits' : undefined}
+    >
       <div className="flex items-center gap-2">
-        <span className="num min-w-0 truncate text-[12px] muted">{a.name}</span>
-        <span className="shrink-0 rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
-          {a.type}
-        </span>
+        {named ? (
+          <span className="num min-w-0 truncate text-[12px] muted">{a.name}</span>
+        ) : (
+          <span className="sec-label">Answer</span>
+        )}
+        {named && (
+          <span className="shrink-0 rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
+            {a.type}
+          </span>
+        )}
         {a.type === 'refusal' ? (
           <span className="ml-auto shrink-0 text-[12px] text-[var(--warn)]">
             The model declined to answer
           </span>
         ) : (
-          <span className="num ml-auto shrink-0 text-[15px] font-semibold">
-            {answerValue(a)}
+          <span className="num ml-auto min-w-0 truncate text-[15px] font-semibold">
+            {headline(a, q)}
           </span>
         )}
         {a.confidence !== undefined && (
@@ -621,7 +810,16 @@ function AnswerCard({
           </span>
         )}
       </div>
-      {bar !== null && <Bar v={bar} label={`${a.name} confidence`} />}
+      {bar !== null && (
+        <Bar
+          v={bar}
+          label={
+            a.type === 'predicate'
+              ? `${a.name} probability true`
+              : `${a.name} confidence`
+          }
+        />
+      )}
       {dist.length > 0 && (
         <div className="mt-0.5 flex flex-col gap-1">
           {dist.map((p, i) => {
@@ -629,9 +827,13 @@ function AnswerCard({
               typeof p.value === 'number'
                 ? (labels[String(p.value)] ?? p.label ?? String(p.value))
                 : String(p.value);
+            const picked = a.type === 'choice' && p.value === a.choice;
             return (
               <div key={i} className="flex items-center gap-2 text-[11px]">
-                <span className="w-[150px] shrink-0 truncate" title={label}>
+                <span
+                  className={`w-[150px] shrink-0 truncate ${picked ? 'font-medium' : ''}`}
+                  title={label}
+                >
                   {label}
                 </span>
                 <Bar v={p.probability} label={`${label} probability`} grow />
@@ -642,9 +844,6 @@ function AnswerCard({
             );
           })}
         </div>
-      )}
-      {q?.instructions && (
-        <p className="mt-0.5 text-[11px] muted">{q.instructions}</p>
       )}
     </div>
   );
