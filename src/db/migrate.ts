@@ -3,7 +3,8 @@
  *
  * Business logic:
  * - A top-level-await script (not imported by the app) that applies the
- *   Drizzle SQL migrations in ./drizzle against DATABASE_URL.
+ *   Drizzle SQL migrations in ./drizzle (or $MIGRATIONS_DIR, which the
+ *   `talkative migrate` bin sets) against DATABASE_URL.
  * - Loads .env via process.loadEnvFile() but tolerates its absence, since
  *   in a container the vars come from the environment; a missing
  *   DATABASE_URL is fatal (exit 1) before anything connects.
@@ -64,7 +65,9 @@ const pool = new pg.Pool({ connectionString: url, max: 1 });
 try {
   await ensureDatabase();
   const db = drizzle(pool);
-  await migrate(db, { migrationsFolder: './drizzle' });
+  await migrate(db, {
+    migrationsFolder: process.env.MIGRATIONS_DIR || './drizzle',
+  });
   console.log('migrations applied successfully');
 } catch (err) {
   console.error('migration failed:');

@@ -4,7 +4,7 @@
  *
  * Business logic:
  * - connections live in postgres, model lists only in redis
- *   (`talkative-auth:models:<connectionId>`); redis is strictly a
+ *   (`talkative:models:<connectionId>`); redis is strictly a
  *   cache — every failed read/write/del is logged and the operation
  *   carries on against upstream.
  * - getCatalog serves the cache for 10 min after a sync; past that
@@ -73,7 +73,7 @@ import { getDb } from '../db';
 import { asc } from 'drizzle-orm';
 
 /* model lists live in redis only; connections themselves live in postgres */
-const KEY = (connectionId: number) => `talkative-auth:models:${connectionId}`;
+const KEY = (connectionId: number) => `talkative:models:${connectionId}`;
 /* serve from cache while fresh; past that, refetch but keep the old list around as a stale fallback */
 const FRESH_MS = 10 * 60 * 1000;
 /* periodic refetch cadence; 0 disables the sweeper */

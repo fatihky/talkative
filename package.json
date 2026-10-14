@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "waku dev",
-    "build": "waku build",
+    "build": "waku build && rolldown -c rolldown.config.mjs",
+    "prepublishOnly": "pnpm build",
     "start": "waku start",
     "typegen": "waku router typegen",
     "db:generate": "drizzle-kit generate",
@@ -42,6 +43,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
     "drizzle-kit": "^0.31.11",
+    "rolldown": "1.2.13",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2"
   }
