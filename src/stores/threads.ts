@@ -38,8 +38,9 @@
  *   change) and reveals an artifact snapshot, thought replaces a step's
  *   block while thought-delta appends to it, and done writes
  *   status/usage/latency/refusal/annotations, clears streaming, toasts on
- *   error and drains the send queue through a dynamic import — send.ts
- *   imports this file, so a static one would be circular.
+ *   error and drains the send queue through the hook send.ts registers
+ *   with onStreamSettled — send.ts imports this file, so importing it
+ *   back would be circular.
  * - stopStream only POSTs /stop for the newest streaming reply: the open
  *   subscription then delivers the final 'stopped' status, so the client
  *   never aborts its own stream and the run keeps going server-side.
@@ -267,6 +268,11 @@ const putThought = (
 export const followStream = (chatId: string, msgId: string) =>
   void attachStream(chatId, msgId);
 
+let drainQueue: (chatId: string) => void = () => {};
+export const onStreamSettled = (fn: (chatId: string) => void) => {
+  drainQueue = fn;
+};
+
 const finishStream = (chatId: string, msgId: string, end: StreamEnd) => {
   patchMsg(chatId, msgId, {
     status: end.status,
@@ -280,7 +286,7 @@ const finishStream = (chatId: string, msgId: string, end: StreamEnd) => {
   if (end.status === 'error')
     uiActions.toast(`Reply failed — ${end.error ?? 'provider error'}`, 'error');
   /* send the next queued message now that the stream is done */
-  import('./send').then(({ sendActions }) => sendActions.drainQueue(chatId));
+  drainQueue(chatId);
 };
 
 /**

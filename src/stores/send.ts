@@ -20,8 +20,8 @@
  *   thread.error keeps the exact payload, which retrySend re-posts and
  *   threads.editMessage puts back into the composer.
  * - sendReply appends to thread.queue while a reply is streaming;
- *   drainQueue (called from finishStream) sends one at a time and
- *   resolves parentId at send time, so each queued turn follows the
+ *   drainQueue (registered with onStreamSettled, so finishStream calls
+ *   it) sends one at a time and resolves parentId at send time, so each queued turn follows the
  *   latest reply. dequeueMessage drops one that hasn't started yet.
  * - a reply parents to the last assistant message on the visible branch,
  *   and an earlier failed turn with that same parent is removed so it
@@ -71,6 +71,7 @@ import {
   branchPath,
   followStream,
   type Msg,
+  onStreamSettled,
   patchThread,
   putThread,
   type QueuedMessage,
@@ -462,3 +463,5 @@ export const sendActions = {
     useNetworkStore.setState({ queued: [] });
   },
 };
+
+onStreamSettled((chatId) => sendActions.drainQueue(chatId));
