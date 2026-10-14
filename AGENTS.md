@@ -67,6 +67,17 @@ reads with `decryptSecret()` from `src/server/secrets.ts`. The only outbound use
 are `server/catalog.ts` (opened once in `getCatalog`), `server/complete.ts` and
 `server/runs.ts`. `toDto` must keep returning only `hasApiKey`.
 
+## Changelog
+
+**Update `CHANGELOG.md` whenever you make a notable change** — a new feature, bug fix,
+behavior change, provider integration, new script/command, or schema change. Add one
+line under `## [Unreleased]` in the matching Keep a Changelog group (`### Added`,
+`### Changed`, `### Fixed`, `### Removed`, `### Security`; create the group if it's
+missing) as part of the same task as the code change. Entries are single lines in the
+imperative mood. Don't backfill history predating the log, and only promote
+`[Unreleased]` to a versioned heading (bumping `package.json` too) when the user
+explicitly asks for a release.
+
 ## Uploads
 
 An upload is an `attachments` row plus, for images, a file at
