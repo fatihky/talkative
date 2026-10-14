@@ -25,6 +25,11 @@ export const getDb = () => {
   if (!g.__db) {
     const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
     g.__db = drizzle(pool, { schema });
+    /* start the model-catalog sweeper once the pool exists; dynamic import avoids
+       the catalog -> db -> catalog cycle */
+    if (process.env.CATALOG_REFRESH_MS !== '0') {
+      import('../server/catalog').then((m) => m.startCatalogSweeper());
+    }
   }
   return g.__db;
 };

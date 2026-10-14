@@ -51,6 +51,13 @@
  * - invalidateCatalog runs on connection update or delete — url, key
  *   or compatibility may have changed, so the cached list is no
  *   longer trustworthy.
+ * - startCatalogSweeper (optional, off by default) refetches every
+ *   connection's list on a fixed interval so the redis cache stays
+ *   warm without waiting for a client's ?refresh=1 to arrive. the
+ *   interval is configured via CATALOG_REFRESH_MS (default 5 min); set
+ *   CATALOG_REFRESH_MS=0 to disable. each tick refreshes in parallel,
+ *   reusing getCatalog so a down provider only produces its logged
+ *   stale/error path rather than failing the whole sweep.
  */
 import type { ProviderConnectionRow } from '../db/schema';
 import type {
@@ -61,11 +68,16 @@ import type {
 } from '../types';
 import { getRedis } from './redis';
 import { decryptSecret } from './secrets';
+import { providerConnections } from '../db/schema';
+import { getDb } from '../db';
+import { asc } from 'drizzle-orm';
 
 /* model lists live in redis only; connections themselves live in postgres */
 const KEY = (connectionId: number) => `talkative-auth:models:${connectionId}`;
 /* serve from cache while fresh; past that, refetch but keep the old list around as a stale fallback */
 const FRESH_MS = 10 * 60 * 1000;
+/* periodic refetch cadence; 0 disables the sweeper */
+const DEFAULT_REFRESH_MS = 5 * 60 * 1000;
 const KEEP_SEC = 7 * 24 * 60 * 60;
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -583,4 +595,44 @@ export const getCatalog = async (
       };
     return { items: [], syncedAt: Date.now(), error };
   }
+};
+
+/* ---------- periodic refetch ---------- */
+
+const sweeperKey = Symbol.for('talkative:catalog-sweeper');
+
+type SweeperState = { timer: NodeJS.Timeout };
+
+const refreshMs = () => {
+  const raw = process.env.CATALOG_REFRESH_MS?.trim();
+  if (raw === undefined || raw === '') return DEFAULT_REFRESH_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : DEFAULT_REFRESH_MS;
+};
+
+/* one tick: refresh every connection's cached list in parallel. connections carry
+   all fields the fetchers need; getCatalog opens the sealed key itself. */
+const sweep = async () => {
+  try {
+    const conns = await getDb()
+      .select()
+      .from(providerConnections)
+      .orderBy(asc(providerConnections.id));
+    await Promise.all(conns.map((c) => getCatalog(c, { refresh: true })));
+  } catch (e) {
+    console.warn(`[catalog] sweep failed: ${errorText(e)}`);
+  }
+};
+
+/** start the optional background refetcher (idempotent; 0 disables). call once at server boot. */
+export const startCatalogSweeper = () => {
+  const g = globalThis as typeof globalThis & {
+    [sweeperKey]?: SweeperState;
+  };
+  if (g[sweeperKey]) return;
+  const ms = refreshMs();
+  if (ms === 0) return;
+  g[sweeperKey] = { timer: setInterval(sweep, ms) };
+  if (typeof g[sweeperKey].timer.unref === 'function')
+    g[sweeperKey].timer.unref();
 };
