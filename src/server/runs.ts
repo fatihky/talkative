@@ -76,6 +76,7 @@ import type {
   ToolCall,
   UrlCitation,
 } from '../types';
+import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { parseModelId } from './model-id';
 import { findConnection } from './providers';
 import { decryptSecret } from './secrets';
@@ -909,9 +910,11 @@ async function* chatCompletions(
         headers: {
           'content-type': 'application/json',
           accept: 'text/event-stream',
-          /* opt into openrouter routing metadata so `routing` can be captured */
+          'user-agent': USER_AGENT,
+          /* opt into openrouter routing metadata so `routing` can be captured;
+             attribution headers list the app in openrouter's rankings */
           ...(conn.compatibility === 'openrouter'
-            ? { 'X-OpenRouter-Metadata': 'enabled' }
+            ? { 'X-OpenRouter-Metadata': 'enabled', ...OPENROUTER_ATTRIBUTION }
             : {}),
           ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         },

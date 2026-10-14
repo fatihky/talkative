@@ -14,6 +14,9 @@
  * - the stored apiKey arrives sealed (`enc:…`); getCatalog opens it
  *   exactly once before handing the row to a fetcher, so fetchers and
  *   upstream only ever see plaintext.
+ * - every upstream request identifies the app via identity.ts:
+ *   user-agent everywhere, openrouter attribution headers on that
+ *   compatibility.
  * - every model gets the namespaced id `${connectionId}:${remoteId}`,
  *   so the same remote model behind two connections stays distinct
  *   (model-id.ts parses it back).
@@ -68,6 +71,7 @@ import type {
 } from '../types';
 import { getRedis } from './redis';
 import { decryptSecret } from './secrets';
+import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { providerConnections } from '../db/schema';
 import { getDb } from '../db';
 import { asc } from 'drizzle-orm';
@@ -106,11 +110,16 @@ const SUFFIXES: Record<Compatibility, RegExp> = {
 export const normalizeBaseUrl = (url: string, c: Compatibility): string =>
   url.trim().replace(/\/+$/, '').replace(SUFFIXES[c], '');
 
-const getJson = async (url: string, apiKey?: string | null) => {
+const getJson = async (url: string, conn: Conn) => {
   const res = await fetch(url, {
     headers: {
       accept: 'application/json',
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      'user-agent': USER_AGENT,
+      /* attribution headers list the app in openrouter's rankings */
+      ...(conn.compatibility === 'openrouter' ? OPENROUTER_ATTRIBUTION : {}),
+      ...(conn.apiKey
+        ? { authorization: `Bearer ${conn.apiKey}` }
+        : {}),
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -154,7 +163,7 @@ type OpenAIModel = {
 };
 
 const fetchOpenAI = async (conn: Conn): Promise<Model[]> => {
-  const json = (await getJson(`${conn.baseUrl}/v1/models`, conn.apiKey)) as {
+  const json = (await getJson(`${conn.baseUrl}/v1/models`, conn)) as {
     data?: OpenAIModel[];
   };
   return (json.data ?? []).map((m) => ({
@@ -207,7 +216,7 @@ const fetchOpenRouter = async (conn: Conn): Promise<Model[]> => {
   const collect = async (path: string, kind: ModelKind) => {
     let next: string | undefined = path;
     for (let page = 0; next && page < 20; page++) {
-      const json = (await getJson(`${conn.baseUrl}${next}`, conn.apiKey)) as {
+      const json = (await getJson(`${conn.baseUrl}${next}`, conn)) as {
         data?: OpenRouterModel[];
         links?: { next?: string | null };
       };
@@ -290,7 +299,7 @@ const fetchBifrost = async (conn: Conn): Promise<Model[]> => {
   const out: Model[] = [];
   let next: string | undefined = '/v1/models';
   for (let page = 0; next && page < 20; page++) {
-    const json = (await getJson(`${conn.baseUrl}${next}`, conn.apiKey)) as {
+    const json = (await getJson(`${conn.baseUrl}${next}`, conn)) as {
       data?: BifrostModel[];
       next_page_token?: string | null;
     };
@@ -392,7 +401,7 @@ const toLevel = (o: LMStudioOption): ThinkingLevel =>
 const fetchLMStudio = async (conn: Conn): Promise<Model[]> => {
   const json = (await getJson(
     `${conn.baseUrl}/api/v1/models`,
-    conn.apiKey,
+    conn,
   )) as {
     models?: LMStudioModel[];
   };
@@ -460,7 +469,7 @@ type OllamaModel = {
 };
 
 const fetchOllama = async (conn: Conn): Promise<Model[]> => {
-  const json = (await getJson(`${conn.baseUrl}/api/tags`, conn.apiKey)) as {
+  const json = (await getJson(`${conn.baseUrl}/api/tags`, conn)) as {
     models?: OllamaModel[];
   };
   return (json.models ?? [])

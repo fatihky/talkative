@@ -7,6 +7,8 @@
     https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties.md
   Chat completions:
     https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion.md
+  App attribution (rankings, Apps tabs, analytics):
+    https://openrouter.ai/docs/app-attribution.md
   System One:
     https://openrouter.ai/docs/api/api-reference/systemone/submit-a-system-one-request.md
 
@@ -118,6 +120,26 @@ Pagination is opt-in; `links.next` is a ready-to-use URL, `null` on the last pag
 `{ "data": { …Model } }`. Aliases resolve automatically; catalog variants
 (such as `:free`) return their own entry, while routing variants (`:nitro`)
 return the base model's entry. Returns `404` for unknown models.
+
+## App attribution
+
+`HTTP-Referer` (required) identifies the app for OpenRouter's rankings,
+model "Apps" tabs and analytics; the URL becomes the app's permanent
+identifier. `X-OpenRouter-Title` sets the display name (`X-Title` is the
+legacy spelling), `X-OpenRouter-Categories` assigns marketplace categories
+(comma-separated, max 2 per request, merged up to 10 total, unrecognized
+values dropped silently), and `X-OpenRouter-App-Visibility: hidden` keeps a
+brand-new app out of public listings. A title alone creates nothing — the
+referer is what opens the app page, and localhost URLs also need the title.
+
+Talkative sends these on every openrouter request (chat completions and
+model-list fetches):
+
+```http
+HTTP-Referer: https://github.com/fatihky/talkative
+X-OpenRouter-Title: Talkative
+X-OpenRouter-Categories: general-chat,personal-agent
+```
 
 ## Chat completions
 

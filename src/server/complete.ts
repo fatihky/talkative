@@ -13,11 +13,14 @@
  *   classify.ts relies on to get a parseable object back.
  * - the caller's abort signal wins; otherwise a 20 s default timeout
  *   applies, so a hung background job can't block forever.
+ * - every request identifies the app via identity.ts: user-agent
+ *   everywhere, openrouter attribution headers on that compatibility.
  * - a non-2xx throws `<connection name> → <status>: <body prefix>` so
  *   upstream failures read by provider in logs; a 200 with no
  *   choices resolves to '' rather than an error.
  */
 import type { ProviderConnectionRow } from '../db/schema';
+import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { decryptSecret } from './secrets';
 
 /* every supported compatibility speaks openai chat completions */
@@ -51,6 +54,8 @@ export async function completeText(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'user-agent': USER_AGENT,
+        ...(conn.compatibility === 'openrouter' ? OPENROUTER_ATTRIBUTION : {}),
         ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
