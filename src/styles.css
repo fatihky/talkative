@@ -72,7 +72,7 @@
   --w-sidebar: 264px;
   --w-artifact: 440px;
   --w-rail: 48px;
-  --stage-max: 760px;
+  --stage-max: 880px;
   --composer-min: 96px;
 
   /* scrim for sheet overlay (solid, no blur) */
@@ -508,6 +508,10 @@ select:focus-visible {
 .msg.user .bubble {
   background: var(--accent-soft);
   border: 1px solid color-mix(in oklch, var(--accent) 22%, transparent);
+}
+[data-theme="dark"] .msg.user .bubble {
+  /* lift the user bubble off the dark bg with a lighter tint than accent-soft */
+  background: color-mix(in oklch, var(--accent) 42%, transparent);
 }
 .msg.assistant .bubble {
   background: transparent;
