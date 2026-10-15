@@ -310,6 +310,10 @@ export function DecisionEditor() {
 
   const problems = decisionProblems(draft);
   const answers = run?.answers ?? [];
+  /* answers that still match a question on screen, for the summary strip */
+  const results = answers.filter((a) =>
+    draft.questions.some((q) => q.name === a.name),
+  );
   const stale = answers.length > 0 && !!run && drifted(draft, run);
   const orphans = answers.filter(
     (a) => !draft.questions.some((q) => q.name === a.name),
@@ -343,6 +347,43 @@ export function DecisionEditor() {
               onChange={(e) => actions.setDecisionTitle(e.target.value)}
               className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold outline-none placeholder:text-[var(--text-3)]"
             />
+            {results.length === 0 && (
+              <Tip label="Run · ⌘↵" side="bottom">
+                <button
+                  type="button"
+                  className="ctl-primary h-7 shrink-0"
+                  disabled={running || problems.length > 0}
+                  onClick={() => void actions.runDecision()}
+                >
+                  {running ? (
+                    <span className="block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <I n="play" s={12} />
+                  )}
+                  {running ? 'Running…' : 'Run'}
+                </button>
+              </Tip>
+            )}
+            <DeleteButton id={draft.id} title={draft.title} stored={!!run} />
+          </div>
+          {problems.length > 0 && !running && (
+            <p className="pl-9 text-[11px] muted" aria-live="polite">
+              To run: {problems[0]}
+              {problems.length > 1 && ` (+${problems.length - 1} more)`}
+            </p>
+          )}
+        </div>
+
+        {results.length > 0 && (
+          <ResultsSummary
+            answers={answers}
+            questions={draft.questions}
+            stale={stale}
+          />
+        )}
+
+        {results.length > 0 && (
+          <div className="flex justify-end">
             <Tip label="Run · ⌘↵" side="bottom">
               <button
                 type="button"
@@ -355,18 +396,11 @@ export function DecisionEditor() {
                 ) : (
                   <I n="play" s={12} />
                 )}
-                {running ? 'Running…' : run ? 'Run again' : 'Run'}
+                {running ? 'Running…' : 'Run again'}
               </button>
             </Tip>
-            <DeleteButton id={draft.id} title={draft.title} stored={!!run} />
           </div>
-          {problems.length > 0 && !running && (
-            <p className="pl-9 text-[11px] muted" aria-live="polite">
-              To run: {problems[0]}
-              {problems.length > 1 && ` (+${problems.length - 1} more)`}
-            </p>
-          )}
-        </div>
+        )}
 
         {runError && (
           <div
@@ -553,134 +587,157 @@ function QuestionCard({
   const levels = q.levels ?? [];
 
   return (
-    <div className="flex flex-col gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5">
-      <div className="flex items-center gap-2">
-        <input
-          value={q.name}
-          aria-label="Question name"
-          placeholder="name"
-          spellCheck={false}
-          onChange={(e) => actions.renameDecisionQuestion(index, e.target.value)}
-          className="num h-7 w-[150px] min-w-0 shrink rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[12px] outline-none focus:border-[var(--accent)]"
-        />
-        <SegmentedControl
-          ariaLabel={`Question type for ${q.name || 'this question'}`}
-          value={q.type}
-          options={QUESTION_TYPES.map((t) => ({
-            value: t.type,
-            label: t.label,
-          }))}
-          disabled={false}
-          onChange={(v) =>
-            actions.setDecisionQuestionType(index, v as DecisionQuestionType)
-          }
-        />
-        <Tip
-          label={QUESTION_TYPES.find((t) => t.type === q.type)?.hint ?? ''}
-          side="top"
-        >
-          <span className="muted hidden shrink-0 items-center sm:flex">
-            <I n="info" s={13} />
+    <div className="flex flex-col rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5">
+      <details className="group" open>
+        <summary className="flex cursor-pointer list-none flex-col gap-1 [&::-webkit-details-marker]:hidden">
+          <div className="flex items-center gap-2">
+            <I
+              n="chevron-right"
+              s={13}
+              className="shrink-0 text-[var(--text-2)] transition-transform group-open:rotate-90"
+            />
+            <input
+              value={q.name}
+              aria-label="Question name"
+              placeholder="name"
+              spellCheck={false}
+              onChange={(e) =>
+                actions.renameDecisionQuestion(index, e.target.value)
+              }
+              className="num h-7 w-[150px] min-w-0 shrink rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[12px] outline-none focus:border-[var(--accent)]"
+            />
+            <SegmentedControl
+              ariaLabel={`Question type for ${q.name || 'this question'}`}
+              value={q.type}
+              options={QUESTION_TYPES.map((t) => ({
+                value: t.type,
+                label: t.label,
+              }))}
+              disabled={false}
+              onChange={(v) =>
+                actions.setDecisionQuestionType(index, v as DecisionQuestionType)
+              }
+            />
+            <Tip
+              label={QUESTION_TYPES.find((t) => t.type === q.type)?.hint ?? ''}
+              side="top"
+            >
+              <span className="muted hidden shrink-0 items-center sm:flex">
+                <I n="info" s={13} />
+              </span>
+            </Tip>
+            <button
+              type="button"
+              className={`${iconBtnCls} ml-auto`}
+              aria-label={`Remove question ${q.name || index + 1}`}
+              onClick={(e) => {
+                e.preventDefault();
+                actions.removeDecisionQuestion(index);
+              }}
+            >
+              <I n="trash" s={13} />
+            </button>
+          </div>
+          {/* collapsed preview: the question's instructions trimmed to one line */}
+          <span
+            className="pl-5 text-[12px] muted truncate group-open:hidden"
+            title={q.instructions || undefined}
+          >
+            {q.instructions.trim() || 'No instructions yet'}
           </span>
-        </Tip>
-        <button
-          type="button"
-          className={`${iconBtnCls} ml-auto`}
-          aria-label={`Remove question ${q.name || index + 1}`}
-          onClick={() => actions.removeDecisionQuestion(index)}
-        >
-          <I n="trash" s={13} />
-        </button>
-      </div>
+        </summary>
 
-      <textarea
-        value={q.instructions}
-        aria-label={`Instructions for ${q.name}`}
-        placeholder="What should the model decide?"
-        rows={2}
-        onChange={(e) => update({ instructions: e.target.value })}
-        className={areaCls}
-      />
+        <div className="mt-2 flex flex-col gap-2">
+          <textarea
+            value={q.instructions}
+            aria-label={`Instructions for ${q.name}`}
+            placeholder="What should the model decide?"
+            rows={2}
+            onChange={(e) => update({ instructions: e.target.value })}
+            className={areaCls}
+          />
 
-      {q.type === 'predicate' && (
-        <div className="flex flex-col gap-1.5">
-          {(['true', 'false'] as const).map((k) => (
-            <label key={k} className="flex items-center gap-2 text-[11px]">
-              <span className="num w-9 shrink-0 muted">{k}</span>
-              <input
-                value={q.criteria?.[k] ?? ''}
-                aria-label={`What counts as ${k}`}
-                placeholder={`What counts as ${k} (optional)`}
-                onChange={(e) =>
-                  update({ criteria: { ...q.criteria, [k]: e.target.value } })
-                }
-                className={inputCls}
-              />
-            </label>
-          ))}
-          <p className="text-[11px] muted">
-            Read by Typesafe-backed models (Bifrost, OpenRouter) only.
-          </p>
+          {q.type === 'predicate' && (
+            <div className="flex flex-col gap-1.5">
+              {(['true', 'false'] as const).map((k) => (
+                <label key={k} className="flex items-center gap-2 text-[11px]">
+                  <span className="num w-9 shrink-0 muted">{k}</span>
+                  <input
+                    value={q.criteria?.[k] ?? ''}
+                    aria-label={`What counts as ${k}`}
+                    placeholder={`What counts as ${k} (optional)`}
+                    onChange={(e) =>
+                      update({ criteria: { ...q.criteria, [k]: e.target.value } })
+                    }
+                    className={inputCls}
+                  />
+                </label>
+              ))}
+              <p className="text-[11px] muted">
+                Read by Typesafe-backed models (Bifrost, OpenRouter) only.
+              </p>
+            </div>
+          )}
+
+          {q.type === 'choice' && (
+            <EntryList
+              rows={choices.map((c) => ({ key: c.value, desc: c.description }))}
+              keyPlaceholder="value"
+              descPlaceholder="When does it apply? (optional)"
+              noun="option"
+              max={MAX_DECISION_CHOICES}
+              onKey={(i, value) =>
+                update({
+                  choices: choices.map((x, j) => (j === i ? { ...x, value } : x)),
+                })
+              }
+              onDesc={(i, description) =>
+                update({
+                  choices: choices.map((x, j) =>
+                    j === i ? { ...x, description } : x,
+                  ),
+                })
+              }
+              onRemove={(i) =>
+                update({ choices: choices.filter((_, j) => j !== i) })
+              }
+              onAdd={() => update({ choices: [...choices, { value: '' }] })}
+            />
+          )}
+
+          {q.type === 'score' && (
+            <EntryList
+              rows={levels.map((l) => ({ key: l.label, desc: l.description }))}
+              keyPlaceholder="label"
+              descPlaceholder="What belongs here? (optional)"
+              noun="level"
+              numbered
+              max={MAX_DECISION_LEVELS}
+              hint="Ordered lowest first; the score is the weighted index."
+              onKey={(i, label) =>
+                update({
+                  levels: levels.map((x, j) => (j === i ? { ...x, label } : x)),
+                })
+              }
+              onDesc={(i, description) =>
+                update({
+                  levels: levels.map((x, j) =>
+                    j === i ? { ...x, description } : x,
+                  ),
+                })
+              }
+              onRemove={(i) => update({ levels: levels.filter((_, j) => j !== i) })}
+              onAdd={() => update({ levels: [...levels, { label: '' }] })}
+            />
+          )}
+
+          {answer && (
+            <div className="border-t border-[var(--border)] pt-2">
+              <AnswerBlock a={answer} q={q} stale={stale} />
+            </div>
+          )}
         </div>
-      )}
-
-      {q.type === 'choice' && (
-        <EntryList
-          rows={choices.map((c) => ({ key: c.value, desc: c.description }))}
-          keyPlaceholder="value"
-          descPlaceholder="When does it apply? (optional)"
-          noun="option"
-          max={MAX_DECISION_CHOICES}
-          onKey={(i, value) =>
-            update({
-              choices: choices.map((x, j) => (j === i ? { ...x, value } : x)),
-            })
-          }
-          onDesc={(i, description) =>
-            update({
-              choices: choices.map((x, j) =>
-                j === i ? { ...x, description } : x,
-              ),
-            })
-          }
-          onRemove={(i) =>
-            update({ choices: choices.filter((_, j) => j !== i) })
-          }
-          onAdd={() => update({ choices: [...choices, { value: '' }] })}
-        />
-      )}
-
-      {q.type === 'score' && (
-        <EntryList
-          rows={levels.map((l) => ({ key: l.label, desc: l.description }))}
-          keyPlaceholder="label"
-          descPlaceholder="What belongs here? (optional)"
-          noun="level"
-          numbered
-          max={MAX_DECISION_LEVELS}
-          hint="Ordered lowest first; the score is the weighted index."
-          onKey={(i, label) =>
-            update({
-              levels: levels.map((x, j) => (j === i ? { ...x, label } : x)),
-            })
-          }
-          onDesc={(i, description) =>
-            update({
-              levels: levels.map((x, j) =>
-                j === i ? { ...x, description } : x,
-              ),
-            })
-          }
-          onRemove={(i) => update({ levels: levels.filter((_, j) => j !== i) })}
-          onAdd={() => update({ levels: [...levels, { label: '' }] })}
-        />
-      )}
-
-      {answer && (
-        <div className="border-t border-[var(--border)] pt-2">
-          <AnswerBlock a={answer} q={q} stale={stale} />
-        </div>
-      )}
+      </details>
     </div>
   );
 }
@@ -873,5 +930,69 @@ function Bar({
         style={{ width: `${pctg}%`, background: 'var(--accent)' }}
       />
     </span>
+  );
+}
+
+/* ── results summary ──────────────────────────────────────────────── */
+
+/* a one-line glance at every answer, shown at the top once a run succeeds */
+function ResultsSummary({
+  answers,
+  questions,
+  stale,
+}: {
+  answers: DecisionAnswer[];
+  questions: DecisionQuestion[];
+  stale: boolean;
+}) {
+  return (
+    <section
+      className={`flex flex-col gap-2 rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-2.5 ${stale ? 'opacity-55' : ''}`}
+      aria-label="Results"
+    >
+      <div className="flex items-center gap-2">
+        <div className="sec-label">Results</div>
+        {stale && (
+          <span className="ml-auto text-[11px] text-[var(--warn)]">
+            Stale — from before your edits
+          </span>
+        )}
+      </div>
+      <div className="flex flex-col gap-1">
+        {answers.map((a) => {
+          const q = questions.find((x) => x.name === a.name);
+          const bar = answerBar(a);
+          return (
+            <div
+              key={a.name}
+              className="flex items-center gap-2 rounded-[6px] bg-[var(--sunken)] px-2 py-1.5"
+            >
+              <span
+                className="num w-[88px] shrink-0 truncate text-[11px] muted"
+                title={a.name}
+              >
+                {a.name}
+              </span>
+              <span className="num min-w-0 flex-1 truncate text-[13px] font-semibold">
+                {a.type === 'refusal' ? 'Refused' : headline(a, q)}
+              </span>
+              {bar !== null && (
+                <span className="flex w-[72px] shrink-0 items-center">
+                  <Bar
+                    v={bar}
+                    label={`${a.name} ${a.type === 'predicate' ? 'probability' : 'confidence'}`}
+                  />
+                </span>
+              )}
+              {a.confidence !== undefined && (
+                <span className="num shrink-0 text-[11px] muted">
+                  {pct(a.confidence)}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
