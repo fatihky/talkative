@@ -39,6 +39,107 @@ const prettyArgs = (raw: string) => {
   }
 };
 
+/* a search hit with a title, target and blurb, uniform across backends */
+type Hit = { title: string; url: string; snippet: string };
+
+/*
+ * pull hits out of a web_search raw response. the upstream shapes differ by
+ * backend (tavily/exa `results`, serper/serpapi `organic_results`, …), so
+ * this walks the known container keys and reads the common field names.
+ */
+const parseSearchHits = (raw: string | undefined): Hit[] => {
+  if (!raw) return [];
+  try {
+    const data = JSON.parse(raw) as unknown;
+    const root = data as Record<string, unknown>;
+    const containers = ['results', 'organic_results', 'data'];
+    for (const key of containers) {
+      const v = root[key];
+      if (!Array.isArray(v)) continue;
+      const hits = v
+        .map((r) => {
+          if (typeof r !== 'object' || r === null) return null;
+          const o = r as Record<string, unknown>;
+          const title = o.title ?? o.name;
+          const url = o.url ?? o.link;
+          const snippet =
+            o.snippet ?? o.content ?? o.description ?? o.raw_text;
+          if (typeof title !== 'string' || typeof url !== 'string') return null;
+          return {
+            title,
+            url,
+            snippet: typeof snippet === 'string' ? snippet : '',
+          };
+        })
+        .filter((h): h is Hit => h !== null);
+      if (hits.length) return hits;
+    }
+  } catch {
+    /* fall through to the plain result text */
+  }
+  return [];
+};
+
+/* clickable search results with the untouched response tucked behind a disclosure */
+function SearchResults({
+  raw,
+  result,
+  err,
+}: {
+  raw: string | undefined;
+  result: string | undefined;
+  err: boolean;
+}) {
+  const hits = parseSearchHits(raw);
+  const showRaw = raw !== undefined || err;
+  return (
+    <>
+      <div className="sec-label">search results</div>
+      {err ? (
+        <div className="num break-words text-[11px] text-[var(--danger)]">
+          {result ?? 'search failed'}
+        </div>
+      ) : hits.length ? (
+        <ol className="flex flex-col gap-1.5">
+          {hits.map((h) => (
+            <li key={h.url} className="flex flex-col gap-0.5">
+              <a
+                href={h.url}
+                target="_blank"
+                rel="noreferrer"
+                className="line-clamp-1 font-medium text-[var(--accent)] hover:underline"
+              >
+                {h.title}
+              </a>
+              <span className="num line-clamp-1 text-[10px] muted">
+                {h.url}
+              </span>
+              {h.snippet && (
+                <span className="line-clamp-2 text-[11px]">{h.snippet}</span>
+              )}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <pre className="num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
+          {result}
+        </pre>
+      )}
+      {showRaw && (
+        <details className="group">
+          <summary className="sec-label flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
+            <I n="chevron-right" s={9} className="transition-transform group-open:rotate-90" />
+            inspect raw results
+          </summary>
+          <pre className="num scroll-thin mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
+            {raw}
+          </pre>
+        </details>
+      )}
+    </>
+  );
+}
+
 export function ToolCallView({
   c,
   onRetry,
@@ -98,22 +199,28 @@ export function ToolCallView({
         <pre className="num scroll-thin max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px]">
           {prettyArgs(c.args)}
         </pre>
-        {c.result !== undefined && (
+        {c.name === 'web_search' ? (
+          <SearchResults raw={c.raw} result={c.result} err={c.status === 'error'} />
+        ) : (
           <>
-            <div className="sec-label">result</div>
-            <pre
-              className={`num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px] ${c.status === 'error' ? 'text-[var(--danger)]' : ''}`}
-            >
-              {c.result}
-            </pre>
-          </>
-        )}
-        {c.raw !== undefined && (
-          <>
-            <div className="sec-label">raw response</div>
-            <pre className="num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
-              {c.raw}
-            </pre>
+            {c.result !== undefined && (
+              <>
+                <div className="sec-label">result</div>
+                <pre
+                  className={`num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px] ${c.status === 'error' ? 'text-[var(--danger)]' : ''}`}
+                >
+                  {c.result}
+                </pre>
+              </>
+            )}
+            {c.raw !== undefined && (
+              <>
+                <div className="sec-label">raw response</div>
+                <pre className="num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
+                  {c.raw}
+                </pre>
+              </>
+            )}
           </>
         )}
       </div>
