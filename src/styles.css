@@ -517,6 +517,11 @@ select:focus-visible {
   background: transparent;
   padding: 0;
 }
+/* assistant messages are unboxed, so their tables can span the full row
+   (up to the thread width) instead of being pinched to the prose column */
+.msg.assistant .msg-body:has([data-streamdown="table-wrapper"]) {
+  max-width: 100%;
+}
 
 /* hover actions */
 .msg-actions {
@@ -1257,6 +1262,14 @@ select:focus-visible {
 .md [data-streamdown="code-block"],
 .md [data-streamdown="table-wrapper"] {
   border-radius: var(--r-sm);
+}
+/* let tables use the full row width instead of being capped to the 64ch
+   prose column; assistant bubbles are unboxed, so a wide table bleeds
+   toward the thread edge rather than remaining a narrow column. */
+.md [data-streamdown="table-wrapper"] {
+  width: max-content;
+  max-width: 100%;
+  min-width: 100%;
 }
 .md :is(td, th) {
   padding: var(--s1) var(--s2);
