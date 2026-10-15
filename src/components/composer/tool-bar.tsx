@@ -46,6 +46,28 @@ import { Kbd, Meter, Switch } from '../../ui/primitives';
 const CORE_TOOLS = TOOLS.filter((t) => !t.id.startsWith('github_'));
 const GITHUB_TOOLS = TOOLS.filter((t) => t.id.startsWith('github_'));
 
+/* tool → glyph for the picker rows (handoff's per-tool icon slots) */
+const TOOL_GLYPH: Record<string, string> = {
+  web_search: 'globe',
+  http_fetch: 'link',
+  code_exec: 'monitor',
+  file_read: 'file',
+  browser: 'globe',
+  db_query: 'grid',
+  image_gen: 'image',
+  memory: 'brain',
+  todo: 'check',
+  artifact: 'note',
+  ask_user: 'help',
+  chat_search: 'chat',
+  get_current_timestamp: 'info',
+  github_repo_search: 'branch',
+  github_file_fetch: 'file',
+  github_issue_search: 'branch',
+  github_pr_search: 'branch',
+  github_discussion_search: 'branch',
+};
+
 /* ── ToolPermissionBar ─────────────────────────────────────────── */
 
 function ToolPermissionBar() {
@@ -73,10 +95,14 @@ function ToolPermissionBar() {
     const provs = (statuses[t.id]?.providers ?? t.providers)?.filter(
       (p) => p !== 'default',
     );
+    const on = grants[t.id] === true && !off;
     return (
-      <div key={t.id} className="flex h-[26px] items-center gap-2">
+      <div key={t.id} className={`tool-menu-item ${on ? 'on' : ''}`}>
+        <span className="glyph-slot">
+          <I n={TOOL_GLYPH[t.id] ?? 'wrench'} s={12} />
+        </span>
         <label
-          className={`flex min-w-0 flex-1 items-center gap-1.5 ${off ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`flex min-w-0 flex-1 items-center gap-2 ${off ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <Switch
             checked={grants[t.id] === true}
@@ -88,7 +114,8 @@ function ToolPermissionBar() {
           <span
             className={`min-w-0 flex-1 truncate text-[13px] ${off ? 'muted' : ''}`}
           >
-            {t.label}
+            <span className="font-mono">{t.label}</span>
+            {off ? ' — unavailable' : ''}
           </span>
         </label>
         {provs && provs.length > 0 ? (
@@ -99,7 +126,7 @@ function ToolPermissionBar() {
             }
             disabled={grants[t.id] !== true}
             onChange={(e) => actions.setToolProvider(t.id, e.target.value)}
-            className="h-[22px] max-w-[110px] rounded-[4px] border border-[var(--border)] bg-[var(--raised)] px-1 text-[11px] text-[var(--text-2)] focus-visible:outline-none"
+            className="tm-select"
           >
             {provs.map((p) => (
               <option key={p} value={p}>
@@ -108,7 +135,7 @@ function ToolPermissionBar() {
             ))}
           </select>
         ) : (
-          <span className="w-[64px]" aria-hidden="true" />
+          <span className="w-3" aria-hidden="true" />
         )}
       </div>
     );
@@ -125,20 +152,13 @@ function ToolPermissionBar() {
       onClick={() =>
         status === 'ready' ? actions.openModelBarPopover('tools') : undefined
       }
-      className={`flex shrink-0 items-center gap-0.5 rounded-[4px] text-[11px] ${
-        status !== 'ready'
-          ? 'cursor-not-allowed text-[var(--text-2)] opacity-60'
-          : n === 0
-            ? 'text-[var(--text-3)] hover:cursor-pointer hover:text-[var(--text)]'
-            : 'text-[var(--text-2)] hover:cursor-pointer hover:text-[var(--text)]'
+      className={`tool-picker-btn ${open ? 'open' : ''} ${
+        status !== 'ready' ? 'cursor-not-allowed opacity-60' : ''
       }`}
     >
-      <I n="wrench" s={11} className="shrink-0" />
-      <span className="ml-0.5">Tools</span>
-      <span className="num ml-0.5">
-        {n}/{available}
-      </span>
-      <I n="chevron-down" s={10} className="shrink-0 opacity-60" />
+      <I n="wrench" s={13} className="shrink-0" />
+      <span>Tools</span>
+      <I n="chevron-down" s={13} className="caret shrink-0" />
     </button>
   );
 
@@ -163,8 +183,8 @@ function ToolPermissionBar() {
         width={340}
         z={40}
       >
-        <div className="px-3 pt-2.5 pb-1">
-          <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="px-2 pt-1.5 pb-1">
+          <div className="mb-1 flex items-center justify-between gap-3">
             <div className="sec-label min-w-0 truncate">Tools granted</div>
             <div className="flex shrink-0 items-center gap-2">
               <button
@@ -292,7 +312,7 @@ const fmtK = (n: number): string =>
 export function ToolBar() {
   return (
     <div
-      className="no-scrollbar flex h-7 shrink-0 items-center gap-1 overflow-x-auto rounded-t-[7px] border-b border-[var(--border)] bg-[var(--panel)] px-2 [mask-image:linear-gradient(to_right,black_calc(100%-20px),transparent_100%)]"
+      className="no-scrollbar flex h-7 shrink-0 items-center gap-1 overflow-x-auto rounded-t-xl border-b border-[var(--border)] bg-[var(--panel)] px-2 [mask-image:linear-gradient(to_right,black_calc(100%-20px),transparent_100%)]"
       data-region="tool-bar"
     >
       <ToolPermissionBar />

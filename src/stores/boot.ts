@@ -108,7 +108,7 @@ export const bootActions = {
     if (ui.booted) return;
     const cached = hasCache();
     const layout = LS.get('layout.sidebar', { width: 264, collapsed: false });
-    const rp = LS.get('layout.rightPanel', { width: 420 });
+    const rp = LS.get('layout.rightPanel', { width: 440 });
     const prefs = LS.get('prefs', defaultPrefs());
     const theme = LS.get<Prefs['theme']>('theme', 'system');
 

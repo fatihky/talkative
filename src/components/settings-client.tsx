@@ -48,7 +48,7 @@ export function SettingsHeader({
   back: '/' | '/settings' | '/settings/memories';
 }) {
   return (
-    <header className="flex h-10 shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg)] px-2 max-md:h-11">
+    <header className="flex h-[var(--h-topbar)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg)] px-2 max-md:h-[var(--h-topbar)]">
       <Link
         to={back}
         aria-label={

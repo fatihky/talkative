@@ -233,7 +233,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               drawer.exiting ? 'anim-out-left pointer-events-none' : 'anim-in-left'
             }`}
           >
-            <div className="flex h-10 w-64 items-center justify-end border-b border-[var(--border)] bg-[var(--panel)] pr-2">
+            <div className="flex h-[var(--h-topbar)] w-64 items-center justify-end border-b border-[var(--border)] bg-[var(--panel)] pr-2">
               <button
                 type="button"
                 aria-label="Close sidebar"

@@ -59,7 +59,7 @@ export const useLayoutStore = create<LayoutState>()(() => ({
   sidebarWidth: 264,
   sidebarCollapsed: false,
   rightPanel: 'closed',
-  rightPanelWidth: 420,
+  rightPanelWidth: 440,
   rightPanelTab: 'context',
   lastPanel: 'context',
   preview: null,

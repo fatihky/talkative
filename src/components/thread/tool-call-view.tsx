@@ -1,31 +1,48 @@
 /*
- * ToolCallView — collapsed strip for one tool call inside a reply.
+ * ToolCallView — a tool call rendered as the handoff's "tool card".
+ *
+ * The clean-layout handoff models a call as a `.tool-card`: a bordered
+ * card whose head carries an icon, the tool name in mono, a one-line
+ * quoted detail (the first string argument, for search-style tools the
+ * query), a status pill, and a chevron; the body collapses by default
+ * and opens a one-line result summary.
  *
  * Business logic:
- * - the summary shows the tool name, a compact one-line args preview,
- *   and the status: a spinner while running, else done/failed with the
- *   duration.
- * - expanding reveals pretty-printed arguments, the result (red on
- *   error), and the raw provider response when present.
+ * - the head shows the tool's glyph, its name, a quoted detail preview,
+ *   and a Pill: `RUNNING` (rippling) while in flight, else the handoff's
+ *   resolved labels — `DONE · Ns`, `FAILED`, or a bespoke label for
+ *   `save_memory` ("SAVED").
+ * - expanding reveals the result summary: search tools list the source
+ *   count and titles, everything else shows the pretty-printed arguments
+ *   and result/raw response.
  * - a failed call offers retry only while the chat is idle (onRetry is
- *   unset during generation): it reruns the call and continues the
- *   reply as a new branch, staying with the model that started it.
- * - the retry button suppresses the default so the click doesn't also
- *   toggle the details.
+ *   unset during generation): it confirms via the app modal (rest of the
+ *   branch will be re-generated), then reruns the call and continues the
+ *   reply as a new branch. The retry button suppresses its own click so
+ *   the head doesn't also toggle.
  */
 'use client';
 
+import { useState } from 'react';
 import { I } from '../../lib/icons';
-import { Tip } from '../../lib/popover';
+import { actions } from '../../stores';
 import type { ToolCall } from '../../types';
 
-/* compact one-line view of the arguments, e.g. `query: "rust async"` */
-const argsPreview = (raw: string) => {
+/* quoted one-line view of the arguments: the first string value, else a
+   key:value list. search tools prefer the query so the card reads like
+   the handoff's '"graphql rate limiting best practices 2026"'. */
+const argsPreview = (name: string, raw: string) => {
   try {
     const v = JSON.parse(raw || '{}') as Record<string, unknown>;
-    return Object.entries(v)
-      .map(([k, x]) => `${k}: ${JSON.stringify(x)}`)
-      .join(', ');
+    const entries = Object.entries(v);
+    const queryKeys = ['query', 'q', 'search', 'prompt', 'term', 'text'];
+    const firstString = entries.find(([, x]) => typeof x === 'string');
+    const query =
+      entries.find(([k, x]) => queryKeys.includes(k) && typeof x === 'string')
+        ?.[1] ?? firstString?.[1];
+    if (typeof query === 'string' && query.trim())
+      return `"${query.replace(/^"|"$/g, '')}"`;
+    return entries.map(([k, x]) => `${k}: ${JSON.stringify(x)}`).join(', ');
   } catch {
     return raw;
   }
@@ -80,7 +97,140 @@ const parseSearchHits = (raw: string | undefined): Hit[] => {
   return [];
 };
 
-/* clickable search results with the untouched response tucked behind a disclosure */
+/* the glyph shown in the card head, per tool kind */
+const TOOL_ICON: Record<string, string> = {
+  web_search: 'globe',
+  github_search: 'branch',
+  save_memory: 'brain',
+  memory: 'brain',
+  ask_user: 'help',
+  read_file: 'file',
+  write_file: 'file',
+  run_command: 'monitor',
+  code_exec: 'monitor',
+  shell: 'monitor',
+};
+
+/* the status Pill for a call, matching the handoff's `DONE · 1.2s` pills */
+function StatusPill({ c }: { c: ToolCall }) {
+  if (c.status === 'running') {
+    return (
+      <span className="pill a">
+        <span className="pulse" aria-hidden="true" />
+        RUNNING
+      </span>
+    );
+  }
+  if (c.status === 'error') {
+    return <span className="pill d">FAILED</span>;
+  }
+  if (c.name === 'save_memory' || c.name === 'memory') {
+    return <span className="pill s">SAVED</span>;
+  }
+  return (
+    <span className={`pill s`}>
+      {c.status === 'done'
+        ? `DONE${c.ms !== undefined ? ` · ${(c.ms / 1000).toFixed(1)}s` : ''}`
+        : 'DONE'}
+    </span>
+  );
+}
+
+/* one-line body summary for search tools; non-search cards carry their
+   arguments/result instead when opened */
+export function ToolCallView({
+  c,
+  onRetry,
+}: {
+  c: ToolCall;
+  onRetry?: ((callId: string) => void) | undefined;
+}) {
+  /* collapsed by default; a resolved head stays closed and non-hover */
+  const [open, setOpen] = useState(false);
+  const resolved = c.status !== 'running';
+
+  return (
+    <div
+      className={`tool-card ${open ? '' : 'collapsed'} ${resolved ? 'resolved' : ''}`}
+    >
+      <div
+        className="tool-card-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }
+        }}
+      >
+        <I n={TOOL_ICON[c.name] ?? 'wrench'} s={14} />
+        <span className="tool-name">{c.name}</span>
+        <span className="tool-detail">{argsPreview(c.name, c.args)}</span>
+        <StatusPill c={c} />
+        {c.status === 'error' && onRetry && (
+          <button
+            type="button"
+            aria-label="Retry tool call"
+            className="icon-only"
+            onClick={async (e) => {
+              /* a click inside the head must not also toggle it */
+              e.preventDefault();
+              e.stopPropagation();
+              const ok = await actions.confirm({
+                title: 'Retry this tool call?',
+                body: 'Retrying reruns this failed call and continues the reply from here. Everything after it on this branch will be re-generated.',
+                confirmLabel: 'Retry',
+                danger: true,
+              });
+              if (ok) onRetry(c.id);
+            }}
+          >
+            <I n="rotate-cw" s={12} />
+          </button>
+        )}
+        <I n="chevron-down" s={14} className="chev" />
+      </div>
+
+      {open && (
+        <div className="tool-card-body">
+          {c.name === 'web_search' ? (
+            <SearchResults raw={c.raw} result={c.result} err={c.status === 'error'} />
+          ) : (
+            <>
+              <div className="sec-label">arguments</div>
+              <pre className="num scroll-thin mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px]">
+                {prettyArgs(c.args)}
+              </pre>
+              {c.result !== undefined && (
+                <>
+                  <div className="sec-label mt-1.5">result</div>
+                  <pre
+                    className={`num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px] ${c.status === 'error' ? 'text-[var(--danger)]' : ''}`}
+                  >
+                    {c.result}
+                  </pre>
+                </>
+              )}
+              {c.raw !== undefined && (
+                <>
+                  <div className="sec-label mt-1.5">raw response</div>
+                  <pre className="num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
+                    {c.raw}
+                  </pre>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* clickable search results with the untouched response behind a disclosure */
 function SearchResults({
   raw,
   result,
@@ -137,93 +287,5 @@ function SearchResults({
         </details>
       )}
     </>
-  );
-}
-
-export function ToolCallView({
-  c,
-  onRetry,
-}: {
-  c: ToolCall;
-  onRetry?: ((callId: string) => void) | undefined;
-}) {
-  return (
-    <details className="group rounded-[6px] border border-[var(--border)] bg-[var(--panel)] text-[12px]">
-      <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 px-2 [&::-webkit-details-marker]:hidden">
-        <I n="wrench" s={11} className="shrink-0 muted" />
-        <span className="shrink-0 font-medium">{c.name}</span>
-        <span className="num min-w-0 flex-1 truncate muted">
-          {argsPreview(c.args)}
-        </span>
-        {c.status === 'running' ? (
-          <span
-            role="status"
-            aria-label="running"
-            className="block size-3 shrink-0 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-transparent"
-          />
-        ) : (
-          <span
-            className={`num shrink-0 text-[11px] ${c.status === 'error' ? 'text-[var(--danger)]' : 'muted'}`}
-          >
-            {c.status === 'error' ? 'failed' : 'done'}
-            {c.ms !== undefined ? ` · ${(c.ms / 1000).toFixed(1)}s` : ''}
-          </span>
-        )}
-        {c.status === 'error' && onRetry && (
-          <Tip
-            label="Retry — reruns the call and continues as a new branch"
-            side="bottom"
-          >
-            <button
-              type="button"
-              aria-label="Retry tool call"
-              className="ctl-icon size-5 shrink-0 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)]"
-              onClick={(e) => {
-                /* a click inside <summary> would also toggle the details */
-                e.preventDefault();
-                onRetry(c.id);
-              }}
-            >
-              <I n="rotate-cw" s={10} />
-            </button>
-          </Tip>
-        )}
-        <I
-          n="chevron-down"
-          s={10}
-          className="shrink-0 opacity-60 transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="flex flex-col gap-1.5 border-t border-[var(--border)] px-2 py-1.5">
-        <div className="sec-label">arguments</div>
-        <pre className="num scroll-thin max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px]">
-          {prettyArgs(c.args)}
-        </pre>
-        {c.name === 'web_search' ? (
-          <SearchResults raw={c.raw} result={c.result} err={c.status === 'error'} />
-        ) : (
-          <>
-            {c.result !== undefined && (
-              <>
-                <div className="sec-label">result</div>
-                <pre
-                  className={`num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px] ${c.status === 'error' ? 'text-[var(--danger)]' : ''}`}
-                >
-                  {c.result}
-                </pre>
-              </>
-            )}
-            {c.raw !== undefined && (
-              <>
-                <div className="sec-label">raw response</div>
-                <pre className="num scroll-thin max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">
-                  {c.raw}
-                </pre>
-              </>
-            )}
-          </>
-        )}
-      </div>
-    </details>
   );
 }

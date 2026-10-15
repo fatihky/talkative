@@ -39,14 +39,21 @@ export function ModelsSettings() {
     [router.query],
   );
   const [modelQuery, setModelQuery] = useState(modelParam);
+  /* provider filter via the handoff's `.model-chip` pills; empty = all */
+  const [providerFilter, setProviderFilter] = useState('');
   /* every whitespace-separated term must hit the name, id or provider */
   const terms = modelQuery.toLowerCase().split(/\s+/).filter(Boolean);
-  const shownModels = terms.length
-    ? models.filter((m) => {
-        const hay = modelSearchText(m).toLowerCase();
-        return terms.every((t) => hay.includes(t));
-      })
-    : models;
+  const shownModels = models.filter((m) => {
+    if (terms.length) {
+      const hay = modelSearchText(m).toLowerCase();
+      if (!terms.every((t) => hay.includes(t))) return false;
+    }
+    if (providerFilter && m.provider !== providerFilter) return false;
+    return true;
+  });
+  /* distinct providers in catalog order, for the filter chips */
+  const providers: string[] = [];
+  for (const m of models) if (!providers.includes(m.provider)) providers.push(m.provider);
   /* models group by provider, keeping the alphabetical order applied on sync */
   const modelGroups: { provider: string; items: typeof shownModels }[] = [];
   for (const m of shownModels) {
@@ -59,7 +66,9 @@ export function ModelsSettings() {
       <div className="mb-2 flex items-center gap-2">
         <div className="sec-label">Models — capability overrides</div>
         <span className="num text-[11px] muted">
-          {terms.length ? `${shownModels.length}/${models.length}` : models.length}
+          {terms.length || providerFilter
+            ? `${shownModels.length}/${models.length}`
+            : models.length}
         </span>
         <div className="ml-auto flex h-7 w-[200px] min-w-0 items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2">
           <I n="search" s={12} className="muted shrink-0" />
@@ -76,10 +85,29 @@ export function ModelsSettings() {
           />
         </div>
       </div>
+      {providers.length > 1 && (
+        <div className="model-chip-row">
+          {providers.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`model-chip fltr ${providerFilter === p ? 'on' : ''}`}
+              aria-pressed={providerFilter === p}
+              onClick={() =>
+                setProviderFilter(providerFilter === p ? '' : p)
+              }
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex flex-col">
-        {terms.length > 0 && shownModels.length === 0 && (
+        {(terms.length > 0 || providerFilter) && shownModels.length === 0 && (
           <div className="py-2 text-[12px] muted">
-            No models match “{modelQuery.trim()}”
+            No models match
+            {modelQuery.trim() ? ` “${modelQuery.trim()}”` : ''}
+            {providerFilter ? ` in ${providerFilter}` : ''}
           </div>
         )}
         {modelGroups.map((g, gi) => (

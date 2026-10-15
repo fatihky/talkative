@@ -2,8 +2,8 @@
  * Sidebar — left nav: new chat, chat filter, chat list, section links.
  *
  * Business logic:
- * - Collapses to an icon rail (new chat, expand, notes/decisions/
- *   settings) when sidebarCollapsed is set — never inside the mobile drawer,
+ * - Collapses to an icon rail (new chat, expand, notes/decisions)
+ *   when sidebarCollapsed is set — never inside the mobile drawer,
  *   which always renders full width.
  * - Collapsing/expanding animates: the nav's width slides between
  *   var(--w-rail) and the stored width while a clipping layer reveals
@@ -111,9 +111,9 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
               </button>
             </Tip>
             <div className="my-1 h-px w-6 bg-[var(--border)]" />
+            <RailLink to="/" label="Home" icon="home" />
             <RailLink to="/notes" label="Notes" icon="note" />
             <RailLink to="/decisions" label="Decisions" icon="decision" />
-            <RailLink to="/settings" label="Settings" icon="settings" />
           </div>
         ) : (
           <div
@@ -170,23 +170,15 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
               </Tip>
             </div>
 
-            <ChatList items={chatItems} activeId={activeId} />
-
-            <nav
-              className="mt-auto grid grid-cols-4 border-t border-[var(--border)]"
-              aria-label="Sections"
-            >
-              {(
-                [
-                  ['/', 'Chats', 'chat'],
-                  ['/notes', 'Notes', 'note'],
-                  ['/decisions', 'Decisions', 'decision'],
-                  ['/settings', 'Settings', 'settings'],
-                ] as const
-              ).map(([to, label, icon]) => (
-                <NavItem key={label} to={to} label={label} icon={icon} />
-              ))}
+            <nav className="px-2 pb-1" aria-label="Index">
+              <IndexItem to="/" label="Home" icon="home" />
+              <IndexItem to="/notes" label="Notes" icon="note" />
+              <IndexItem to="/decisions" label="Decisions" icon="decision" />
             </nav>
+
+            <div className="sec-label px-3 pb-1">Chats</div>
+
+            <ChatList items={chatItems} activeId={activeId} />
           </div>
         )}
       </div>
@@ -208,7 +200,7 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
   );
 }
 
-function NavItem({
+function IndexItem({
   to,
   label,
   icon,
@@ -221,12 +213,10 @@ function NavItem({
     <Link
       to={to}
       onClick={() => actions.setMobileNav(false)}
-      className={`flex h-9 flex-col items-center justify-center gap-0.5 border-r border-[var(--border)] text-[10px] no-underline last:border-r-0 hover:bg-[var(--sunken)] ${
-        to === '/' ? 'text-[var(--text)]' : 'text-[var(--text-3)]'
-      }`}
+      className="flex h-8 items-center gap-2.5 rounded-[7px] px-2.5 text-[14px] no-underline text-[var(--text)] hover:bg-[var(--sunken)]"
     >
-      <I n={icon} s={14} />
-      <span className="sec-label leading-none">{label.toUpperCase()}</span>
+      <I n={icon} s={15} className="shrink-0 text-[var(--text-3)]" />
+      {label}
     </Link>
   );
 }

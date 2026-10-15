@@ -90,16 +90,21 @@ export function MessageBody({
   onRetry?: ((callId: string) => void) | undefined;
 }) {
   if (calls.length === 0 && thoughts.length === 0)
-    return <Markdown text={content} live={live} msgId={msgId} chatId={chatId} />;
+    return (
+      <div className="msg-text">
+        <Markdown text={content} live={live} msgId={msgId} chatId={chatId} />
+      </div>
+    );
   return segments(content, calls, thoughts).map((seg) =>
     seg.kind === 'text' ? (
-      <Markdown
-        key={seg.key}
-        text={seg.text}
-        live={live}
-        msgId={msgId}
-        chatId={chatId}
-      />
+      <div className="msg-text" key={seg.key}>
+        <Markdown
+          text={seg.text}
+          live={live}
+          msgId={msgId}
+          chatId={chatId}
+        />
+      </div>
     ) : seg.kind === 'thought' ? (
       <ThoughtView
         key={seg.key}
@@ -107,10 +112,7 @@ export function MessageBody({
         live={live && seg.thought.ms === undefined}
       />
     ) : (
-      <div
-        key={seg.key}
-        className="my-1.5 flex flex-col gap-1 whitespace-normal"
-      >
+      <div key={seg.key} className="flex flex-col whitespace-normal">
         {seg.calls.map((c) =>
           c.name === 'ask_user' && c.status === 'running' ? (
             <QuestionCard key={c.id} msgId={msgId} c={c} />

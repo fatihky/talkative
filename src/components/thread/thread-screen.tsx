@@ -121,7 +121,7 @@ export function ThreadScreen() {
     >
       <div
         ref={contentRef}
-        className="mx-auto flex w-full max-w-[640px] flex-col gap-3"
+        className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col gap-3"
       >
         <div className="flex items-center gap-2 pb-1">
           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">

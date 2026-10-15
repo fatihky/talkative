@@ -35,7 +35,7 @@ export function HomeBannerStack({ items }: { items: Banner[] }) {
   const hiddenCount = items.length - shown.length;
   return (
     <div
-      className="mx-auto w-full max-w-[640px] space-y-1.5 px-4 pb-2 sm:px-6"
+      className="mx-auto w-full max-w-[var(--stage-max)] space-y-1.5 px-4 pb-2 sm:px-6"
       role="status"
       aria-live="polite"
     >

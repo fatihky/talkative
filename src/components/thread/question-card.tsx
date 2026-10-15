@@ -1,5 +1,6 @@
 /*
- * QuestionCard — interactive wizard for a running ask_user tool call.
+ * QuestionCard — interactive wizard for a running ask_user tool call,
+ * styled as the clean-layout handoff's `.question-card`.
  *
  * Business logic:
  * - shown only while the call runs; once answered it settles into a
@@ -9,8 +10,7 @@
  *   text only); allow_other defaults true (per question, falling back
  *   to the top level); timeout defaults to 2 min; unparseable args
  *   render "(invalid question)".
- * - one question per step with progress segments and Back/Next; the
- *   first option is badged "Recommended".
+ * - one question per step; the first option is badged "Recommended".
  * - picking an option clears the typed answer and vice versa; typed
  *   answers count only when allow_other.
  * - a countdown from timeout_ms disables the whole card at zero
@@ -204,36 +204,27 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
 
   return (
     <fieldset
-      className="m-0 flex min-w-0 flex-col gap-3 rounded-[6px] border border-[var(--border-strong)] bg-[var(--panel)] p-3 text-[13px]"
+      className="question-card disabled:opacity-60"
       aria-label="questions from the assistant"
       disabled={sending || timedOut}
     >
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 font-medium">
-          <I n="help" s={12} className="shrink-0 muted" />
-          <span>Clarification needed</span>
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="q-head">
+          <I n="help" s={13} />
+          <span>PAUSED TO ASK</span>
           {questions.length > 1 && (
-            <span className="num text-[11px] muted">
-              {currentStep + 1}/{questions.length}
-            </span>
-          )}
-          {!timedOut && (
-            <span className="num text-[11px] muted">
-              {formatCountdown(remaining)}
-            </span>
-          )}
-          {timedOut && (
-            <span className="num text-[11px] text-[var(--danger)]">
-              timed out
-            </span>
+            <span className="num">· {currentStep + 1}/{questions.length}</span>
           )}
         </div>
+        {!timedOut ? (
+          <span className="pill w">{formatCountdown(remaining)}</span>
+        ) : (
+          <span className="pill d">timed out</span>
+        )}
       </div>
 
       {questions.length > 1 && (
-        <div className="flex gap-1">
+        <div className="mb-2 flex gap-1">
           {questions.map((q, i) => (
             <div
               key={q.id}
@@ -249,35 +240,29 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
         <div className="text-[11px] font-medium uppercase tracking-wide muted">
           {q.header}
         </div>
-        <p className="m-0 whitespace-pre-wrap">{q.question}</p>
+        <p className="m-0 whitespace-pre-wrap text-[14px] font-semibold">
+          {q.question}
+        </p>
 
         {q.options.length > 0 && (
-          <div className="flex flex-col gap-1">
+          <div className="q-options">
             {q.options.map((o, oi) => {
               const selected = answers[q.id] === o.label;
               return (
                 <button
                   key={o.label}
                   type="button"
-                  className={`flex flex-col gap-0.5 rounded-[5px] border px-2.5 py-1.5 text-left transition-colors ${
-                    selected
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/10'
-                      : 'border-[var(--border)] hover:bg-[var(--sunken)]'
-                  }`}
+                  className={selected ? 'chosen' : undefined}
                   disabled={sending || timedOut}
                   onClick={() => selectOption(q.id, o.label)}
+                  title={o.description || undefined}
                 >
-                  <span className="flex items-center gap-1.5 text-[13px]">
-                    {oi === 0 && (
-                      <span className="rounded bg-[var(--accent)]/15 px-1 text-[10px] font-medium text-[var(--accent)]">
-                        Recommended
-                      </span>
-                    )}
-                    <span>{o.label}</span>
-                  </span>
-                  {o.description && (
-                    <span className="text-[11px] muted">{o.description}</span>
+                  {oi === 0 && (
+                    <span className="mr-1 rounded bg-[var(--accent)]/15 px-1 text-[10px] font-medium text-[var(--accent)]">
+                      Recommended ·{' '}
+                    </span>
                   )}
+                  {o.label}
                 </button>
               );
             })}
@@ -286,7 +271,7 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
 
         {q.allow_other && (
           <input
-            className="h-7 min-w-0 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]"
+            className="mt-2 h-7 min-w-0 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]"
             placeholder={
               q.options.length > 0
                 ? 'Or type your own answer…'
@@ -308,11 +293,11 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         {currentStep > 0 && (
           <button
             type="button"
-            className="ctl-icon h-7 rounded-[6px] px-3 text-[12px]"
+            className="ctl h-7 px-3 text-[12px]"
             disabled={sending || timedOut}
             onClick={handleBack}
           >
@@ -321,7 +306,7 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
         )}
         <button
           type="button"
-          className="ctl-primary h-7 rounded-[6px] px-4 text-[12px]"
+          className="ctl-primary h-7 px-4 text-[12px]"
           disabled={sending || timedOut || !canProceed()}
           onClick={handleNext}
         >

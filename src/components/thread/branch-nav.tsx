@@ -8,6 +8,8 @@
  *   deepest tip, restoring the child last shown under each parent so
  *   nested branch choices survive navigating away and back.
  * - arrows disable at the ends of the sibling list.
+ *
+ * Styled by the handoff's `.branch-nav` inside `.msg-actions`.
  */
 'use client';
 
@@ -27,31 +29,32 @@ export function BranchNav({
   const i = ids.indexOf(id);
   const prev = ids[i - 1];
   const next = ids[i + 1];
-  const btn =
-    'ctl-icon h-6 w-5 border-transparent bg-transparent text-[var(--text-2)] hover:bg-[var(--sunken)] disabled:opacity-30';
   return (
-    <div className="flex items-center text-[11px] muted">
+    <span className="branch-nav">
       <button
         type="button"
         disabled={!prev}
         onClick={() => prev && actions.switchBranch(chatId, prev)}
         aria-label="Previous branch"
-        className={btn}
       >
-        <I n="chevron-left" s={11} />
+        <I n="chevron-left" s={12} />
       </button>
-      <span className="num min-w-[26px] text-center">
-        {i + 1}/{ids.length}
+      <span className="branch-dots" aria-hidden="true">
+        {ids.map((sid, idx) => (
+          <span key={sid} className={idx === i ? 'on' : ''} />
+        ))}
+      </span>
+      <span className="num">
+        {i + 1} / {ids.length}
       </span>
       <button
         type="button"
         disabled={!next}
         onClick={() => next && actions.switchBranch(chatId, next)}
         aria-label="Next branch"
-        className={btn}
       >
-        <I n="chevron-right" s={11} />
+        <I n="chevron-right" s={12} />
       </button>
-    </div>
+    </span>
   );
 }

@@ -60,7 +60,7 @@ export function Topbar() {
         type="button"
         aria-label="Open command palette"
         onClick={() => actions.setPalette(true)}
-        className="flex h-7 w-full max-w-[520px] min-w-0 flex-1 items-center gap-2 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] text-[var(--text-3)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none md:mx-0"
+        className="flex h-8 w-full max-w-[520px] min-w-0 flex-1 items-center gap-2 rounded-[7px] border border-[var(--border)] bg-[var(--bg)] px-2 text-[13px] text-[var(--text-3)] transition-colors hover:border-[var(--border-strong)] focus-visible:outline-none md:mx-0"
       >
         <I n="search" s={14} />
         <span className="min-w-0 flex-1 truncate text-left">
@@ -71,7 +71,7 @@ export function Topbar() {
     );
 
   return (
-    <header className="flex h-10 shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg)] px-2 max-md:h-11">
+    <header className="flex h-[var(--h-topbar)] shrink-0 items-center gap-2 border-b border-[var(--border)] bg-[var(--bg)] px-2 max-md:h-[var(--h-topbar)]">
       <IconButton
         icon="panel-left"
         tip={`Toggle sidebar ${mod}B`}
@@ -84,10 +84,13 @@ export function Topbar() {
       {vw >= 768 && (
         <Link
           to="/"
-          className="num ml-1 hidden h-7 shrink-0 items-center gap-1.5 rounded-[6px] px-1 text-[13px] font-semibold tracking-tight text-[var(--text)] no-underline hover:bg-[var(--sunken)] md:flex"
+          className="num ml-1 hidden h-8 shrink-0 items-center gap-1.5 rounded-[6px] px-1 text-[13px] font-semibold tracking-tight text-[var(--text)] no-underline hover:bg-[var(--sunken)] md:flex"
           aria-label="Talkative home"
         >
-          talkative
+          <span className="flex size-5 items-center justify-center rounded-[6px] bg-[var(--accent)] text-[var(--text-inv)]">
+            <I n="chat" s={12} />
+          </span>
+          Talkative
         </Link>
       )}
       <div className="flex min-w-0 flex-1 px-1 md:pl-2 md:pr-0">

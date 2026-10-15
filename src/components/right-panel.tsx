@@ -62,7 +62,7 @@ export function RightPanel() {
     const onMove = (e: PointerEvent) => setWidth(e.clientX);
     const onUp = (e: PointerEvent) => {
       setDragging(false);
-      const snaps = [280, 360, 420, 500, 560, 720];
+      const snaps = [280, 360, 440, 500, 560, 720];
       const best = snaps.reduce((a, b) =>
         Math.abs(b - e.clientX) < Math.abs(a - e.clientX) ? b : a,
       );
@@ -129,7 +129,7 @@ export function RightPanel() {
           aria-orientation="vertical"
           aria-label="Resize panel"
           onPointerDown={() => setDragging(true)}
-          onDoubleClick={() => setWidth(420)}
+          onDoubleClick={() => setWidth(440)}
           className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-(--accent-weak)"
           style={{ background: dragging ? 'var(--accent)' : undefined }}
         />
@@ -172,16 +172,13 @@ const TABS = [
   { value: 'preview', label: 'Preview' },
 ] as const;
 
-/* tab row shared by the panel header; preview stays selectable once a snippet exists */
+/* tab row shared by the panel header; preview stays selectable once a snippet exists.
+   Styled as the handoff's underline tabs (`.artifact-tabs`). */
 function PanelTabs() {
   const tab = useLayoutStore((s) => s.rightPanelTab);
   const preview = useScopedPreview();
   return (
-    <div
-      role="tablist"
-      aria-label="Panel view"
-      className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden"
-    >
+    <div role="tablist" aria-label="Panel view" className="artifact-tabs flex-1">
       {TABS.map((t) => {
         const disabled = t.value === 'preview' && !preview;
         /* a scoped-out preview falls back to the artifact tab */
@@ -195,13 +192,7 @@ function PanelTabs() {
             aria-selected={active}
             disabled={disabled}
             onClick={() => actions.setRightPanelTab(t.value)}
-            className={`h-6 shrink-0 rounded-[5px] px-2 text-[11px] leading-none transition-colors ${
-              active
-                ? 'bg-[var(--raised)] font-medium text-[var(--text)] shadow-[inset_0_0_0_1px_var(--border-strong)]'
-                : disabled
-                  ? 'cursor-not-allowed text-[var(--text-3)] opacity-50'
-                  : 'text-[var(--text-3)] hover:text-[var(--text-2)]'
-            }`}
+            className={active ? 'on' : disabled ? 'cursor-not-allowed opacity-50' : ''}
           >
             {t.label}
           </button>

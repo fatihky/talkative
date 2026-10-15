@@ -11,6 +11,7 @@ export { BadgeDot } from './badge-dot';
 export { IconButton } from './icon-button';
 export { Kbd } from './kbd';
 export { Meter } from './meter';
+export { Pill } from './pill';
 export { SecLabel } from './sec-label';
 export { SegmentedControl } from './segmented-control';
 export { Skeleton } from './skeleton';

@@ -114,21 +114,19 @@ export function ModelPicker() {
       aria-haspopup="listbox"
       aria-label="Select model"
       onClick={() => actions.openModelBarPopover('model')}
-      className={`flex max-w-[240px] shrink-0 items-center gap-1 rounded-[4px] text-[11px] hover:cursor-pointer ${
-        status === 'error'
-          ? 'text-[var(--danger)]'
-          : 'text-[var(--text-2)] hover:text-[var(--text)]'
+      className={`model-picker-btn max-w-[220px] ${open ? 'open' : ''} ${
+        status === 'error' ? 'border-[var(--danger)]' : ''
       }`}
     >
       {label === null ? (
         <Skeleton w={60} h={10} />
       ) : (
-        <span className="truncate">{label}</span>
+        <span className="mp-main min-w-0">
+          <span className="truncate">{label}</span>
+          {provider && <span className="mp-provider">{provider}</span>}
+        </span>
       )}
-      {provider && (
-        <span className="num shrink-0 text-[10px] muted">{provider}</span>
-      )}
-      <I n="chevron-down" s={10} className="shrink-0 opacity-60" />
+      <I n="chevron-down" s={13} className="caret shrink-0" />
     </button>
   );
 
@@ -148,7 +146,8 @@ export function ModelPicker() {
         width={330}
         z={40}
       >
-        <div className="flex flex-col">
+        <div className="model-menu-search">
+          <I n="search" s={14} />
           <input
             ref={searchRef}
             type="text"
@@ -183,32 +182,81 @@ export function ModelPicker() {
                 }
               }
             }}
-            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2 text-[13px] outline-none placeholder:text-[var(--text-3)]"
           />
-          <div
-            id={listId}
-            role="listbox"
-            aria-label="Models"
-            className="max-h-[320px] overflow-y-auto"
-          >
-            {shown.map((m, i) => (
+        </div>
+        <div
+          id={listId}
+          role="listbox"
+          aria-label="Models"
+          className="model-menu-scroll"
+        >
+          <ModelList
+            shown={shown}
+            idx={idx}
+            query={q}
+            chattableCount={chattable.length}
+            setIdx={setIdx}
+          />
+        </div>
+      </Popover>
+    </>
+  );
+}
+
+/* grouped model list: provider group headers above `.model-menu-item` rows */
+function ModelList({
+  shown,
+  idx,
+  query,
+  chattableCount,
+  setIdx,
+}: {
+  shown: Model[];
+  idx: number;
+  query: string;
+  chattableCount: number;
+  setIdx: (i: number) => void;
+}) {
+  if (shown.length === 0) {
+    return (
+      <div className="px-3 py-4 text-[12px] muted">
+        {chattableCount === 0 ? 'No models loaded.' : 'No matching models.'}
+      </div>
+    );
+  }
+  /* group only when not searching; a query flattens the list */
+  const groups: { provider: string; models: Model[] }[] = [];
+  if (query) {
+    groups.push({ provider: '', models: shown });
+  } else {
+    const byProvider = new Map<string, Model[]>();
+    for (const m of shown) {
+      const arr = byProvider.get(m.provider) ?? [];
+      arr.push(m);
+      byProvider.set(m.provider, arr);
+    }
+    for (const [provider, models] of byProvider) groups.push({ provider, models });
+  }
+
+  let i = -1;
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.provider || 'all'}>
+          {g.provider && <div className="model-menu-group">{g.provider}</div>}
+          {g.models.map((m) => {
+            i += 1;
+            return (
               <ModelOption
                 key={m.id}
                 m={m}
                 active={i === idx}
                 onHover={() => setIdx(i)}
               />
-            ))}
-            {shown.length === 0 && (
-              <div className="px-3 py-4 text-[12px] muted">
-                {chattable.length === 0
-                  ? 'No models loaded.'
-                  : 'No matching models.'}
-              </div>
-            )}
-          </div>
+            );
+          })}
         </div>
-      </Popover>
+      ))}
     </>
   );
 }
@@ -223,6 +271,7 @@ function ModelOption({
   onHover: () => void;
 }) {
   const sel = useDraftStore((s) => s.modelId === m.id);
+  const unavailable = m.status !== 'ok';
   return (
     // biome-ignore lint/a11y/useFocusableInteractive: focus stays on the search input (aria-activedescendant)
     // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard selection is handled by the search input
@@ -235,42 +284,59 @@ function ModelOption({
         actions.setModel(m.id);
         actions.closeModelBarPopover(true);
       }}
-      className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 ${
-        active ? 'bg-[var(--sunken)]' : ''
-      } ${sel ? 'shadow-[inset_2px_0_0_0_var(--accent)]' : ''}`}
+      className={`model-menu-item ${sel ? 'on' : ''} ${unavailable ? 'off' : ''} ${
+        active ? 'bg-[var(--fg-soft)]' : ''
+      }`}
     >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="min-w-0 break-words text-[13px] font-medium">
-            {m.shortName}
-          </span>
+      <span className="mm-dot" aria-hidden="true" />
+      <span className="mm-main">
+        <span className="mm-name">
+          {m.shortName}
           {m.status === 'error' && (
-            <span className="text-[10px] text-[var(--danger)]">no key</span>
+            <span className="ml-1.5 font-sans text-[10px] text-[var(--danger)]">
+              no key
+            </span>
           )}
           {m.status === 'stale' && (
-            <span className="text-[10px] text-[var(--warn)]">stale</span>
+            <span className="ml-1.5 font-sans text-[10px] text-[var(--warn)]">
+              stale
+            </span>
           )}
-        </div>
-        <div className="num text-[11px] muted">
-          {m.provider} · {m.params ? `${m.params} · ` : ''}
-          {ctxFmt(m.context.window)} ctx · ${m.pricing.input}/$
-          {m.pricing.output} per M
-        </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-1" aria-hidden="true">
-        {m.capabilities.thinking && <I n="brain" s={12} className="muted" />}
-        {m.capabilities.vision && <I n="image" s={12} className="muted" />}
-        {m.capabilities.tools && <I n="wrench" s={12} className="muted" />}
+        </span>
+        <span className="mm-provider">
+          {m.params ? `${m.params} · ` : ''}
+          {m.context.window != null ? `${ctxFmt(m.context.window)} ctx · ` : ''}
+          ${m.pricing.input}/${m.pricing.output} per M
+        </span>
+      </span>
+      <span className="mm-caps" aria-hidden="true">
+        {m.capabilities.thinking && (
+          <i title="Thinking">
+            <I n="brain" s={10} />
+          </i>
+        )}
+        {m.capabilities.vision && (
+          <i title="Vision">
+            <I n="vision" s={10} />
+          </i>
+        )}
+        {m.capabilities.tools && (
+          <i title="Tool use">
+            <I n="wrench" s={10} />
+          </i>
+        )}
         {m.capabilities.decisions && (
-          <I n="decision" s={12} className="muted" />
+          <i title="Decision support">
+            <I n="decision" s={10} />
+          </i>
         )}
         {m.capabilities.fast && (
-          <span className="rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
-            fast
-          </span>
+          <i title="Fast">
+            <I n="play" s={10} />
+          </i>
         )}
-      </div>
-      {sel && <I n="check" s={13} className="shrink-0 text-[var(--accent)]" />}
+      </span>
+      <I n="check" s={13} className="mm-check shrink-0" />
     </div>
   );
 }

@@ -140,7 +140,7 @@ export function Composer() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[640px]">
+    <div className="mx-auto w-full max-w-[var(--stage-max)]">
       <input
         ref={fileRef}
         type="file"
@@ -155,7 +155,7 @@ export function Composer() {
       {draftNotice && <DraftNotice />}
 
       <div
-        className="relative z-20 rounded-lg border border-[var(--border-strong)] bg-[var(--raised)]"
+        className="relative z-20 rounded-xl border border-[var(--border-strong)] bg-[var(--raised)]"
         data-composer=""
       >
         {!onPrivate && <ToolBar />}

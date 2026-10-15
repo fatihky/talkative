@@ -77,6 +77,14 @@ const P = {
   pin: 'M12 17v5M5 17h14l-1.5-4.5V7a2.5 2.5 0 0 0-2.5-2.5H9A2.5 2.5 0 0 0 6.5 7v5.5z',
   decision:
     'M12 3.4a1.9 1.9 0 1 0 0 .01M12 5.3V10M12 10L7.4 14.1M12 10l4.6 4.1M7.4 14.2a1.9 1.9 0 1 0 0 .01M16.6 14.2a1.9 1.9 0 1 0 0 .01M7.4 16.1V21M16.6 16.1V21',
+  home: 'M4 11l8-7 8 7M6 9.5V20h12V9.5',
+  /* the handoff's assistant avatar: a speech bubble with a tail */
+  bot: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  /* the handoff's model-picker glyph (a "head with a thought" mark) */
+  model: 'M12 3a9 9 0 1 0 9 9M12 3v4M12 7a2 2 0 0 1 2 2',
+  /* eye (vision capability badge) */
+  vision:
+    'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
 };
 
 export function I({

@@ -18,6 +18,9 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Render `web_search` tool results as clickable title/URL/snippet links in the thread and tuck the raw provider JSON behind a collapsible "inspect raw results" disclosure instead of dumping it inline.
 - Show `used / —` in the composer's context meter when the model window is unknown (previously only the used count appeared), and expose the full, locale-formatted context size in the meter's `title` tooltip.
+- Adopt the "clean layout" design system: a green OKLCH accent, 14px type scale with a `clamp()` H1, 8/12px radii, a 48px topbar with green brand mark and capitalized wordmark, and OKLCH light/dark tokens throughout.
+- Redesign the UI to the handoff: chat turns, tool cards, the `ask_user`/reasoning views, and the composer's model/tool pickers, plus a new `Pill` primitive and ripple animation.
+- Widen the thread/composer/stage column to 760px and the right panel to 440px (underline tab strip), drop the composer Tools count badge and model-picker glyph, move Delete to the end of the actions row, confirm failed tool-call retries in the app modal, and remove the `BRANCH A`/`stopped` header extras.
 
 <!-- Add entries under the matching group below (create it if missing):
      ### Added / ### Changed / ### Fixed / ### Removed / ### Security
