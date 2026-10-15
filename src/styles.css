@@ -629,6 +629,13 @@ select:focus-visible {
   font-size: var(--fs-sm);
   min-width: min(46ch, 100%);
 }
+/* keep tool cards a touch narrower than the prose they annotate on wider
+   screens; below the medium breakpoint they span the full column */
+@media (min-width: 768px) {
+  .tool-card {
+    max-width: 80%;
+  }
+}
 .tool-card-head {
   display: flex;
   align-items: center;
