@@ -248,14 +248,21 @@ function ContextIndicator() {
       : pct >= 70
         ? 'text-[var(--warn)]'
         : 'muted';
+  const label = est.window
+    ? `${fmtK(est.used)} / ${fmtK(est.window)}`
+    : `${fmtK(est.used)} / —`;
+  const title = est.window
+    ? `${est.used.toLocaleString()} / ${est.window.toLocaleString()} tokens`
+    : `${est.used.toLocaleString()} tokens, window unknown`;
   if (!est.window) {
     return (
       <div
         className={`num flex shrink-0 items-center gap-2 pl-2 text-[11px] ${color}`}
         role="status"
         aria-label={`Context ${est.used} tokens, window unknown`}
+        title={title}
       >
-        {fmtK(est.used)}
+        {label}
       </div>
     );
   }
@@ -264,10 +271,9 @@ function ContextIndicator() {
       className={`num flex shrink-0 items-center gap-2 pl-2 text-[11px] ${color}`}
       role="status"
       aria-label={`Context ${est.used} of ${est.window} tokens, ${pct} percent`}
+      title={title}
     >
-      <span>
-        {fmtK(est.used)} / {fmtK(est.window)}
-      </span>
+      <span>{label}</span>
       <Meter used={est.used} max={est.window} />
       {vw >= 900 && <span>{pct}%</span>}
     </div>

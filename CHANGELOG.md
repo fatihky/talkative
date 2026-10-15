@@ -17,6 +17,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Changed
 
 - Render `web_search` tool results as clickable title/URL/snippet links in the thread and tuck the raw provider JSON behind a collapsible "inspect raw results" disclosure instead of dumping it inline.
+- Show `used / —` in the composer's context meter when the model window is unknown (previously only the used count appeared), and expose the full, locale-formatted context size in the meter's `title` tooltip.
 
 <!-- Add entries under the matching group below (create it if missing):
      ### Added / ### Changed / ### Fixed / ### Removed / ### Security
