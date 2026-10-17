@@ -204,7 +204,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col">
           {children}
           {!noComposer && (
-            <div className="shrink-0 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 sm:px-6">
+            <div className="shrink-0 px-2 pb-[max(12px,env(safe-area-inset-bottom))] pt-1 sm:px-6">
               <Composer />
             </div>
           )}
