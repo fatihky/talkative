@@ -13,12 +13,13 @@
  *   the preview tab of the right panel.
  * - Sign out calls better-auth then routes to /auth/login; failures
  *   surface as an error toast.
- * - Account identity ("FT" / fatih@talkative.dev) and the usage entry are
- *   hard-coded stubs that just navigate to /settings.
+ * - The account chip (initials avatar) and menu (name + email) read the
+ *   live session via authClient.useSession; the menu navigates to
+ *   /settings.
  */
 'use client';
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useRouter } from 'waku';
 import { authClient } from '../lib/auth-client';
 import { I } from '../lib/icons';
@@ -38,6 +39,19 @@ export function Topbar() {
   const theme = usePrefsStore((s) => s.theme);
   const menuOpen = useRef<HTMLButtonElement | null>(null);
   const [menu, setMenu] = useState(false);
+  const { data: session } = authClient.useSession();
+
+  const userName = session?.user?.name ?? '';
+  const userEmail = session?.user?.email ?? '';
+  const initials = useMemo(() => {
+    const parts = userName.trim().split(/\s+/).filter(Boolean);
+    const first = parts[0]?.[0] ?? userEmail[0] ?? '';
+    const second =
+      parts.length > 1
+        ? parts[parts.length - 1]?.[0] ?? ''
+        : userName[1] ?? userEmail[1] ?? '';
+    return (first + second).toUpperCase();
+  }, [userName, userEmail]);
 
   const themeIcon =
     theme === 'light' ? 'sun' : theme === 'dark' ? 'moon' : 'monitor';
@@ -126,7 +140,7 @@ export function Topbar() {
           onClick={() => setMenu((v) => !v)}
           className="ml-1 flex size-6 shrink-0 items-center justify-center rounded-[4px] border border-[var(--border)] bg-[var(--accent-weak)] text-[10px] font-semibold text-[var(--accent)] hover:border-[var(--border-strong)]"
         >
-          FT
+          {initials || '?'}
         </button>
         {preview && (
           <IconButton
@@ -150,11 +164,11 @@ export function Topbar() {
           onClose={() => setMenu(false)}
           items={[
             {
-              label: 'Account — fatih@talkative.dev',
+              label: userName || 'Account',
               onSelect: () => actions.navigateTo('/settings'),
             },
             {
-              label: 'Usage this month',
+              label: userEmail || 'Settings',
               onSelect: () => actions.navigateTo('/settings'),
             },
             { sep: true },
