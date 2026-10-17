@@ -411,10 +411,7 @@ export async function fetchFolders(dev: DevFlags): Promise<Folder[]> {
   return foldersApi.list();
 }
 
-export async function fetchSuggestions(
-  dev: DevFlags,
-  _chats: ChatSummary[] = [],
-): Promise<Suggestion[]> {
+export async function fetchSuggestions(dev: DevFlags): Promise<Suggestion[]> {
   await base(dev, 200);
   if (dev.emptySuggestions) return [];
   const items = await request<Suggestion[]>('/api/suggestions');

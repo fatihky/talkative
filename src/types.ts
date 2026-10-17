@@ -213,7 +213,7 @@ export type Suggestion = {
   label: string;
   icon?: string | undefined;
   prompt: string;
-  source: 'pinned' | 'recent' | 'static';
+  source: 'pinned' | 'static';
 };
 
 export type Attachment = {

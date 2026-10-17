@@ -272,7 +272,6 @@ export const bootActions = {
       if (!useUIStore.getState().stageVisible && !cached)
         useUIStore.setState({ stageVisible: true });
 
-      /* suggestions derive from chats (§7.1 step 3 continued) */
       void refreshSuggestions(useNetworkStore.getState().dev);
 
       /* §7.1 step 2: focus only if ≥1100px and no deep-link hash; caret to end */

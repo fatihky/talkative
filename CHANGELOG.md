@@ -19,6 +19,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Changed
 
 - Cap tool-call cards at 80% of the assistant column width on medium screens and up, so they read as narrower annotations under the prose instead of spanning the full message body.
+- Drop recent chats from the home-screen suggestions so only the fixed pinned + static prompts show, keeping previous conversations' instructions out of the "new chat" starters.
 - Stop caching the chat list in localStorage: the sidebar fetches chats fresh on every boot instead of showing a stale copy (models, folders and notes keep their stale-while-revalidate cache).
 - Widen the thread/composer/stage column from 760px to 880px.
 - Lighten the user message bubble background in dark theme so it reads more clearly against the dark stage.

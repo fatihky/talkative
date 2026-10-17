@@ -10,10 +10,10 @@
  *   error status (error = no api key configured), thinking on and off, an
  *   absent thinkingLevels meaning "capability unknown", vision, audio, fast,
  *   a 1M context window, and reasoning-priced output.
- * - PINNED_SUGGESTIONS and STATIC_SUGGESTIONS are the fixed part of the home
- *   suggestions; the server interleaves the user's three most recent chats
- *   and caps the result at 8. Each carries a `source` tag, though no screen
- *   reads it yet.
+ * - PINNED_SUGGESTIONS and STATIC_SUGGESTIONS are the entire home
+ *   suggestions feed; the server serves them as-is and recent chats are
+ *   never interleaved. Each carries a `source` tag, though no screen reads
+ *   it yet.
  * - SETTINGS_ITEMS feeds the command palette's settings results; `to` marks
  *   the entries that are real routes rather than in-place settings actions.
  * - PROVIDERS is dead weight from the port — nothing imports it; live
