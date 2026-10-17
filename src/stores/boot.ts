@@ -16,7 +16,8 @@
  * - home.lastParams restores the tool grants, providers, counts and
  *   concurrencies over the compiled defaults — a tool added since keeps
  *   its default grant — plus thinking level and param overrides; a
- *   non-empty home.draft comes back with the draft notice raised.
+ *   non-empty home.draft comes back with the draft notice raised, and a
+ *   systemPrompt saved on it (typed for an unsent chat) is restored too.
  * - only models and chats gate the stage: they resolve together, then the
  *   selected model is resolved (which also clamps the thinking level),
  *   suggestions are refetched, and the composer takes focus when the
@@ -69,6 +70,7 @@ import {
   type LastParams,
   resolveModelId,
   setDraft,
+  useDraftStore,
 } from './draft';
 import { setFolderItems, useFoldersStore } from './folders';
 import { useLayoutStore } from './layout';
@@ -184,7 +186,10 @@ export const bootActions = {
         paramScope: lastParams.scope,
       });
 
-    const storedDraft = LS.get<Draft | null>('home.draft', null);
+    const storedDraft = LS.get<(Draft & { systemPrompt?: string }) | null>(
+      'home.draft',
+      null,
+    );
     if (
       storedDraft &&
       (storedDraft.text || storedDraft.attachments.length > 0)
@@ -200,6 +205,9 @@ export const bootActions = {
       });
       useUIStore.setState({ draftNotice: true });
     }
+    /* a prompt typed for an unsent chat survives a reload on its own */
+    if (storedDraft?.systemPrompt)
+      useDraftStore.setState({ systemPrompt: storedDraft.systemPrompt });
 
     /* parallel fetches (§7.1 step 3) */
     if (useModelsStore.getState().status !== 'ready')

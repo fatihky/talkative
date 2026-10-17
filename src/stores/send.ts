@@ -13,6 +13,9 @@
  *   model's context window, or when the draft has neither text nor an
  *   attachment; sending with no tools and no attachment raises the
  *   noToolsNote hint.
+ * - a home draft's chat-scope system prompt travels with the first send
+ *   (so the server stores it on the row it creates) and seeds the new
+ *   chat's sidebar row; it is home state, so a failed send keeps it.
  * - offline, beginSend marks the turn 'queued' and parks its payload in
  *   network.queued; flushQueue replays all of them on reconnect and marks
  *   whatever fails 'failed'.
@@ -153,6 +156,7 @@ export const sendActions = {
     if (est.overflow) return null;
     if (text === '' && !hasAtt) return null;
     const folderId = draft.pendingFolderId ?? undefined;
+    const systemPrompt = draft.systemPrompt.trim();
 
     /* minted here so we can navigate before the server answers; the server adopts it */
     const chatId = uuid();
@@ -169,6 +173,7 @@ export const sendActions = {
       costUsd: 0,
       tags: [],
       ...(folderId ? { folderId } : {}),
+      ...(systemPrompt ? { systemPrompt } : {}),
       firstPrompt: text,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -182,7 +187,11 @@ export const sendActions = {
       createdAt: Date.now(),
       status: 'sending',
     };
-    const payload = payloadFor(chatId, text, draft.attachments, null);
+    const payload: OutgoingMessage = {
+      ...payloadFor(chatId, text, draft.attachments, null),
+      /* the server stores it on the row it creates, so the first reply already has it */
+      ...(systemPrompt ? { systemPrompt } : {}),
+    };
 
     putThread(chatId, {
       messages: [userMsg],
@@ -223,6 +232,7 @@ export const sendActions = {
       .then((res) => {
         LS.del('home.draft');
         setDraft({ text: '', attachments: [] });
+        useDraftStore.setState({ systemPrompt: '' });
         addSessionCost(est.cost);
         useUIStore.setState({ sending: false, noToolsNote: false });
         applySent(chatId, userMsg.id, res);

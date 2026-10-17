@@ -447,6 +447,8 @@ export type OutgoingMessage = {
   paramScope: string;
   /* the reply this turn follows; null starts a root branch */
   parentId: string | null;
+  /* a chat that doesn't exist yet is created with this prompt on its first send */
+  systemPrompt?: string;
 };
 
 export type SendResult = {

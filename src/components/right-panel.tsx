@@ -28,6 +28,10 @@
  *   stored prompt, so unsaved edits are always visible, and the status
  *   line says saved / unsaved / no prompt; a failed write keeps the draft
  *   in place and the store raises an error toast.
+ * - On home there is no chat to write to yet, so the same box edits the
+ *   prompt the next chat starts with: it lives on the composer draft,
+ *   rides along with the first send (the server stores it on the row it
+ *   creates) and clears with the draft, so Save here just parks it.
  * - The status line also says how many folder prompts apply first, when
  *   the prompt takes effect (from the next reply on — not the one already
  *   generating), and links to the full editor, which lists those folder
@@ -359,7 +363,8 @@ function ContextPanel() {
 const PROMPT_MAX = 20_000;
 
 /**
- * the active chat's own system prompt. The textarea keeps a local draft, so Save stays
+ * the chat-scope system prompt: the active chat's own, or — on home, before a chat exists —
+ * the one the next chat starts with. The textarea keeps a local draft, so the button stays
  * disabled — and the status line says "Saved" — until the text differs from what is stored.
  */
 function ChatPromptBox() {
@@ -369,8 +374,11 @@ function ChatPromptBox() {
   );
   const folders = useFoldersStore((s) => s.items);
   const sending = useUIStore((s) => s.sending);
-  const saved = chat?.systemPrompt ?? '';
-  const chatId = chat?.id ?? null;
+  /* home has no chat row yet, so its prompt lives on the draft until the first send */
+  const pendingPrompt = useDraftStore((s) => s.systemPrompt);
+  const home = context === 'new' && !chat;
+  const saved = home ? pendingPrompt : (chat?.systemPrompt ?? '');
+  const chatId = home ? null : (chat?.id ?? null);
   const [draft, setDraft] = useState(saved);
   const [saving, setSaving] = useState(false);
 
@@ -380,21 +388,13 @@ function ChatPromptBox() {
     setDraft(saved);
   }, [chatId, saved]);
 
-  if (!chat) {
-    return (
-      <p className="text-[12px] muted">
-        Open a chat to give it its own instructions.
-      </p>
-    );
-  }
-
   const dirty = draft !== saved;
   /* how many of the chat's folder prompts stack ahead of this one, outermost first */
   const inherited = (() => {
     const byId = new Map(folders.map((f) => [f.id, f]));
     let n = 0;
     for (
-      let f = chat.folderId ? byId.get(chat.folderId) : undefined, i = 0;
+      let f = chat?.folderId ? byId.get(chat.folderId) : undefined, i = 0;
       f && i <= folders.length;
       f = f.parentId ? byId.get(f.parentId) : undefined, i++
     )
@@ -404,6 +404,12 @@ function ChatPromptBox() {
 
   const save = async () => {
     if (!dirty || saving) return;
+    if (home) {
+      /* nothing to store yet: the prompt travels with the first send */
+      actions.setDraftSystemPrompt(draft);
+      return;
+    }
+    if (!chat) return;
     setSaving(true);
     try {
       /* on success the store's copy becomes `saved`; on failure the draft stays */
@@ -426,8 +432,16 @@ function ChatPromptBox() {
             void save();
           }
         }}
-        placeholder="Optional instructions for this chat…"
-        aria-label="System prompt for this chat"
+        placeholder={
+          home
+            ? 'Optional instructions for the next chat…'
+            : 'Optional instructions for this chat…'
+        }
+        aria-label={
+          home
+            ? 'System prompt for the next chat'
+            : 'System prompt for this chat'
+        }
         className={`scroll-thin w-full resize-y rounded-md border bg-background p-2 text-[12px] outline-none placeholder:text-muted-foreground ${
           dirty
             ? 'border-(--accent)'
@@ -460,31 +474,39 @@ function ChatPromptBox() {
           {dirty
             ? 'Unsaved changes'
             : saved.trim()
-              ? 'Saved'
+              ? home
+                ? 'Applies to the next chat'
+                : 'Saved'
               : 'No prompt yet'}
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] leading-snug muted">
         <span>
-          {sending
-            ? 'Takes effect on the reply after the one generating'
-            : 'Takes effect from the next reply'}
+          {home
+            ? 'The next chat you send starts with it'
+            : sending
+              ? 'Takes effect on the reply after the one generating'
+              : 'Takes effect from the next reply'}
         </span>
         {inherited > 0 && (
           <span>
             · after {inherited} folder prompt{inherited === 1 ? '' : 's'}
           </span>
         )}
-        <span>·</span>
-        <button
-          type="button"
-          onClick={() =>
-            actions.editSystemPrompt({ kind: 'chat', id: chat.id })
-          }
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          Full editor
-        </button>
+        {chat && (
+          <>
+            <span>·</span>
+            <button
+              type="button"
+              onClick={() =>
+                actions.editSystemPrompt({ kind: 'chat', id: chat.id })
+              }
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Full editor
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -18,7 +18,10 @@
  *   client's id, the sent modelId and firstPrompt = the raw text. The
  *   title is that text with leading [tag]/#tag noise stripped and cut
  *   to 48 chars, or the first attachment's name for a file-only send
- *   ('New chat' when that name is missing).
+ *   ('New chat' when that name is missing). A first send also carries
+ *   the system prompt typed into the composer's chat-scope box, so its
+ *   very first reply already runs with it; later sends never overwrite
+ *   the stored prompt.
  * - branching: parentId omitted continues from chat.leafId, null
  *   starts a new root, and anything else must be an assistant message
  *   of this chat (400 'parentId must be a reply in this chat'). Naming
@@ -139,6 +142,8 @@ export const POST = (req: Request, { params }: Ctx) =>
               : stripTagsFromTitle(text).slice(0, 48),
           modelId: input.modelId,
           firstPrompt: input.content,
+          /* the composer's prompt for a chat that doesn't exist yet applies to this first reply too */
+          ...(input.systemPrompt ? { systemPrompt: input.systemPrompt } : {}),
         })
         .returning();
       if (!created) throw new Error('insert failed');

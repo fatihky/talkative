@@ -42,6 +42,10 @@
  *   used to focus the textarea with the caret at the end.
  * - pendingFolderId files the next chat started from a folder screen into
  *   that folder; the send flow consumes it.
+ * - systemPrompt is the chat-scope prompt typed on home, before a chat
+ *   exists: home.draft carries it, the first send hands it to the server
+ *   (which stores it on the row it creates) and beginSend seeds the new
+ *   chat's sidebar row with it, so the right panel switches over to it.
  */
 'use client';
 
@@ -75,6 +79,8 @@ import { uiActions, useUIStore } from './ui';
 
 const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
 const WORKSPACE_DEFAULT_MODEL = 'claude-4.5-sonnet';
+/* mirrors SYSTEM_PROMPT_MAX in server/chats.ts */
+const SYSTEM_PROMPT_MAX = 20_000;
 
 export const defaultDraft = (modelId: string): Draft => ({
   text: '',
@@ -91,12 +97,15 @@ export type DraftState = Draft & {
   pendingFolderId: string | null;
   /** account-wide tool choices, edited from the home composer and the /tools screen */
   defaultTools: ToolPreferences;
+  /** the prompt for a chat that doesn't exist yet; home-only, cleared on send/reset */
+  systemPrompt: string;
 };
 
 /** The home composer draft. */
 export const useDraftStore = create<DraftState>(() => ({
   ...defaultDraft(WORKSPACE_DEFAULT_MODEL),
   pendingFolderId: null,
+  systemPrompt: '',
   defaultTools: {
     grants: { ...DEFAULT_GRANTS },
     providers: { ...DEFAULT_PROVIDERS },
@@ -366,12 +375,14 @@ export const draftActions = {
   },
   discardDraft() {
     setDraft(freshDraft(get().modelId));
+    useDraftStore.setState({ systemPrompt: '' });
+    LS.set('home.draft', get());
     useUIStore.setState({ draftNotice: false, longPaste: false });
   },
   resetDraft() {
     setDraft(freshDraft(resolveModelId()));
     /* a new chat is unfiled until the folder screen claims it */
-    useDraftStore.setState({ pendingFolderId: null });
+    useDraftStore.setState({ pendingFolderId: null, systemPrompt: '' });
     LS.set('home.draft', get());
     useUIStore.setState({
       draftNotice: false,
@@ -390,6 +401,16 @@ export const draftActions = {
     const { text } = get();
     setDraft({ text: text.trim() === '' ? prompt : `${text}\n\n${prompt}` });
     draftActions.focusComposer();
+  },
+  /** the chat-scope prompt box on home: held on the draft until the first send stores it */
+  setDraftSystemPrompt(text: string) {
+    const systemPrompt = text.slice(0, SYSTEM_PROMPT_MAX);
+    if (get().systemPrompt === systemPrompt) return;
+    /* setDraft mirrors the whole draft, so the restored-prompt hint no longer applies */
+    setDraft({});
+    useDraftStore.setState({ systemPrompt });
+    LS.set('home.draft', get());
+    useUIStore.setState({ draftNotice: false });
   },
   focusComposer() {
     if (!composerEl) return;

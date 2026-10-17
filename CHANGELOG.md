@@ -13,6 +13,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - List `get_current_timestamp` first in the Tools grants popover so the clock tool sits at the top of the list.
 - Ask for confirmation before deleting a folder from the sidebar, noting that its subfolders and chats move up a level instead of being removed.
+- Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
 
 ### Fixed
 - Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.

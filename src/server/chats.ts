@@ -147,6 +147,8 @@ export type SendInput = GenerateInput & {
   attachments: Attachment[];
   /* the reply this turn follows; null starts a new root branch, undefined appends to the chat's leaf */
   parentId?: string | null | undefined;
+  /* a not-yet-created chat's own prompt, stored with the row the first send inserts */
+  systemPrompt?: string | null | undefined;
 };
 
 /* keeps only entries whose value has the expected type; unknown tool ids are dropped later */
@@ -200,6 +202,9 @@ export const parseSendInput = (body: unknown): SendInput => {
     content,
     attachments,
     ...(b.parentId !== undefined ? { parentId: b.parentId } : {}),
+    ...(b.systemPrompt !== undefined
+      ? { systemPrompt: parseSystemPrompt(b.systemPrompt) }
+      : {}),
   };
 };
 
