@@ -4,6 +4,9 @@
  * Business logic:
  * - The old connection/model/tools/cost readouts were deliberately
  *   dropped; what remains is the mod+K palette shortcut and the version.
+ * - The version is __APP_VERSION__, inlined from package.json by the
+ *   `app-version` vite plugin at build time, so only the number itself
+ *   lands in the dist javascript — not package.json's other fields.
  * - The version button opens the §9 state debugger popover, whose goal is
  *   that every designed state is reachable from the UI.
  * - Checkboxes toggle persistent dev flags (offline, degraded, catalog
@@ -49,9 +52,9 @@ export function GlobalStatusBar() {
           className="hover:text-[var(--text)]"
           aria-expanded={devOpen}
           onClick={() => actions.setDevOpen(!devOpen)}
-          aria-label="Open state debugger (18 designed states)"
+          aria-label={`Open state debugger (18 designed states) — v${__APP_VERSION__}`}
         >
-          v0.4.1
+          v{__APP_VERSION__}
         </button>
       </span>
 
