@@ -17,7 +17,9 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
-COPY package.json tsconfig.json drizzle.config.ts ./
+# pnpm-workspace.yaml keeps pnpm's settings (allowBuilds, minimumReleaseAgeExclude)
+# in effect for the runtime CMD (e.g. `pnpm db:migrate`)
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json drizzle.config.ts ./
 COPY src ./src
 COPY scripts ./scripts
 EXPOSE 8080
