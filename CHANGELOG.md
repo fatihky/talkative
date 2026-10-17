@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- List `get_current_timestamp` first in the Tools grants popover so the clock tool sits at the top of the list.
 - Ask for confirmation before deleting a folder from the sidebar, noting that its subfolders and chats move up a level instead of being removed.
 
 ### Fixed

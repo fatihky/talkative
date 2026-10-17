@@ -36,6 +36,13 @@ import type { Tool } from '../types';
 /* shared by the client (grants ui) and the server (registry in src/server/tools) */
 export const TOOLS: Tool[] = [
   {
+    id: 'get_current_timestamp',
+    label: 'get_current_timestamp',
+    description: 'Get the current date and time',
+    requiresCapability: 'tools',
+    providers: ['default'],
+  },
+  {
     id: 'web_search',
     label: 'web_search',
     description: 'Search the live web',
@@ -161,13 +168,6 @@ export const TOOLS: Tool[] = [
     id: 'github_discussion_search',
     label: 'github_discussion_search',
     description: 'Search GitHub discussions',
-    requiresCapability: 'tools',
-    providers: ['default'],
-  },
-  {
-    id: 'get_current_timestamp',
-    label: 'get_current_timestamp',
-    description: 'Get the current date and time',
     requiresCapability: 'tools',
     providers: ['default'],
   },
