@@ -135,20 +135,24 @@ export const foldersActions = {
       uiActions.toast(`Rename failed — ${errorText(e)}`, 'error');
     });
   },
-  setFolderSystemPrompt(id: string, text: string) {
+  /** resolves true once stored, false when the write failed and the list was rolled back */
+  setFolderSystemPrompt(id: string, text: string): Promise<boolean> {
     const prev = get().items;
     const systemPrompt = text.trim() === '' ? undefined : text;
-    if (prev.find((f) => f.id === id)?.systemPrompt === systemPrompt) return;
+    if (prev.find((f) => f.id === id)?.systemPrompt === systemPrompt)
+      return Promise.resolve(true);
     setFolderItems(prev.map((f) => (f.id === id ? { ...f, systemPrompt } : f)));
-    foldersApi
-      .patch(id, { systemPrompt: systemPrompt ?? null })
-      .catch((e: unknown) => {
+    return foldersApi.patch(id, { systemPrompt: systemPrompt ?? null }).then(
+      () => true,
+      (e: unknown) => {
         setFolderItems(prev);
         uiActions.toast(
           `Saving system prompt failed — ${errorText(e)}`,
           'error',
         );
-      });
+        return false;
+      },
+    );
   },
   moveFolder(id: string, parentId: string | null) {
     const prev = get().items;

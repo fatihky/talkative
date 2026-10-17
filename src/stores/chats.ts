@@ -23,6 +23,8 @@
  *   after the chats land, and an empty list collapses the chips.
  * - useRecentModelIds derives the three models carrying the most messages
  *   across all chats, which the home screen offers as a "recent" row.
+ * - setChatSystemPrompt resolves true once the prompt is stored and false
+ *   when the write failed, so callers that show a saving state can wait on it.
  */
 'use client';
 
@@ -144,20 +146,34 @@ export const chatsActions = {
       { id: uid(), kind: 'chat', name: `chat: ${c.title}`, chatId: c.id },
     ]);
   },
-  /* blank clears it, matching the server */
-  setChatSystemPrompt(id: string, text: string) {
+  /**
+   * blank clears it, matching the server. resolves true once the prompt is stored, false
+   * when the write failed (the list is rolled back and an error toast raised)
+   */
+  setChatSystemPrompt(id: string, text: string): Promise<boolean> {
     const prev = get().items;
     const systemPrompt = text.trim() === '' ? undefined : text;
-    if (prev.find((c) => c.id === id)?.systemPrompt === systemPrompt) return;
+    if (prev.find((c) => c.id === id)?.systemPrompt === systemPrompt)
+      return Promise.resolve(true);
     setChatItems(prev.map((c) => (c.id === id ? { ...c, systemPrompt } : c)));
-    chatsApi
-      .patch(id, { systemPrompt: systemPrompt ?? null })
-      .catch((e: unknown) => {
+    return chatsApi.patch(id, { systemPrompt: systemPrompt ?? null }).then(
+      (chat) => {
+        /* the request may resolve after the row was reloaded; keep the server's copy */
+        setChatItems(
+          get().items.map((c) =>
+            c.id === chat.id ? { ...c, systemPrompt: chat.systemPrompt } : c,
+          ),
+        );
+        return true;
+      },
+      (e: unknown) => {
         setChatItems(prev);
         uiActions.toast(
           `Saving system prompt failed — ${errorText(e)}`,
           'error',
         );
-      });
+        return false;
+      },
+    );
   },
 };

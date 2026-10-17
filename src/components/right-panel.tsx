@@ -19,11 +19,19 @@
  *   the artifact body while the stored tab stays 'preview'.
  * - Artifact mode routes between the artifact browser and the raw snippet
  *   preview; context mode shows the notes/grants panel.
- * - The context tab is a read-only summary: the account-wide default
+ * - The context tab is a read-only summary — the account-wide default
  *   grants, the notes list (each attachable to the next message) and the
- *   selected model — per-message grants still override chat defaults.
- * - Its chat-scope system prompt box is an unwired stub; real prompts are
- *   edited through the system-prompt dialog.
+ *   selected model (per-message grants still override chat defaults) —
+ *   except for its system prompt box, the one editable piece here.
+ * - The prompt box edits the active chat's own prompt (on top of what its
+ *   folders add). Save is enabled only while the text differs from the
+ *   stored prompt, so unsaved edits are always visible, and the status
+ *   line says saved / unsaved / no prompt; a failed write keeps the draft
+ *   in place and the store raises an error toast.
+ * - The status line also says how many folder prompts apply first, when
+ *   the prompt takes effect (from the next reply on — not the one already
+ *   generating), and links to the full editor, which lists those folder
+ *   prompts in full.
  */
 'use client';
 
@@ -36,10 +44,12 @@ import {
   actions,
   useChatsStore,
   useDraftStore,
+  useFoldersStore,
   useLayoutStore,
   useMemoriesStore,
   useNotesStore,
   useSelectedModel,
+  useUIStore,
 } from '../stores';
 import { ArtifactPanel } from './artifact-panel';
 import { PreviewPanel, useScopedPreview } from './preview-panel';
@@ -220,12 +230,7 @@ function ContextPanel() {
     <div className="flex flex-col gap-4 p-3">
       <section>
         <div className="sec-label mb-1.5">System prompt (chat scope)</div>
-        <textarea
-          rows={3}
-          placeholder="Optional instructions for this chat…"
-          aria-label="System prompt"
-          className="w-full rounded-md border border-border bg-background p-2 text-[12px] outline-none placeholder:text-muted-foreground"
-        />
+        <ChatPromptBox />
       </section>
 
       <section>
@@ -346,6 +351,141 @@ function ContextPanel() {
         Context model: <span className="num">{model?.shortName ?? '—'}</span> ·
         per-message grants override chat defaults.
       </section>
+    </div>
+  );
+}
+
+/* mirrors SYSTEM_PROMPT_MAX in server/chats.ts */
+const PROMPT_MAX = 20_000;
+
+/**
+ * the active chat's own system prompt. The textarea keeps a local draft, so Save stays
+ * disabled — and the status line says "Saved" — until the text differs from what is stored.
+ */
+function ChatPromptBox() {
+  const context = useUIStore((s) => s.context);
+  const chat = useChatsStore((s) =>
+    context === 'new' ? null : (s.items.find((c) => c.id === context) ?? null),
+  );
+  const folders = useFoldersStore((s) => s.items);
+  const sending = useUIStore((s) => s.sending);
+  const saved = chat?.systemPrompt ?? '';
+  const chatId = chat?.id ?? null;
+  const [draft, setDraft] = useState(saved);
+  const [saving, setSaving] = useState(false);
+
+  /* follow the stored prompt when another chat comes into scope or it is changed elsewhere */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on chat switch, not on every keystroke
+  useEffect(() => {
+    setDraft(saved);
+  }, [chatId, saved]);
+
+  if (!chat) {
+    return (
+      <p className="text-[12px] muted">
+        Open a chat to give it its own instructions.
+      </p>
+    );
+  }
+
+  const dirty = draft !== saved;
+  /* how many of the chat's folder prompts stack ahead of this one, outermost first */
+  const inherited = (() => {
+    const byId = new Map(folders.map((f) => [f.id, f]));
+    let n = 0;
+    for (
+      let f = chat.folderId ? byId.get(chat.folderId) : undefined, i = 0;
+      f && i <= folders.length;
+      f = f.parentId ? byId.get(f.parentId) : undefined, i++
+    )
+      if (f.systemPrompt?.trim()) n++;
+    return n;
+  })();
+
+  const save = async () => {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      /* on success the store's copy becomes `saved`; on failure the draft stays */
+      await actions.setChatSystemPrompt(chat.id, draft);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <textarea
+        rows={3}
+        value={draft}
+        maxLength={PROMPT_MAX}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            void save();
+          }
+        }}
+        placeholder="Optional instructions for this chat…"
+        aria-label="System prompt for this chat"
+        className={`scroll-thin w-full resize-y rounded-md border bg-background p-2 text-[12px] outline-none placeholder:text-muted-foreground ${
+          dirty
+            ? 'border-(--accent)'
+            : 'border-border focus:border-(--border-strong)'
+        }`}
+      />
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={!dirty || saving}
+          onClick={() => void save()}
+          className="ctl-primary h-6 shrink-0 px-2 text-[11px] disabled:opacity-40"
+        >
+          {saving ? 'Saving…' : saved.trim() ? 'Update' : 'Save'}
+        </button>
+        <button
+          type="button"
+          disabled={!dirty || saving}
+          onClick={() => setDraft(saved)}
+          className="ctl h-6 shrink-0 px-2 text-[11px] disabled:opacity-40"
+        >
+          Discard
+        </button>
+        <span
+          className={`min-w-0 flex-1 truncate text-right text-[10px] ${
+            dirty ? 'text-(--accent)' : 'muted'
+          }`}
+          aria-live="polite"
+        >
+          {dirty
+            ? 'Unsaved changes'
+            : saved.trim()
+              ? 'Saved'
+              : 'No prompt yet'}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] leading-snug muted">
+        <span>
+          {sending
+            ? 'Takes effect on the reply after the one generating'
+            : 'Takes effect from the next reply'}
+        </span>
+        {inherited > 0 && (
+          <span>
+            · after {inherited} folder prompt{inherited === 1 ? '' : 's'}
+          </span>
+        )}
+        <span>·</span>
+        <button
+          type="button"
+          onClick={() =>
+            actions.editSystemPrompt({ kind: 'chat', id: chat.id })
+          }
+          className="underline underline-offset-2 hover:text-foreground"
+        >
+          Full editor
+        </button>
+      </div>
     </div>
   );
 }

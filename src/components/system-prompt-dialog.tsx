@@ -15,7 +15,9 @@
  *   server/chats.ts so the client can't offer what the server rejects.
  * - Saving writes optimistically through the chats/folders store (which
  *   rolls back and toasts on failure); mod+Enter saves, Esc or a scrim
- *   click discards without writing.
+ *   click discards without writing. The save button and an "Unsaved
+ *   changes" label only light up once the text differs from the saved
+ *   prompt, so it is always clear whether an edit was stored.
  * - Clearing the text removes the prompt (stored as null), which is what
  *   the helper copy promises.
  */
@@ -91,7 +93,7 @@ function Editor({
   const mod = useUIStore((s) => s.mod);
   const close = () => actions.editSystemPrompt(null);
   const save = () => {
-    onSave(text);
+    void onSave(text);
     close();
   };
 
@@ -100,6 +102,8 @@ function Editor({
     el?.focus();
     el?.setSelectionRange(el.value.length, el.value.length);
   }, []);
+
+  const dirty = text !== initial;
 
   return (
     <div
@@ -169,7 +173,11 @@ function Editor({
                 : 'Instructions for this chat…'
             }
             aria-label="System prompt"
-            className="w-full resize-y rounded-[6px] border border-[var(--border)] bg-[var(--panel)] p-3 text-[13px] leading-[1.6] outline-none placeholder:text-[var(--text-3)] focus:border-[var(--accent)]"
+            className={`w-full resize-y rounded-[6px] border bg-[var(--panel)] p-3 text-[13px] leading-[1.6] outline-none placeholder:text-[var(--text-3)] ${
+              dirty
+                ? 'border-[var(--accent)]'
+                : 'border-[var(--border)] focus:border-[var(--accent)]'
+            }`}
           />
           <p className="text-[11px] leading-snug muted">
             {kind === 'folder'
@@ -178,18 +186,29 @@ function Editor({
             Leave empty to remove.
           </p>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] px-3 py-2">
+        <div className="flex items-center gap-2 border-t border-[var(--border)] px-3 py-2">
+          <span
+            className={`text-[11px] ${dirty ? 'text-[var(--accent)]' : 'muted'}`}
+            aria-live="polite"
+          >
+            {dirty
+              ? 'Unsaved changes'
+              : initial.trim()
+                ? 'Saved'
+                : 'No prompt yet'}
+          </span>
           <button
             type="button"
             onClick={close}
-            className="ctl-ghost h-7 rounded-[6px] px-2 text-[12px]"
+            className="ctl-ghost ml-auto h-7 rounded-[6px] px-2 text-[12px]"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={save}
-            className="ctl-primary flex h-7 items-center gap-1.5 rounded-[6px] px-3 text-[12px]"
+            disabled={!dirty}
+            className="ctl-primary flex h-7 items-center gap-1.5 rounded-[6px] px-3 text-[12px] disabled:opacity-40"
           >
             {initial.trim() ? 'Update' : 'Save'}
             <span className="text-[11px] opacity-70">{mod}↵</span>

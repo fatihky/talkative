@@ -7,7 +7,8 @@
  *   an inline rename that commits on Enter/blur (empty input keeps the old
  *   title) and cancels on Escape.
  * - A spinner shows while the chat is streaming a reply or classifying;
- *   a pin icon marks pinned chats.
+ *   a pin icon marks pinned chats, and a small gear marks chats carrying
+ *   their own system prompt, so an overridden chat is visible at a glance.
  * - Actions menu: rename, pin/unpin, system prompt, export as text, and
  *   delete gated behind a confirm dialog.
  * - "Move to…" is offered only when at least one folder exists; picking it
@@ -19,7 +20,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'waku';
 import { I } from '../../lib/icons';
-import { Menu } from '../../lib/popover';
+import { Menu, Tip } from '../../lib/popover';
 import {
   actions,
   useChatsStore,
@@ -107,6 +108,13 @@ export function ChatRow({
             <I n="pin" s={11} className="shrink-0 text-[var(--text-3)]" />
           )}
           <span className="truncate">{chat.title}</span>
+          {chat.systemPrompt && (
+            <Tip label="This chat has its own system prompt" side="top">
+              <span className="shrink-0 text-[var(--text-3)]">
+                <I n="sliders" s={10} />
+              </span>
+            </Tip>
+          )}
         </span>
       </Link>
       )}
