@@ -304,9 +304,10 @@ function ModelOption({
           )}
         </span>
         <span className="mm-provider">
-          {m.params ? `${m.params} · ` : ''}
-          {m.context.window != null ? `${ctxFmt(m.context.window)} ctx · ` : ''}
-          ${m.pricing.input}/${m.pricing.output} per M
+          {m.provider}
+          {m.params ? ` · ${m.params}` : ''}
+          {m.context.window != null ? ` · ${ctxFmt(m.context.window)} ctx` : ''}
+          {' · '}${m.pricing.input}/${m.pricing.output} per M
         </span>
       </span>
       <span className="mm-caps" aria-hidden="true">
