@@ -9,7 +9,7 @@
  *   name), Escape cancels; the renaming id lives in the folders store so
  *   only one row can rename at a time, and text is selected once on entry.
  * - Actions menu: new subfolder, rename, system prompt, move to…, delete
- *   (deleting moves subfolders/chats up a level — no confirm).
+ *   (delete asks first; the folder's subfolders and chats move up a level).
  * - The move picker excludes the folder itself and its own subtree.
  * - Acts as both drag source (folder move) and drop target for dragged
  *   chats/folders, highlighting while a valid drop hovers it.
@@ -171,7 +171,15 @@ export function FolderRow({
           { sep: true },
           {
             label: 'Delete folder',
-            onSelect: () => actions.deleteFolder(folder.id),
+            onSelect: async () => {
+              const ok = await actions.confirm({
+                title: `Delete “${folder.name}”?`,
+                body: 'This deletes the folder. Its subfolders and chats are kept and moved up a level. This can’t be undone.',
+                confirmLabel: 'Delete',
+                danger: true,
+              });
+              if (ok) actions.deleteFolder(folder.id);
+            },
             danger: true,
           },
         ]}
