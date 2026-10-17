@@ -10,7 +10,8 @@
  *   a pin icon marks pinned chats, and a small gear marks chats carrying
  *   their own system prompt, so an overridden chat is visible at a glance.
  * - Actions menu: rename, pin/unpin, system prompt, export as text, and
- *   delete gated behind a confirm dialog.
+ *   delete gated behind a confirm dialog — the same list the thread
+ *   header shows, built by chatActionsMenu.
  * - "Move to…" is offered only when at least one folder exists; picking it
  *   swaps to the move menu, which the actions menu's onClose leaves open.
  * - Draggable for filing into folders, disabled while renaming.
@@ -28,6 +29,7 @@ import {
   useThreadsStore,
 } from '../../stores';
 import type { ChatSummary } from '../../types';
+import { chatActionsMenu } from '../chat-actions';
 import { type Drag, DRAG_MIME, indent } from './drag';
 import { MoveMenu } from './move-menu';
 
@@ -132,44 +134,13 @@ export function ChatRow({
         open={menu === 'actions'}
         anchor={menuAnchor}
         onClose={() => setMenu((m) => (m === 'actions' ? null : m))}
-        items={[
-          { label: 'Rename', onSelect: () => setRenaming(true) },
-          {
-            label: chat.pinnedAt ? 'Unpin' : 'Pin to top',
-            onSelect: () => actions.pinChat(chat.id, !chat.pinnedAt),
-          },
-          {
-            label: chat.systemPrompt ? 'Edit system prompt…' : 'System prompt…',
-            onSelect: () =>
-              actions.editSystemPrompt({ kind: 'chat', id: chat.id }),
-          },
-          ...(hasFolders
-            ? [
-                {
-                  label: 'Move to…',
-                  /* the actions menu's onClose only clears 'actions', so the picker stays up */
-                  onSelect: () => setMenu('move'),
-                },
-              ]
-            : []),
-          {
-            label: 'Export as text',
-            onSelect: () => actions.exportChat(chat.id),
-          },
-          {
-            label: 'Delete chat',
-            onSelect: async () => {
-              const ok = await actions.confirm({
-                title: `Delete “${chat.title}”?`,
-                body: 'This removes the chat and all of its messages. This can’t be undone.',
-                confirmLabel: 'Delete',
-                danger: true,
-              });
-              if (ok) actions.deleteChat(chat.id);
-            },
-            danger: true,
-          },
-        ]}
+        items={chatActionsMenu({
+          chat,
+          hasFolders,
+          onRename: () => setRenaming(true),
+          /* the actions menu's onClose only clears 'actions', so the picker stays up */
+          onMove: () => setMenu('move'),
+        })}
       />
       <MoveMenu
         open={menu === 'move'}

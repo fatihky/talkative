@@ -8,8 +8,9 @@
  * - a ?leaf=<messageId> query switches to that branch — how published
  *   artifacts and settings links return to their source chat/branch.
  * - the header carries the title, a branch-count badge, and a ⋯ menu
- *   that exports the branch on screen as .txt with thinking and tool
- *   steps interleaved inline.
+ *   with the same chat actions as the sidebar row (rename, pin, system
+ *   prompt, move to…, export, delete); rename there opens a prompt
+ *   dialog since the sidebar's inline editor isn't on screen.
  * - bottom-follow scrolling: pinned while the reader is at the bottom,
  *   unpinned by an upward scroll mid-stream, re-pinned on chat switch
  *   or when the total message count grows — the count spans all
@@ -27,8 +28,10 @@ import { useParams_UNSTABLE } from 'waku/router/client';
 import { useRouter } from 'waku';
 import { I } from '../../lib/icons';
 import { Menu, Tip } from '../../lib/popover';
-import { actions, useChatsStore, useThreadsStore } from '../../stores';
+import { actions, useChatsStore, useFoldersStore, useThreadsStore } from '../../stores';
 import { branchPath } from '../../stores/threads';
+import { chatActionsMenu } from '../chat-actions';
+import { MoveMenu } from '../sidebar/move-menu';
 import { ErrorCard } from './error-card';
 import { MessageBubble } from './message-bubble';
 
@@ -43,7 +46,10 @@ export function ThreadScreen() {
   const listRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenu] = useState<'actions' | 'move' | null>(null);
+  const hasFolders = useFoldersStore((s) => s.items.length > 0);
+  /* the conversation exists even before its summary loads (e.g. a just-sent chat) */
+  const exists = chat !== null || thread !== null;
 
   useEffect(() => {
     if (chatId !== '') actions.setContext(chatId);
@@ -132,14 +138,14 @@ export function ThreadScreen() {
               <I n="branch" s={11} /> {Math.max(1, chat.branchCount)}
             </span>
           )}
-          {chat && (
+          {exists && (
             <Tip label="Chat actions" side="bottom">
               <button
                 ref={menuAnchor}
                 type="button"
                 aria-label="Chat actions"
-                aria-expanded={menu}
-                onClick={() => setMenu((v) => !v)}
+                aria-expanded={menu !== null}
+                onClick={() => setMenu((v) => (v === null ? 'actions' : null))}
                 className="ctl-icon size-6 shrink-0 border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--sunken)] hover:text-[var(--text)]"
               >
                 <I n="dots" s={14} />
@@ -148,15 +154,37 @@ export function ThreadScreen() {
           )}
         </div>
         <Menu
-          open={menu}
+          open={menu === 'actions'}
           anchor={menuAnchor}
-          onClose={() => setMenu(false)}
-          items={[
-            {
-              label: 'Export as text',
-              onSelect: () => actions.exportChat(chatId),
+          onClose={() => setMenu((m) => (m === 'actions' ? null : m))}
+          items={chatActionsMenu({
+            chat: {
+              id: chatId,
+              title: chat?.title ?? 'New chat',
+              pinnedAt: chat?.pinnedAt,
+              ...(chat ? { systemPrompt: chat.systemPrompt } : {}),
             },
-          ]}
+            hasFolders,
+            renameLabel: 'Rename…',
+            onRename: async () => {
+              const title = await actions.askText({
+                title: 'Rename chat',
+                label: 'Chat title',
+                initial: chat?.title ?? '',
+                confirmLabel: 'Rename',
+              });
+              if (title !== null && title !== chat?.title)
+                actions.renameChat(chatId, title);
+            },
+            onMove: () => setMenu('move'),
+          })}
+        />
+        <MoveMenu
+          open={menu === 'move'}
+          anchor={menuAnchor}
+          onClose={() => setMenu(null)}
+          current={chat?.folderId ?? null}
+          onPick={(folderId) => actions.moveChat(chatId, folderId)}
         />
 
         {messages.length === 0 && !error && (

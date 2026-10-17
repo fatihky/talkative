@@ -33,6 +33,7 @@ import { Composer } from './composer/composer';
 import { ConfirmDialog } from './confirm-dialog';
 import { HelpDialog } from './help-dialog';
 import { CommandPalette } from './palette';
+import { PromptDialog } from './prompt-dialog';
 import { RightPanel } from './right-panel';
 import { Sidebar } from './sidebar';
 import { GlobalStatusBar } from './status-bar';
@@ -187,6 +188,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <ToolConfirmDialog />
         <HelpDialog />
         <ConfirmDialog />
+        <PromptDialog />
         <ToastHost />
       </div>
     );
@@ -255,6 +257,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <ToolConfirmDialog />
       <HelpDialog />
       <ConfirmDialog />
+      <PromptDialog />
       <ToastHost />
     </div>
   );

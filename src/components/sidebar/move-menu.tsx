@@ -1,5 +1,6 @@
 /*
- * MoveMenu — "Move to…" folder picker shared by chat and folder rows.
+ * MoveMenu — "Move to…" folder picker shared by chat and folder rows
+ * and the thread header's ⋯ menu.
  *
  * Business logic:
  * - Targets are all folders except the current one and, when moving a

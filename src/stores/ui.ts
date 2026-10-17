@@ -51,6 +51,14 @@ export type ConfirmRequest = {
   /* destructive actions get the red button */
   danger?: boolean;
 };
+/* one-line prompt answered with text (null = cancelled) */
+export type TextRequest = {
+  id: string;
+  title: string;
+  label?: string;
+  initial: string;
+  confirmLabel?: string;
+};
 
 type UIState = {
   booted: boolean;
@@ -78,6 +86,8 @@ type UIState = {
   confirmToolFor: string | null;
   /* open confirm modal; answered through `confirm()`'s promise */
   confirm: ConfirmRequest | null;
+  /* open text prompt; answered through `askText()`'s promise */
+  textPrompt: TextRequest | null;
 };
 
 export const useUIStore = create<UIState>()(() => ({
@@ -102,13 +112,15 @@ export const useUIStore = create<UIState>()(() => ({
   systemPromptFor: null,
   confirmToolFor: null,
   confirm: null,
+  textPrompt: null,
 }));
 
 const set = useUIStore.setState;
 const get = useUIStore.getState;
 
-/* kept out of state; only one confirm is open at a time */
+/* kept out of state; only one confirm or prompt is open at a time */
 let resolveConfirm: ((ok: boolean) => void) | null = null;
+let resolveText: ((value: string | null) => void) | null = null;
 
 export const uiActions = {
   setAuthState(loading: boolean, authenticated: boolean) {
@@ -136,6 +148,19 @@ export const uiActions = {
     resolveConfirm?.(ok);
     resolveConfirm = null;
     set({ confirm: null });
+  },
+  /** opens a one-line prompt; resolves the trimmed text, or null on cancel, esc or when replaced */
+  askText(req: Omit<TextRequest, 'id'>): Promise<string | null> {
+    resolveText?.(null);
+    set({ textPrompt: { ...req, id: uid() } });
+    return new Promise((resolve) => {
+      resolveText = resolve;
+    });
+  },
+  answerText(value: string | null) {
+    resolveText?.(value);
+    resolveText = null;
+    set({ textPrompt: null });
   },
   closeToolConfirm() {
     set({ confirmToolFor: null });
