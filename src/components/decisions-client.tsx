@@ -25,6 +25,9 @@
  *   the two entries its type needs, choices and levels grow and shrink within
  *   the server's limits, and a name is an identifier because it is the key the
  *   answer comes back under.
+ * - The stored run's stats (tokens, cost, latency, model, time) sit under the
+ *   title, and the results summary plus "Run again" sit right below the
+ *   header, so what the last run cost and decided is always at the top.
  * - Run (or ⌘/Ctrl+Enter) is gated on decisionProblems(): the first missing
  *   piece is spelled out under the header instead of spending a request on a
  *   400; a failure — upstream or transport — shows in the error card right
@@ -372,33 +375,53 @@ export function DecisionEditor() {
               {problems.length > 1 && ` (+${problems.length - 1} more)`}
             </p>
           )}
+          {/* the stored run's cost and timing, right under the title */}
+          {run && (run.usage || run.latencyMs !== undefined) && (
+            <div className="num flex flex-wrap items-center gap-x-3 gap-y-1 pl-9 text-[11px] muted">
+              {run.usage && (
+                <span>
+                  {kfmt(run.usage.promptTokens)} in ·{' '}
+                  {kfmt(run.usage.completionTokens)} out
+                </span>
+              )}
+              {run.usage?.costUsd !== undefined && (
+                <span>{$fmt(run.usage.costUsd)}</span>
+              )}
+              {run.latencyMs !== undefined && <span>{run.latencyMs} ms</span>}
+              <span className="break-all">{modelName(models, run.modelId)}</span>
+              <span title={fullTimestamp(run.updatedAt)}>
+                {timeAgo(run.updatedAt)}
+              </span>
+            </div>
+          )}
         </div>
 
         {results.length > 0 && (
-          <ResultsSummary
-            answers={answers}
-            questions={draft.questions}
-            stale={stale}
-          />
-        )}
-
-        {results.length > 0 && (
-          <div className="flex justify-end">
-            <Tip label="Run · ⌘↵" side="bottom">
-              <button
-                type="button"
-                className="ctl-primary h-7 shrink-0"
-                disabled={running || problems.length > 0}
-                onClick={() => void actions.runDecision()}
-              >
-                {running ? (
-                  <span className="block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                ) : (
-                  <I n="play" s={12} />
-                )}
-                {running ? 'Running…' : 'Run again'}
-              </button>
-            </Tip>
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <ResultsSummary
+                answers={answers}
+                questions={draft.questions}
+                stale={stale}
+              />
+            </div>
+            <div className="flex shrink-0 items-end justify-end">
+              <Tip label="Run · ⌘↵" side="bottom">
+                <button
+                  type="button"
+                  className="ctl-primary h-7 shrink-0"
+                  disabled={running || problems.length > 0}
+                  onClick={() => void actions.runDecision()}
+                >
+                  {running ? (
+                    <span className="block size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <I n="play" s={12} />
+                  )}
+                  {running ? 'Running…' : 'Run again'}
+                </button>
+              </Tip>
+            </div>
           </div>
         )}
 
@@ -505,25 +528,6 @@ export function DecisionEditor() {
               </div>
             ))}
           </section>
-        )}
-
-        {run && (run.usage || run.latencyMs !== undefined) && (
-          <div className="num flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-[var(--border)] pt-2 text-[11px] muted">
-            {run.usage && (
-              <span>
-                {kfmt(run.usage.promptTokens)} in ·{' '}
-                {kfmt(run.usage.completionTokens)} out
-              </span>
-            )}
-            {run.usage?.costUsd !== undefined && (
-              <span>{$fmt(run.usage.costUsd)}</span>
-            )}
-            {run.latencyMs !== undefined && <span>{run.latencyMs} ms</span>}
-            <span className="break-all">{modelName(models, run.modelId)}</span>
-            <span title={fullTimestamp(run.updatedAt)}>
-              {timeAgo(run.updatedAt)}
-            </span>
-          </div>
         )}
       </div>
     </main>
