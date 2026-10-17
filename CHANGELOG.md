@@ -9,6 +9,9 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Fixed
+- Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.
+
 ### Added
 
 - Identify the app to providers: send a `talkative/<version>` user-agent on every outbound provider request and OpenRouter app-attribution headers (`HTTP-Referer`, `X-OpenRouter-Title`, `X-OpenRouter-Categories`) so Talkative shows up in OpenRouter rankings and analytics.

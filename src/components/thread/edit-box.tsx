@@ -33,6 +33,18 @@ export function EditBox({
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
   }, []);
+
+  /* auto-grow to fit the content, capped at 12 rows */
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const lineH = parseFloat(getComputedStyle(el).lineHeight) || 20;
+    const min = lineH * 2;
+    const max = lineH * 12;
+    el.style.height = `${Math.min(max, Math.max(min, el.scrollHeight))}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [text]);
   const save = () => {
     if (text.trim() !== '') onSave(text);
   };
@@ -41,7 +53,7 @@ export function EditBox({
       <textarea
         ref={ref}
         value={text}
-        rows={Math.min(12, Math.max(2, text.split('\n').length))}
+        rows={2}
         aria-label="Edit message"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
@@ -52,7 +64,7 @@ export function EditBox({
           }
           if (e.key === 'Escape') onCancel();
         }}
-        className="scroll-thin w-full resize-none bg-transparent text-[13px] leading-[1.55] outline-none"
+        className="scroll-thin w-full resize-none overflow-hidden bg-transparent text-[13px] leading-[1.55] outline-none"
       />
       <div className="flex justify-end gap-2">
         <button type="button" className="ctl h-7 px-3" onClick={onCancel}>
