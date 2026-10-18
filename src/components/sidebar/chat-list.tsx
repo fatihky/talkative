@@ -15,6 +15,8 @@
  *   unknown folder id fall back to the top level.
  * - Drag & drop re-files chats and folders (a folder can't drop into its
  *   own subtree); dropping on a filed chat files into that chat's folder.
+ *   Desktop uses HTML5 drag & drop; touch screens fall back to pointer
+ *   drags through TouchDragProvider, since mobile never fires dragstart.
  * - Shows skeletons while loading, an empty state at zero chats+folders,
  *   and a "no matches" note when the filter empties the list.
  */
@@ -34,6 +36,7 @@ import { Skeleton } from '../../ui/primitives';
 import { ChatRow } from './chat-row';
 import type { Drag } from './drag';
 import { FolderRow } from './folder-row';
+import { ListZone, TouchDragProvider } from './touch-drag';
 
 const GROUPS: RecencyGroup[] = [
   'TODAY',
@@ -255,16 +258,17 @@ export function ChatList({
   const drop = (target: string | null) => (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    if (drag && canDrop(target)) {
-      if (drag.kind === 'chat') actions.moveChat(drag.id, target);
-      else actions.moveFolder(drag.id, target);
-    }
+    if (drag && canDrop(target)) file(drag, target);
     setDrag(null);
     setDropTarget(null);
   };
   const onDrag = (d: Drag | null) => {
     setDrag(d);
     if (!d) setDropTarget(null);
+  };
+  const file = (d: Drag, target: string | null) => {
+    if (d.kind === 'chat') actions.moveChat(d.id, target);
+    else actions.moveFolder(d.id, target);
   };
 
   if (status === 'loading' || status === 'idle') {
@@ -300,7 +304,9 @@ export function ChatList({
       }}
       onDrop={drop(null)}
     >
-      {flat.length === 0 && items.length > 0 && (
+      <TouchDragProvider canDrop={canDrop} onDrop={file}>
+        <ListZone>
+          {flat.length === 0 && items.length > 0 && (
         <div className="px-3 py-6 text-center text-[12px] muted">
           No chats match “{filter}”.
         </div>
@@ -394,7 +400,9 @@ export function ChatList({
             </div>
           );
         })}
-      </div>
+          </div>
+        </ListZone>
+      </TouchDragProvider>
     </div>
   );
 }

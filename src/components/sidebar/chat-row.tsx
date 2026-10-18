@@ -14,7 +14,8 @@
  *   header shows, built by chatActionsMenu.
  * - "Move to…" is offered only when at least one folder exists; picking it
  *   swaps to the move menu, which the actions menu's onClose leaves open.
- * - Draggable for filing into folders, disabled while renaming.
+ * - Draggable for filing into folders, disabled while renaming; on touch
+ *   screens Draggable picks up a drag from the same press instead.
  */
 'use client';
 
@@ -26,12 +27,14 @@ import {
   actions,
   useChatsStore,
   useFoldersStore,
+  useLayoutStore,
   useThreadsStore,
 } from '../../stores';
 import type { ChatSummary } from '../../types';
 import { chatActionsMenu } from '../chat-actions';
 import { type Drag, DRAG_MIME, indent } from './drag';
 import { MoveMenu } from './move-menu';
+import { Draggable } from './touch-drag';
 
 export function ChatRow({
   chat,
@@ -52,6 +55,7 @@ export function ChatRow({
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
   const [title, setTitle] = useState(chat.title);
   const hasFolders = useFoldersStore((s) => s.items.length > 0);
+  const mobile = useLayoutStore((s) => s.vw < 768);
   const classifying = useChatsStore((s) => s.classifying[chat.id] === true);
   const generating = useThreadsStore(
     (s) => s.threads[chat.id]?.streaming === true,
@@ -59,12 +63,16 @@ export function ChatRow({
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div
-    <div
+    <Draggable
+      drag={{ kind: 'chat', id: chat.id }}
       className={`group relative flex h-10 w-full items-center gap-2 border-l-2 pr-1 text-left ${
         active
           ? 'border-l-[var(--accent)] bg-[var(--accent-weak)]'
           : 'border-l-transparent hover:bg-[var(--sunken)]'
       }`}
+    >
+    <div
+      className="flex size-full items-center gap-2"
       style={{ paddingLeft: indent(depth) }}
       role="listitem"
       draggable={!renaming}
@@ -126,7 +134,7 @@ export function ChatRow({
         aria-label={`Actions for ${chat.title}`}
         aria-expanded={menu !== null}
         onClick={() => setMenu('actions')}
-        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)]"
+        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
       >
         <I n="dots" s={14} />
       </button>
@@ -137,6 +145,8 @@ export function ChatRow({
         items={chatActionsMenu({
           chat,
           hasFolders,
+          /* on phones a drag is the quicker way in, so say so */
+          moveHint: mobile,
           onRename: () => setRenaming(true),
           /* the actions menu's onClose only clears 'actions', so the picker stays up */
           onMove: () => setMenu('move'),
@@ -150,5 +160,6 @@ export function ChatRow({
         onPick={(folderId) => actions.moveChat(chat.id, folderId)}
       />
     </div>
+    </Draggable>
   );
 }

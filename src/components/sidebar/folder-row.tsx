@@ -12,7 +12,8 @@
  *   (delete asks first; the folder's subfolders and chats move up a level).
  * - The move picker excludes the folder itself and its own subtree.
  * - Acts as both drag source (folder move) and drop target for dragged
- *   chats/folders, highlighting while a valid drop hovers it.
+ *   chats/folders, highlighting while a valid drop hovers it; on touch
+ *   screens Draggable starts the drag from the same press.
  */
 'use client';
 
@@ -24,6 +25,7 @@ import { actions, useFoldersStore } from '../../stores';
 import type { Folder } from '../../types';
 import { type Drag, DRAG_MIME, indent } from './drag';
 import { MoveMenu } from './move-menu';
+import { Draggable } from './touch-drag';
 
 export function FolderRow({
   folder,
@@ -57,12 +59,14 @@ export function FolderRow({
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div
-    <div
+    <Draggable
+      drag={{ kind: 'folder', id: folder.id }}
       className={`group relative flex size-full items-center gap-1.5 border-l-2 pr-1 ${
         dropping
           ? 'border-l-[var(--accent)] bg-[var(--accent-weak)]'
           : 'border-l-transparent hover:bg-[var(--sunken)]'
       }`}
+      zone={folder.id}
       style={{ paddingLeft: indent(depth) - 2 }}
       role="listitem"
       draggable={!renaming}
@@ -125,7 +129,7 @@ export function FolderRow({
             <span className="truncate text-[13px] font-[500]">
               {folder.name}
             </span>
-            <span className="num shrink-0 text-[11px] muted group-hover:invisible">
+            <span className="num shrink-0 text-[11px] muted group-hover:invisible max-md:hidden">
               {count}
             </span>
           </Link>
@@ -137,7 +141,7 @@ export function FolderRow({
         aria-label={`Actions for folder ${folder.name}`}
         aria-expanded={menu !== null}
         onClick={() => setMenu('actions')}
-        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)]"
+        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
       >
         <I n="dots" s={14} />
       </button>
@@ -192,6 +196,6 @@ export function FolderRow({
         exclude={folder.id}
         onPick={(parentId) => actions.moveFolder(folder.id, parentId)}
       />
-    </div>
+    </Draggable>
   );
 }

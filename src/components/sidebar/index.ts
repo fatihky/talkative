@@ -1,6 +1,6 @@
 /*
  * sidebar/index.ts — public surface of the sidebar module family
- * (sidebar, chat-list/row, folder-row, move-menu, drag).
+ * (sidebar, chat-list/row, folder-row, move-menu, drag, touch-drag).
  *
  * Business logic:
  * - Shell imports Sidebar from here only; the rows navigate with Waku

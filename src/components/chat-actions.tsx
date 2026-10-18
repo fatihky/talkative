@@ -11,7 +11,8 @@
  * - "Move to…" is offered only when at least one folder exists, and it
  *   reports back instead of navigating, because the move picker is a
  *   separate menu the caller keeps open (the actions menu's onClose only
- *   clears its own state).
+ *   clears its own state). On phones it reads "Move to… (or drag)" so the
+ *   quicker drag gesture is discoverable.
  * - Delete confirms with the chat's title, then forgets the chat (the
  *   store's deleteChat routes away from thread view).
  */
@@ -25,6 +26,7 @@ export function chatActionsMenu({
   chat,
   hasFolders,
   renameLabel = 'Rename',
+  moveHint = false,
   onRename,
   onMove,
 }: {
@@ -32,6 +34,8 @@ export function chatActionsMenu({
     Partial<Pick<ChatSummary, 'systemPrompt'>>;
   hasFolders: boolean;
   renameLabel?: string;
+  /* small screens: mention that the row can be dragged into a folder */
+  moveHint?: boolean;
   onRename: () => void;
   onMove: () => void;
 }): MenuItem[] {
@@ -54,7 +58,14 @@ export function chatActionsMenu({
           },
         ]
       : []),
-    ...(hasFolders ? [{ label: 'Move to…', onSelect: onMove }] : []),
+    ...(hasFolders
+      ? [
+          {
+            label: moveHint ? 'Move to… (or drag)' : 'Move to…',
+            onSelect: onMove,
+          },
+        ]
+      : []),
     {
       label: 'Export as text',
       onSelect: () => actions.exportChat(chat.id),

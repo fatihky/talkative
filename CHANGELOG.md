@@ -11,6 +11,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Make moving chats and folders between folders work on phones and tablets: mobile never fires HTML5 drag & drop, so sidebar rows now also start a pointer drag with a lifted ghost copy under the finger and auto-scroll when held near the list's edges.
+- Keep the sidebar rows' ⋯ menu visible on small screens (it was hover-only, so it couldn't be opened on touch) and label "Move to…" as "Move to… (or drag)" on phones so the gesture is discoverable.
 - Narrow the composer's side padding on small screens (from `px-4` to `px-2`) so it uses more of the width on phones.
 - List `get_current_timestamp` first in the Tools grants popover so the clock tool sits at the top of the list.
 - Ask for confirmation before deleting a folder from the sidebar, noting that its subfolders and chats move up a level instead of being removed.
