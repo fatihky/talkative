@@ -8,25 +8,16 @@
  *   dragged fades in place and a DragGhost — a fixed copy of it, lifted
  *   with a shadow — follows the finger.
  * - A press that moves past DRAG_THRESHOLD picks the row up; a press that
- *   stops within it still taps whatever it landed on, and a swipe still
- *   scrolls. The row's own buttons (the ⋯ menu) arm the drag too, but —
- *   like a mouse's native drag — only once the finger starts on the row
- *   itself rather than on a control.
- * - The pressed element captures the pointer *only* while a drag is live.
- *   Capturing from the first press would retarget the tap's click to the
- *   row, so a button inside it would never receive it; waiting until the
- *   finger has moved keeps an elementFromPoint lookup valid for the drop
- *   target and suppresses the text-selection callout.
- * - The drop target is read with elementFromPoint. Targets carry
- *   data-drop-id (a folder id, or '' for the unfiled rest of the list),
- *   which keeps the thread visible underneath the drawer from matching.
+ *   stops within it still taps the link, and a swipe still scrolls.
+ * - The pressed element captures the pointer, so the drop target is read
+ *   with elementFromPoint. Targets carry data-drop-id (a folder id, or ''
+ *   for the unfiled rest of the list), which keeps the thread visible
+ *   underneath the drawer from matching.
  * - Holding near the list's top or bottom edge scrolls it, so a chat can
  *   be filed into a folder that is currently off screen.
  * - Nothing under the finger on release means nothing moves; Esc or a
  *   cancelled pointer drops the drag. A click ending a drag is swallowed
- *   so the row doesn't navigate too. A press abandoned before the drop
- *   (pointercancel with no ghost ever shown) leaves no swallow behind —
- *   that stray click is the tap the reader meant to make.
+ *   so the row doesn't navigate too.
  */
 'use client';
 
@@ -65,8 +56,6 @@ type TouchDragValue = {
   live: Live | null;
   /* arms a row on pointerdown and picks it up once the finger moves */
   begin: (drag: Drag, e: React.PointerEvent<HTMLElement>) => void;
-  /* marks the next click as part of a drag so the row doesn't also navigate */
-  swallowClick: () => void;
   /* the list's root element, itself the unfiled drop zone */
   zone: React.RefObject<HTMLElement | null>;
   /* the nearest scrolling ancestor of the list, whose edges scroll it */
@@ -74,8 +63,6 @@ type TouchDragValue = {
 };
 
 const Ctx = createContext<TouchDragValue | null>(null);
-
-const CONTROL = 'button, a, input, textarea, select, [contenteditable="true"]';
 
 /** the zone under a viewport point: folder id, '' for the unfiled area, null for neither */
 export function dropIdAt(x: number, y: number): string | null {
@@ -114,32 +101,15 @@ export function TouchDragProvider({
   const begin = useCallback(
     (drag: Drag, e: React.PointerEvent<HTMLElement>) => {
       if (e.pointerType === 'mouse' || e.button !== 0) return;
-      /* a press on one of the row's own controls is that control's tap, not
-         a drag — the same rule a mouse gets from native drag & drop */
-      const row = e.currentTarget as HTMLElement;
-      const control = (e.target as HTMLElement | null)?.closest(CONTROL);
-      const armed = !control || !row.contains(control);
       const from = { x: e.clientX, y: e.clientY };
-      const el = e.currentTarget;
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - from.x;
         const dy = ev.clientY - from.y;
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
         /* from here on the finger drags the row, not the list */
         ev.preventDefault();
-        if (!armed) {
-          release();
-          return;
-        }
         release();
         setSwallow(true);
-        /* only now take the pointer: capturing on the press would steal
-           the tap's click from the button under the finger */
-        try {
-          el.setPointerCapture(ev.pointerId);
-        } catch {
-          /* the pointer is already gone; the window listeners still finish */
-        }
         setLive({
           drag,
           origin: from,
@@ -149,19 +119,14 @@ export function TouchDragProvider({
           target: null,
         });
       };
-      const onCancel = () => {
-        /* an abandoned press never showed a ghost, so it isn't a drag */
-        release();
-        setSwallow(false);
-      };
       const release = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', release);
-        window.removeEventListener('pointercancel', onCancel);
+        window.removeEventListener('pointercancel', release);
       };
       window.addEventListener('pointermove', onMove, { passive: false });
       window.addEventListener('pointerup', release);
-      window.addEventListener('pointercancel', onCancel);
+      window.addEventListener('pointercancel', release);
     },
     [],
   );
@@ -273,11 +238,9 @@ export function TouchDragProvider({
     return () => document.removeEventListener('click', onClick, true);
   }, [swallow]);
 
-  const swallowClick = useCallback(() => setSwallow(true), []);
-
   const value = useMemo<TouchDragValue>(
-    () => ({ live, begin, swallowClick, zone, scope }),
-    [live, begin, swallowClick, scope],
+    () => ({ live, begin, zone, scope }),
+    [live, begin, scope],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -297,7 +260,6 @@ export function Draggable({
   children,
   className,
   zone,
-  render,
   ...rest
 }: {
   drag: Drag;
@@ -305,45 +267,24 @@ export function Draggable({
   className?: string;
   /* marks a folder row as that folder's drop zone; omit to be the unfiled area */
   zone?: string;
-  /* render the wrapper as an element other than a div (e.g. 'li' inside a list) */
-  render?: 'div' | 'li';
-} & Omit<
-  React.HTMLAttributes<HTMLElement>,
-  'children' | 'className' | 'ref'
->) {
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className'>) {
   const { live, begin } = useTouchDrag();
-  const ref = useRef<HTMLLIElement | HTMLDivElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const dragging = live?.drag.kind === drag.kind && live.drag.id === drag.id;
-  const Tag = render ?? 'div';
-  const shared = {
-    /* '' files into the folder the row lives in; rows outside folders are the unfiled area */
-    'data-drop-id': zone ?? '',
-    ...rest,
-    onPointerDown: (e: React.PointerEvent<HTMLElement>) => begin(drag, e),
-    className: `${className ?? ''} ${dragging ? 'opacity-30' : ''}`,
-    children: (
-      <>
-        {children}
-        {dragging && live && ref.current && (
-          <Ghost from={ref.current} live={live} />
-        )}
-      </>
-    ),
-  };
-  return Tag === 'li' ? (
-    <li
-      ref={(el) => {
-        ref.current = el;
-      }}
-      {...shared}
-    />
-  ) : (
+  return (
     <div
-      ref={(el) => {
-        ref.current = el;
-      }}
-      {...shared}
-    />
+      ref={ref}
+      /* '' files into the folder the row lives in; rows outside folders are the unfiled area */
+      data-drop-id={zone ?? ''}
+      {...rest}
+      onPointerDown={(e) => begin(drag, e)}
+      className={`${className ?? ''} ${dragging ? 'opacity-30' : ''}`}
+    >
+      {children}
+      {dragging && live && ref.current && (
+        <Ghost from={ref.current} live={live} />
+      )}
+    </div>
   );
 }
 

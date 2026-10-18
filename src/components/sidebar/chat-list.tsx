@@ -4,8 +4,7 @@
  * Business logic:
  * - Flattens the folder tree, filed chats, a PINNED section, and recency
  *   groups (TODAY…OLDER) into one absolutely positioned list; rows are
- *   windowed only past 50 items. The rows are a real <ul> of <li>s; the
- *   recency headers between them are buttons, not items.
+ *   windowed only past 50 items.
  * - Recency groups from PREVIOUS 7 DAYS down start collapsed; every group
  *   and PINNED toggle via its header.
  * - The filter matches chat titles and tags; folders whose name matches
@@ -289,8 +288,11 @@ export function ChatList({
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: virtualized list with a positioned spacer div
     <div
       ref={scroller}
+      role="list"
+      aria-label="Chats"
       className={`scroll-thin min-h-0 flex-1 overflow-y-auto ${
         dropTarget === 'root' ? 'bg-[var(--accent-weak)]' : ''
       }`}
@@ -309,12 +311,7 @@ export function ChatList({
           No chats match “{filter}”.
         </div>
       )}
-      {/* the rows are the list; the spacer between them is presentational */}
-      <ul
-        aria-label="Chats"
-        className="relative m-0 list-none p-0"
-        style={{ height: total }}
-      >
+      <div style={{ height: total, position: 'relative' }}>
         {visible.map((f, k) => {
           const idx = startRaw + k;
           const top = offsets[idx] ?? 0;
@@ -355,7 +352,7 @@ export function ChatList({
             );
           if (f.type === 'folder')
             return (
-              <li
+              <div
                 key={`f-${f.folder.id}`}
                 style={{
                   position: 'absolute',
@@ -375,10 +372,11 @@ export function ChatList({
                   onDropHover={hover(f.folder.id)}
                   onDropHere={drop(f.folder.id)}
                 />
-              </li>
+              </div>
             );
           return (
-            <li
+            // biome-ignore lint/a11y/noStaticElementInteractions: drop target only; the row inside carries the interactions
+            <div
               key={f.chat.id}
               style={{
                 position: 'absolute',
@@ -399,10 +397,10 @@ export function ChatList({
                 setRenaming={(v) => setRenamingId(v ? f.chat.id : null)}
                 onDrag={onDrag}
               />
-            </li>
+            </div>
           );
         })}
-      </ul>
+          </div>
         </ListZone>
       </TouchDragProvider>
     </div>

@@ -20,17 +20,3 @@ export type TouchDrag = {
 export const DRAG_THRESHOLD = 8;
 
 export const indent = (depth: number) => 10 + depth * 12;
-
-/**
- * Menu close→focus handoff for a sidebar row's ⋯ trigger. Esc asks the menu
- * to put focus back, but the ⋯ is hidden on pointer-hover rows, so focus is
- * only moved when it is already parked on that trigger; otherwise the key
- * handler would drop focus to the page and lose the row's place.
- */
-export const restoreMenuFocus = (
-  restoreFocus: boolean | undefined,
-  anchor: HTMLElement | null,
-) => {
-  if (restoreFocus && anchor && document.activeElement === anchor)
-    anchor.focus({ preventScroll: true });
-};

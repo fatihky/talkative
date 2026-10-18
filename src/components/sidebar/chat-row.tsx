@@ -16,9 +16,6 @@
  *   swaps to the move menu, which the actions menu's onClose leaves open.
  * - Draggable for filing into folders, disabled while renaming; on touch
  *   screens Draggable picks up a drag from the same press instead.
- * - Renders as an <li> (the sidebar list is a <ul>); the ⋯ sits absolutely
- *   over the row's end and toggles the menu, and stays visible while it
- *   has focus so a keyboard user isn't left with a hidden trigger.
  */
 'use client';
 
@@ -35,7 +32,7 @@ import {
 } from '../../stores';
 import type { ChatSummary } from '../../types';
 import { chatActionsMenu } from '../chat-actions';
-import { type Drag, DRAG_MIME, indent, restoreMenuFocus } from './drag';
+import { type Drag, DRAG_MIME, indent } from './drag';
 import { MoveMenu } from './move-menu';
 import { Draggable } from './touch-drag';
 
@@ -57,17 +54,6 @@ export function ChatRow({
   const [menu, setMenu] = useState<'actions' | 'move' | null>(null);
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
   const [title, setTitle] = useState(chat.title);
-  /* the ⋯ hides on pointer-hover rows, so closing a menu restores focus
-     only when it is already on the trigger (restoreMenuFocus) */
-  const closeMenu = (restoreFocus: boolean) => {
-    setMenu((m) => (m === 'actions' ? null : m));
-    restoreMenuFocus(restoreFocus, menuAnchor.current);
-  };
-  const closeMove = (restoreFocus?: boolean) => {
-    setMenu(null);
-    restoreMenuFocus(restoreFocus, menuAnchor.current);
-  };
-
   const hasFolders = useFoldersStore((s) => s.items.length > 0);
   const mobile = useLayoutStore((s) => s.vw < 768);
   const classifying = useChatsStore((s) => s.classifying[chat.id] === true);
@@ -76,18 +62,19 @@ export function ChatRow({
   );
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div
     <Draggable
-      render="li"
       drag={{ kind: 'chat', id: chat.id }}
-      className={`group absolute inset-x-0 flex h-10 items-center gap-2 border-l-2 pr-1 text-left ${
+      className={`group relative flex h-10 w-full items-center gap-2 border-l-2 pr-1 text-left ${
         active
           ? 'border-l-[var(--accent)] bg-[var(--accent-weak)]'
           : 'border-l-transparent hover:bg-[var(--sunken)]'
       }`}
     >
     <div
-      className="flex h-full w-full items-center gap-2"
+      className="flex size-full items-center gap-2"
       style={{ paddingLeft: indent(depth) }}
+      role="listitem"
       draggable={!renaming}
       onDragStart={(e) => {
         e.dataTransfer.setData(DRAG_MIME, chat.id);
@@ -120,9 +107,7 @@ export function ChatRow({
           setTitle(chat.title);
           setRenaming(true);
         }}
-        /* the title keeps the row's full width; the ⋯ floats over its tail
-           and only appears on hover, so nothing is lost when it is hidden */
-        className="block w-full min-w-0 flex-1 text-left no-underline"
+        className="block min-w-0 flex-1 text-left no-underline"
         aria-label={`Open chat ${chat.title}`}
       >
         <span className="flex items-center gap-1.5 truncate text-[13px] font-[500] leading-tight">
@@ -148,15 +133,15 @@ export function ChatRow({
         type="button"
         aria-label={`Actions for ${chat.title}`}
         aria-expanded={menu !== null}
-        onClick={() => setMenu((m) => (m === null ? 'actions' : null))}
-        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-focus-within:flex group-hover:flex hover:bg-[var(--border)] max-md:flex"
+        onClick={() => setMenu('actions')}
+        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
       >
         <I n="dots" s={14} />
       </button>
       <Menu
         open={menu === 'actions'}
         anchor={menuAnchor}
-        onClose={closeMenu}
+        onClose={() => setMenu((m) => (m === 'actions' ? null : m))}
         items={chatActionsMenu({
           chat,
           hasFolders,
@@ -170,7 +155,7 @@ export function ChatRow({
       <MoveMenu
         open={menu === 'move'}
         anchor={menuAnchor}
-        onClose={closeMove}
+        onClose={() => setMenu(null)}
         current={chat.folderId ?? null}
         onPick={(folderId) => actions.moveChat(chat.id, folderId)}
       />

@@ -5,9 +5,7 @@
  * Business logic:
  * - Popover portals into document.body and positions from the anchor's
  *   rect, so it escapes the overflow and stacking contexts of the sidebar,
- *   composer and right panel that open it. It paints above every sheet and
- *   scrim (the mobile drawer, the right panel) but below the dialogs
- *   (z 60), so a row's ⋯ menu stays clickable inside the phone drawer.
+ *   composer and right panel that open it.
  * - It keeps an 8px gap, opens upward by default, flips below the anchor
  *   when the top would run off screen, and clamps into the viewport; it
  *   re-measures on window resize and whenever its own content resizes.
@@ -63,10 +61,6 @@ export function Popover({
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  /* the listener below lives as long as `open`, but callers pass a fresh
-     onClose each render; read the latest instead of re-subscribing */
-  const close = useRef(onClose);
-  close.current = onClose;
 
   useLayoutEffect(() => {
     if (!open) {
@@ -98,22 +92,15 @@ export function Popover({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      /* a detached target (removed while the press was in flight) isn't this popover's */
-      const t = e.target;
-      if (!(t instanceof Node)) return;
-      const path = e.composedPath();
-      const own = (el: HTMLElement | null) =>
-        !!el && (path.includes(el) || el.contains(t));
-      /* the trigger belongs to the caller: while the menu stays open its
-         pointerdown-toggle is ignored, so it must count as inside */
-      if (own(ref.current) || own(anchor.current)) return;
-      close.current(false);
+      const t = e.target as Node;
+      if (ref.current?.contains(t) || anchor.current?.contains(t)) return;
+      onClose(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         e.preventDefault();
-        close.current(true);
+        onClose(true);
       }
     };
     document.addEventListener('pointerdown', onDown, true);
@@ -122,7 +109,7 @@ export function Popover({
       document.removeEventListener('pointerdown', onDown, true);
       document.removeEventListener('keydown', onKey, true);
     };
-  }, [open, anchor]);
+  }, [open, anchor, onClose]);
 
   if (!open) return null;
   return createPortal(
@@ -263,9 +250,6 @@ export function Menu({
   items,
   placement = 'bottom-end',
   width = 180,
-  /* menus opened from inside a sheet (the sidebar drawer on phones) must
-     paint above its scrim and sheet, which sit at z 50 */
-  z = 55,
 }: {
   open: boolean;
   anchor: RefObject<HTMLElement | null>;
@@ -273,7 +257,6 @@ export function Menu({
   items: MenuItem[];
   placement?: Placement;
   width?: number;
-  z?: number;
 }) {
   const isAction = (i: number) => {
     const it = items[i];
@@ -327,7 +310,7 @@ export function Menu({
       onClose={onClose}
       placement={placement}
       width={width}
-      z={z}
+      z={40}
     >
       <div ref={listRef} tabIndex={-1} className="py-1 outline-none">
         {items.map((item, k) =>
