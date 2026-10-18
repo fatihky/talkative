@@ -46,6 +46,7 @@ type RoutePath = Extract<ComponentProps<typeof Link>['to'], string>;
 export function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const vw = useLayoutStore((s) => s.vw);
+  const sidebarWidth = useLayoutStore((s) => s.sidebarWidth);
   const _sidebarCollapsed = useLayoutStore((s) => s.sidebarCollapsed);
   const mobileNav = useLayoutStore((s) => s.mobileNav);
   const paletteOpen = useUIStore((s) => s.palette);
@@ -235,7 +236,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               drawer.exiting ? 'anim-out-left pointer-events-none' : 'anim-in-left'
             }`}
           >
-            <div className="flex h-[var(--h-topbar)] w-64 items-center justify-end border-b border-[var(--border)] bg-[var(--panel)] pr-2">
+            {/* the close bar matches the drawer's stored sidebar width, so
+                the two pieces line up even after the sidebar was resized */}
+            <div
+              className="flex h-[var(--h-topbar)] shrink-0 items-center justify-end border-b border-[var(--border)] bg-[var(--panel)] pr-2"
+              style={{ width: sidebarWidth }}
+            >
               <button
                 type="button"
                 aria-label="Close sidebar"
@@ -245,7 +251,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <I n="x" s={14} />
               </button>
             </div>
-            <div className="h-[calc(100%-40px)]">
+            <div className="h-[calc(100%-var(--h-topbar))]">
               <Sidebar inDrawer />
             </div>
           </div>

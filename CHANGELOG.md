@@ -19,6 +19,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
 
 ### Fixed
+- Match the mobile drawer's close bar to the sidebar's stored width (it was pinned to `w-64`) and to the topbar height, so the two pieces no longer show a step where the upper strip is narrower than the list below it.
 - Make the sidebar's ⋯ menus open on touch screens: the row's pointer handler captured the press and stole every click inside the row (the ⋯ trigger, and the folder chevron once it gained a 32px touch target), and the menu painted *under* the mobile drawer's scrim; the pointer is now captured only when a drag actually starts, presses on a row's own controls never arm a drag, and menus render above sheets but below dialogs.
 - Make the sidebar row itself clickable again (it had collapsed to zero height because its hover-only ⋯ was the only in-flow child beside the title's `min-w-0` link), and stop a press inside an open menu from being routed away from it by reading the event's composed path.
 - Give sidebar rows their own list semantics (`<ul>`/`<li>`) instead of the scroll container pretending to be the list, and keep the ⋯ trigger visible while it has keyboard focus so its menu stays reachable without a mouse.
