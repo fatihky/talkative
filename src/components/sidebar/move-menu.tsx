@@ -27,7 +27,8 @@ export function MoveMenu({
 }: {
   open: boolean;
   anchor: RefObject<HTMLElement | null>;
-  onClose: () => void;
+  /* true when Esc asked to close, so the caller can put focus back on its trigger */
+  onClose: (restoreFocus?: boolean) => void;
   current: string | null;
   /* a folder can't go into itself or its own subtree */
   exclude?: string | undefined;

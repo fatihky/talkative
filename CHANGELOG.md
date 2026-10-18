@@ -19,6 +19,9 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
 
 ### Fixed
+- Make the sidebar's ⋯ menus open on touch screens: the row's pointer handler captured the press and stole every click inside the row (the ⋯ trigger, and the folder chevron once it gained a 32px touch target), and the menu painted *under* the mobile drawer's scrim; the pointer is now captured only when a drag actually starts, presses on a row's own controls never arm a drag, and menus render above sheets but below dialogs.
+- Make the sidebar row itself clickable again (it had collapsed to zero height because its hover-only ⋯ was the only in-flow child beside the title's `min-w-0` link), and stop a press inside an open menu from being routed away from it by reading the event's composed path.
+- Give sidebar rows their own list semantics (`<ul>`/`<li>`) instead of the scroll container pretending to be the list, and keep the ⋯ trigger visible while it has keyboard focus so its menu stays reachable without a mouse.
 - Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.
 - Wire the right panel's chat-scope system prompt box to the active chat (it was an unwired stub), with Save, Discard and a saved/unsaved label so a stored prompt edit is always visible.
 - Copy `pnpm-workspace.yaml` into the Docker runtime stage so pnpm settings (build allowlist, release-age excludes) still apply to the container's `pnpm db:migrate` command.
