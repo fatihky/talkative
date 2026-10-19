@@ -1,9 +1,9 @@
 /*
  * CopyButton — copies message text with a brief "Copied" confirmation.
  *
- * The handoff styles copy as a `.msg-actions button`: a bordered pill
- * with an icon and, for user turns, a "Copy" text label; assistant turns
- * use the icon-only variant. `label` toggles the text.
+ * The handoff styles copy as a `.msg-actions button.icon-only`: a bordered
+ * icon-only pill; the clipboard icon swaps to a check while the "Copied"
+ * tooltip is showing. The accessible name carries the state.
  */
 'use client';
 
@@ -11,13 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { I } from '../../lib/icons';
 import { Tip } from '../../lib/popover';
 
-export function CopyButton({
-  text,
-  label = false,
-}: {
-  text: string;
-  label?: boolean;
-}) {
+export function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => clearTimeout(timer.current ?? undefined), []);
@@ -37,10 +31,9 @@ export function CopyButton({
         type="button"
         onClick={copy}
         aria-label={copied ? 'Copied' : 'Copy message'}
-        className={label ? undefined : 'icon-only'}
+        className="icon-only"
       >
         <I n={copied ? 'check' : 'copy'} s={12} />
-        {label && <span>{copied ? 'Copied' : 'Copy'}</span>}
       </button>
     </Tip>
   );

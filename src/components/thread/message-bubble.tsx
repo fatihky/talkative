@@ -239,7 +239,7 @@ export function MessageBubble({
                 <BranchNav chatId={chatId} ids={siblings} id={m.id} />
               )}
 
-              {m.content && <CopyButton text={m.content} label={isUser} />}
+              {m.content && <CopyButton text={m.content} />}
 
               {!isUser && m.status === 'done' && m.usage && (
                 <Tip label={statsTooltip(m)} side="top">
@@ -260,9 +260,9 @@ export function MessageBubble({
                     disabled={busy}
                     onClick={() => setEditing(true)}
                     aria-label="Edit message"
+                    className="icon-only"
                   >
                     <I n="pencil" s={12} />
-                    <span>Edit</span>
                   </button>
                 </Tip>
               )}
