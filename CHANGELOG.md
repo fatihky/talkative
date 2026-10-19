@@ -9,6 +9,12 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+<!-- Add entries under the matching group below (create it if missing):
+     ### Added / ### Changed / ### Fixed / ### Removed / ### Security
+     One line per change, imperative mood. Cut a versioned heading only on release. -->
+
+## [0.1.2] - 2026-10-20
+
 ### Added
 
 - Give the thread header's ⋯ menu the same chat actions as the sidebar row (rename, pin, system prompt, move to folder, export, delete) and add "Move to…" to it, built from one shared list so the two menus can't drift.
@@ -58,8 +64,5 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Redesign the UI to the handoff: chat turns, tool cards, the `ask_user`/reasoning views, and the composer's model/tool pickers, plus a new `Pill` primitive and ripple animation.
 
 [0.1.1]: https://github.com/fatihky/talkative/releases/tag/v0.1.1
-[Unreleased]: https://github.com/fatihky/talkative/compare/v0.1.1...HEAD
-
-<!-- Add entries under the matching group below (create it if missing):
-     ### Added / ### Changed / ### Fixed / ### Removed / ### Security
-     One line per change, imperative mood. Cut a versioned heading only on release. -->
+[0.1.2]: https://github.com/fatihky/talkative/releases/tag/v0.1.2
+[Unreleased]: https://github.com/fatihky/talkative/compare/v0.1.2...HEAD
