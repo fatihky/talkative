@@ -22,6 +22,9 @@
  *   and closeModelBarPopover can put focus back on its trigger. the
  *   system-prompt target sits here rather than in the sidebar row that
  *   opens it, since that row unmounts when the list virtualizes it away.
+ *   chatModelPicker holds the chat whose model the chat-model dialog is
+ *   picking; it opens from the sidebar row and the thread header, so the
+ *   dialog has to live outside both.
  * - confirm() opens the modal and returns a promise the dialog answers
  *   through answerConfirm; the resolver is kept outside state and opening
  *   another confirm resolves the pending one false, so only one is ever
@@ -88,6 +91,8 @@ type UIState = {
   confirm: ConfirmRequest | null;
   /* open text prompt; answered through `askText()`'s promise */
   textPrompt: TextRequest | null;
+  /* chat whose model the chat-model dialog is picking, or null when it is closed */
+  chatModelPicker: string | null;
 };
 
 export const useUIStore = create<UIState>()(() => ({
@@ -113,6 +118,7 @@ export const useUIStore = create<UIState>()(() => ({
   confirmToolFor: null,
   confirm: null,
   textPrompt: null,
+  chatModelPicker: null,
 }));
 
 const set = useUIStore.setState;
@@ -164,6 +170,13 @@ export const uiActions = {
   },
   closeToolConfirm() {
     set({ confirmToolFor: null });
+  },
+  /** opens the chat-model dialog: picks one chat's model without moving the new-chat default */
+  openChatModelPicker(chatId: string) {
+    set({ chatModelPicker: chatId });
+  },
+  closeChatModelPicker() {
+    set({ chatModelPicker: null });
   },
   openModelBarPopover(which: Exclude<ModelBarPopover, null>) {
     /* §7.4 only one model/tool-bar popover at a time — instant swap */

@@ -4,7 +4,9 @@
  * Business logic:
  * - RecentModelsRow lists recently used models; it hides entirely when
  *   there are none, skips ids missing from the catalog, and clicking a
- *   name selects that model for the draft.
+ *   name selects that model for the draft. It lives on home, so the pick is
+ *   the new-chat default: it goes through setModel, which records it for
+ *   the chats this model starts and never reopens a chat's model.
  * - StageHint is a static shortcut legend (send, newline, search, tools,
  *   params) using the platform's mod key.
  */

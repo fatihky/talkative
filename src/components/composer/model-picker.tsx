@@ -9,9 +9,12 @@
  *   (vision, tools, decision, …); opening resets the
  *   query, focuses search, and highlights the current pick; arrows move
  *   and Enter selects.
- * - an explicit pick becomes the app-wide default for new chats
- *   (localStorage), while reopening a chat preselects the model of its
- *   latest reply on screen without touching that default.
+ * - an explicit pick is the app-wide default for new chats
+ *   (localStorage), and also applies to the chat being composed in; the
+ *   footer says so on home. It is not the way to change one chat: that is
+ *   "Change model…" in the chat's actions menu, via the chat-model dialog,
+ *   which never touches the default. Reopening a chat preselects the model
+ *   of its latest reply on screen without touching that default.
  * - options carry provider, size, context window, per-M pricing, and
  *   capability badges (thinking/vision/tools/fast, plus "no key" and
  *   "stale"); names wrap instead of truncating.

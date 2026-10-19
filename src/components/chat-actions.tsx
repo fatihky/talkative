@@ -4,10 +4,14 @@
  *
  * Business logic:
  * - One list feeds both places so they can't drift: rename, pin/unpin,
- *   system prompt, move to…, export as text, and delete behind a confirm
- *   dialog.
+ *   change model, system prompt, move to…, export as text, and delete
+ *   behind a confirm dialog.
  * - Rename differs by surface: the sidebar starts its inline editor and
  *   the thread header opens a prompt dialog, so the label comes in.
+ * - "Change model…" is offered only for a chat that exists (callers pass
+ *   its current modelId) and opens the chat-model dialog, which picks that
+ *   one chat's model without moving the new-chat default; the composer
+ *   picker stays the place for a new chat's model.
  * - "Move to…" is offered only when at least one folder exists, and it
  *   reports back instead of navigating, because the move picker is a
  *   separate menu the caller keeps open (the actions menu's onClose only
@@ -31,7 +35,7 @@ export function chatActionsMenu({
   onMove,
 }: {
   chat: Pick<ChatSummary, 'id' | 'title' | 'pinnedAt'> &
-    Partial<Pick<ChatSummary, 'systemPrompt'>>;
+    Partial<Pick<ChatSummary, 'systemPrompt' | 'modelId'>>;
   hasFolders: boolean;
   renameLabel?: string;
   /* small screens: mention that the row can be dragged into a folder */
@@ -47,6 +51,14 @@ export function chatActionsMenu({
       label: chat.pinnedAt ? 'Unpin' : 'Pin to top',
       onSelect: () => actions.pinChat(chat.id, !chat.pinnedAt),
     },
+    ...('modelId' in chat
+      ? [
+          {
+            label: 'Change model…',
+            onSelect: () => actions.openChatModelPicker(chat.id),
+          },
+        ]
+      : []),
     ...(promptReady
       ? [
           {

@@ -7,7 +7,9 @@
  *   while the draft is empty.
  * - the attach button only appears on wide (≥768px) layouts.
  * - the send-key hint follows the enterToSend pref (Enter vs
- *   ⌘/Ctrl+Enter) and is replaced by "Queued on reconnect" offline.
+ *   ⌘/Ctrl+Enter) and is replaced by "Queued on reconnect" offline; on
+ *   home it names the pick as the default model for new chats, so a chat's
+ *   own model (changed from "Change model…") is never mistaken for it.
  * - streaming/sending/blockedReason/queueCount pass through to the
  *   SendButton, so sending during a live run queues the turn instead
  *   of being rejected.
@@ -24,8 +26,7 @@ import {
   useNetworkStore,
   usePrefsStore,
   useUIStore,
-} from '../../stores';
-import { Kbd } from '../../ui/primitives';
+} from '../../stores';import { Kbd } from '../../ui/primitives';
 import { ModelPicker, ParamsButton } from './model-picker';
 import { SendButton } from './send-button';
 
@@ -56,6 +57,7 @@ export function ComposerFooter({
   const enterToSend = usePrefsStore((s) => s.enterToSend);
   const conn = useNetworkStore((s) => s.connection);
   const mod = useUIStore((s) => s.mod);
+  const onHome = useUIStore((s) => s.context === 'new');
   const wide = useLayoutStore((s) => s.vw >= 768);
 
   return (
@@ -88,6 +90,8 @@ export function ComposerFooter({
           <span className="flex items-center gap-1.5 text-[11px] muted">
             {conn === 'offline' ? (
               'Queued on reconnect'
+            ) : onHome ? (
+              'default model for new chats'
             ) : enterToSend ? (
               <>
                 Enter to send <Kbd>⏎</Kbd>
