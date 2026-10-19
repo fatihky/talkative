@@ -941,7 +941,8 @@ select:focus-visible {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 13px;
+  /* 16px keeps iOS Safari from zooming the viewport on focus */
+  font-size: 16px;
   color: var(--fg);
 }
 .model-menu-search input:focus {

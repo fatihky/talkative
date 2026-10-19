@@ -175,7 +175,7 @@ export function DecisionModelPicker() {
                 }
               }
             }}
-            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2 text-[13px] outline-none placeholder:text-[var(--text-3)]"
+            className="w-full border-b border-[var(--border)] bg-transparent px-3 py-2 text-[16px] outline-none placeholder:text-[var(--text-3)]"
           />
           <div
             id={listId}
