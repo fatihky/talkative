@@ -11,7 +11,7 @@
  *   straight to /notes/<id>, so the editor opens immediately; a failed
  *   POST takes the note back out of the list and toasts.
  * - editNote patches the store per keystroke and queues one debounced
- *   PATCH per note (500ms) that merges the pending title and text;
+ *   PATCH per note (1500ms) that merges the pending title and text;
  *   flushNote sends it at once, e.g. when the editor unmounts.
  * - a save waits on its note's in-flight create (the `creating` map) so
  *   the first keystrokes can't PATCH a row that doesn't exist yet, and
@@ -49,7 +49,7 @@ export const useNotesStore = create<NotesState>()(() => ({
 const set = useNotesStore.setState;
 const get = useNotesStore.getState;
 const errorText = (e: unknown) => (e instanceof Error ? e.message : 'error');
-const SAVE_DELAY_MS = 500;
+const SAVE_DELAY_MS = 1500;
 
 export const setNoteItems = (items: Note[]) => {
   const sorted = [...items].sort((a, b) => b.createdAt - a.createdAt);

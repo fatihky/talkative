@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Changed
+
+- Slow note auto-save from a 500ms to a 1500ms debounce so continuous typing sends fewer PATCH requests (leaving the editor still flushes immediately).
+
 <!-- Add entries under the matching group below (create it if missing):
      ### Added / ### Changed / ### Fixed / ### Removed / ### Security
      One line per change, imperative mood. Cut a versioned heading only on release. -->
