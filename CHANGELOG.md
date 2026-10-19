@@ -18,6 +18,9 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - List `get_current_timestamp` first in the Tools grants popover so the clock tool sits at the top of the list.
 - Ask for confirmation before deleting a folder from the sidebar, noting that its subfolders and chats move up a level instead of being removed.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
+- Keep the new-chat default model out of existing chats: picking a model with a chat open now only applies to that chat instead of also moving the default underneath the next one, and "Change model…" in a chat's ⋯ menu picks one chat's model through its own dialog without touching the default.
+- Keep a chat's own model through "Regenerate": it answers again with the chat's model instead of the composer's (and so the workspace default), and clicking a recent model on home no longer reopens that chat's model.
+- Size the model picker's search input at 16px so iOS Safari no longer zooms the page when it's focused.
 
 ### Fixed
 - Match the mobile drawer's close bar to the sidebar's stored width (it was pinned to `w-64`) and to the topbar height, so the two pieces no longer show a step where the upper strip is narrower than the list below it.
