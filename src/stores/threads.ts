@@ -172,7 +172,7 @@ export const branchPath = (messages: Msg[], leafId: string | null): Msg[] => {
 const picks = new Map<string, Map<string | null, string>>();
 
 /** the composer reopens with the model of the newest message on the branch on screen */
-const applyThreadModel = (chatId: string) => {
+export const applyThreadModel = (chatId: string) => {
   const t = get().threads[chatId];
   if (!t) return;
   let id: string | undefined;

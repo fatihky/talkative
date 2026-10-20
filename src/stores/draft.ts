@@ -6,8 +6,8 @@
  * - every setDraft() write is mirrored to localStorage 'home.draft'
  *   (debounced 400ms), persistParams() writes 'home.lastParams' (thinking
  *   level, overrides, scope, account-wide tool choices) and setModel
- *   writes 'home.lastModel'; boot restores all three and a successful
- *   send clears the draft.
+ *   writes 'home.lastModel' (the new-chat default, see below); boot
+ *   restores all three and a successful send clears the draft.
  * - tool choices are layered: account-wide defaultTools, then a per-chat
  *   copy held in a module-scoped map (never serialized), reapplied
  *   whenever ui.context changes so the tool bar always belongs to the
@@ -32,6 +32,14 @@
  *   falls back lastModel → workspace default → first healthy model, and
  *   applyChatModel ignores a model the catalog no longer has so the bar
  *   doesn't read '—'.
+ * - 'home.lastModel' is the *new-chat* default and is only written when a
+ *   new chat can actually start with the model: a picker choice on home,
+ *   discardDraft/resetDraft (the fresh draft the next new chat gets) and a
+ *   successful first send. A chat's own model lives on its row, so a pick
+ *   inside a chat (setModel → applyChatModel) re-selects it there, and a
+ *   chat page clears the composer's model until its thread names one — no
+ *   chat's model can slip into the default, and no reload (boot skips the
+ *   model step outside a new-chat context) can carry one into it.
  * - text past 2000 chars raises the long-paste notice, which
  *   convertPasteToFile answers by moving it into a pasted-text.txt
  *   attachment; discardDraft/resetDraft go back to a fresh draft (default
@@ -279,6 +287,13 @@ export const resolveModelId = (): string => {
   return firstOk?.id ?? WORKSPACE_DEFAULT_MODEL;
 };
 
+/** the model row a chat's own turns name; before the catalog loads, an id is still a known model */
+export const knownModelId = (id: string | undefined): id is string =>
+  id !== undefined &&
+  !useModelsStore
+    .getState()
+    .items.some((m) => m.id === id && m.status === 'error');
+
 /* tool grants and backend picks are user preferences, so a fresh draft keeps them */
 const freshDraft = (modelId: string): Draft => ({
   ...defaultDraft(modelId),
@@ -374,13 +389,19 @@ export const draftActions = {
       useUIStore.setState({ longPaste: true });
   },
   discardDraft() {
-    setDraft(freshDraft(get().modelId));
+    const modelId = resolveModelId();
+    setDraft(freshDraft(modelId));
+    /* a discarded draft falls back to the new-chat default, not to a chat's model */
+    LS.set('home.lastModel', modelId);
     useDraftStore.setState({ systemPrompt: '' });
     LS.set('home.draft', get());
     useUIStore.setState({ draftNotice: false, longPaste: false });
   },
   resetDraft() {
-    setDraft(freshDraft(resolveModelId()));
+    const modelId = resolveModelId();
+    setDraft(freshDraft(modelId));
+    /* the fresh draft is the next new chat's; a chat's model is never written into it */
+    LS.set('home.lastModel', modelId);
     /* a new chat is unfiled until the folder screen claims it */
     useDraftStore.setState({ pendingFolderId: null, systemPrompt: '' });
     LS.set('home.draft', get());
@@ -445,9 +466,18 @@ export const draftActions = {
 
   /* model bar */
   setModel(id: string, fromBoot = false) {
-    applyModel(id, fromBoot);
-    /* the user's pick is the app-wide default used when a new chat starts */
-    LS.set('home.lastModel', id);
+    if (fromBoot) {
+      applyModel(id, true);
+      return;
+    }
+    if (useUIStore.getState().context === 'new') {
+      /* on home the pick is the default the next new chat starts on */
+      applyModel(id, false);
+      LS.set('home.lastModel', id);
+      return;
+    }
+    /* in a chat it re-selects that chat's model, which the next turn stores on its row */
+    applyModel(id, false);
   },
   /* reopening a chat pre-selects its last message's model, leaving the new-chat default alone */
   applyChatModel(id: string) {
@@ -458,7 +488,11 @@ export const draftActions = {
       !items.some((m) => m.id === id && m.status !== 'error')
     )
       return;
-    applyModel(id, true);
+    applyModel(id, false);
+  },
+  /* a chat page shows no model until its thread names one; never the new-chat default */
+  clearChatModel() {
+    useDraftStore.setState({ modelId: '' });
   },
   setThinkingLevel(level: ThinkingLevel) {
     setDraft({ thinkingLevel: level });

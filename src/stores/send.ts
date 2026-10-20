@@ -63,6 +63,7 @@ import type { ChatSummary } from '../types';
 import { setClassifying, useChatsStore } from './chats';
 import {
   effectiveGrants,
+  knownModelId,
   rememberActiveTools,
   setDraft,
   useDraftStore,
@@ -233,6 +234,8 @@ export const sendActions = {
         LS.del('home.draft');
         setDraft({ text: '', attachments: [] });
         useDraftStore.setState({ systemPrompt: '' });
+        /* the chat just started on this model; it is now the default the next new chat gets */
+        LS.set('home.lastModel', payload.modelId);
         addSessionCost(est.cost);
         useUIStore.setState({ sending: false, noToolsNote: false });
         applySent(chatId, userMsg.id, res);
@@ -396,10 +399,17 @@ export const sendActions = {
   /** answers reply `msgId`'s user turn again with the selected model, as a sibling branch */
   regenerate(chatId: string, msgId: string) {
     const d = useDraftStore.getState();
+    /* the composer's model is empty until a chat's thread names one (see clearChatModel) */
+    const replyModelId = useThreadsStore
+      .getState()
+      .threads[chatId]?.messages.find((x) => x.id === msgId)?.modelId;
     rememberActiveTools(chatId);
     startBranch(chatId, 'regenerate', () =>
       regenerateMessage(msgId, {
-        modelId: d.modelId,
+        /* a chat page with no model picked yet answers with the model of the reply it re-runs */
+        modelId: knownModelId(d.modelId)
+          ? d.modelId
+          : (replyModelId ?? d.modelId),
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),
@@ -416,7 +426,7 @@ export const sendActions = {
     startBranch(chatId, 'retry', () =>
       retryToolCall(msgId, callId, {
         /* the reply is continued mid-way, so it stays with the model that started it */
-        modelId: m?.modelId ?? d.modelId,
+        modelId: knownModelId(m?.modelId) ? m.modelId : d.modelId,
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),

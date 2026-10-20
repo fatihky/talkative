@@ -24,6 +24,10 @@
  *   viewport is ≥1100px and there's no deep-link hash. tools, folders,
  *   notes and provider health load in parallel without gating, and a
  *   failure only downgrades its own store if it has no cache to show.
+ * - that model step only runs on a new-chat context: reloading on a chat
+ *   page lets the thread reopen with the chat's own model, so the
+ *   new-chat default can neither replace what the chat shows nor slip
+ *   into the next chat through the persisted home.draft.
  * - server-saved tool preferences override the localStorage copy, and are
  *   skipped entirely while simulating offline.
  * - boot also wires the online/offline listeners: connection becomes
@@ -275,8 +279,13 @@ export const bootActions = {
         useChatsStore.setState({ items: c, status: 'ready', filter: '' });
         LS.set('cache.chats', c);
       }
-      /* §7.1 step 4: resolve selected model (also applies step 6 clamp) */
-      draftActions.setModel(resolveModelId(), true);
+      /* §7.1 step 4: resolve selected model (also applies step 6 clamp).
+         On a chat page the thread reopens with the chat's own model
+         (ThreadScreen → loadThread), so seeding the composer here would only
+         clobber it — and the persisted draft it mirrors — with the new-chat
+         default. Home and every other screen are context 'new'. */
+      if (useUIStore.getState().context === 'new')
+        draftActions.setModel(resolveModelId(), true);
       if (!useUIStore.getState().stageVisible && !cached)
         useUIStore.setState({ stageVisible: true });
 

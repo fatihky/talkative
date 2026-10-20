@@ -130,14 +130,20 @@ export function ModelPicker() {
     </button>
   );
 
+  /* a chat whose thread hasn't named its model yet (see draftActions.clearChatModel)
+     shows nothing to pick — never the new-chat default it hasn't used */
+  const waitingForChat = model === null && status === 'ready';
+
   return (
     <>
-      <Tip
-        label={model ? `${model.id} · ${model.provider}` : 'Model'}
-        side="top"
-      >
-        {trigger}
-      </Tip>
+      {!waitingForChat && (
+        <Tip
+          label={model ? `${model.id} · ${model.provider}` : 'Model'}
+          side="top"
+        >
+          {trigger}
+        </Tip>
+      )}
       <Popover
         open={open}
         anchor={anchor}

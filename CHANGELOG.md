@@ -20,6 +20,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
 
 ### Fixed
+- Keep the new-chat default model from leaking into existing chats: reloading on a chat page no longer overwrites that chat (and the persisted draft) with the default, picking a model inside a chat only re-selects it for that chat instead of also becoming the default, and a chat whose thread hasn't loaded yet shows no model rather than the default it never used.
 - Match the mobile drawer's close bar to the sidebar's stored width (it was pinned to `w-64`) and to the topbar height, so the two pieces no longer show a step where the upper strip is narrower than the list below it.
 - Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.
 - Wire the right panel's chat-scope system prompt box to the active chat (it was an unwired stub), with Save, Discard and a saved/unsaved label so a stored prompt edit is always visible.

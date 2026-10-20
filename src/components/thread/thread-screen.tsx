@@ -5,6 +5,9 @@
  * - opening a chat makes it the active context and loads its thread;
  *   only the active branch path renders, while all messages feed the
  *   per-parent sibling map behind each turn's BranchNav.
+ * - the composer's model is cleared on (re)opening a chat and filled from
+ *   the thread as soon as it is in memory, so a chat never displays — or
+ *   persists into home.draft — the new-chat default it hasn't used.
  * - a ?leaf=<messageId> query switches to that branch — how published
  *   artifacts and settings links return to their source chat/branch.
  * - the header carries the title, a branch-count badge, and a ⋯ menu
@@ -29,7 +32,7 @@ import { useRouter } from 'waku';
 import { I } from '../../lib/icons';
 import { Menu, Tip } from '../../lib/popover';
 import { actions, useChatsStore, useFoldersStore, useThreadsStore } from '../../stores';
-import { branchPath } from '../../stores/threads';
+import { applyThreadModel, branchPath } from '../../stores/threads';
 import { chatActionsMenu } from '../chat-actions';
 import { MoveMenu } from '../sidebar/move-menu';
 import { ErrorCard } from './error-card';
@@ -54,6 +57,15 @@ export function ThreadScreen() {
   useEffect(() => {
     if (chatId !== '') actions.setContext(chatId);
     void actions.loadThread(chatId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
+
+  /* a chat shows its own model once loaded; until then it must not show (nor hold
+     in home.draft) the new-chat default, which would leak into the next chat */
+  useEffect(() => {
+    actions.clearChatModel();
+    const t = useThreadsStore.getState().threads[chatId];
+    if (t) applyThreadModel(chatId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]);
 
