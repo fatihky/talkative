@@ -36,10 +36,8 @@
  *   while streaming or offline, they hold streaming=true across the
  *   round-trip so the composer can't send into the same turn, append the
  *   new sibling reply, move the leaf to it and follow its stream. a tool
- *   retry (and a regenerate) keeps the chat's own model; only when that
- *   model has left the catalog does the composer's model answer instead.
- *   a regenerate therefore continues the chat instead of quietly adopting
- *   whatever model a new chat would start on.
+ *   retry keeps the model that started the reply, a regenerate uses the
+ *   composer's current one.
  * - payloadFor stamps each turn with the composer's model, thinking level
  *   and param overrides (paramScope 'message') plus only the grants the
  *   selected model supports, and remembers the chat's tool selection so
@@ -70,7 +68,6 @@ import {
   useDraftStore,
 } from './draft';
 import { getEstimate } from './estimate';
-import { useModelsStore } from './models';
 import { isOffline, useNetworkStore } from './network';
 import {
   addSessionCost,
@@ -90,13 +87,6 @@ import { uiActions, useUIStore } from './ui';
 const { setMsgStatus, applySent } = threadsActions;
 const dev = () => useNetworkStore.getState().dev;
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
-
-/* a model the catalog no longer has can't answer; before the catalog loads, nothing is known to be gone */
-const hasChatModel = (id: string | undefined): boolean =>
-  id !== undefined &&
-  !useModelsStore
-    .getState()
-    .items.some((m) => m.id === id && m.status === 'error');
 
 /** payload carrying the composer's model + params; the turn keeps its own tool selection */
 const payloadFor = (
@@ -403,17 +393,13 @@ export const sendActions = {
       });
   },
 
-  /** answers reply `msgId`'s user turn again: with the chat's model, or the composer's pick when that one is gone from the catalog */
+  /** answers reply `msgId`'s user turn again with the selected model, as a sibling branch */
   regenerate(chatId: string, msgId: string) {
     const d = useDraftStore.getState();
-    const reply = useThreadsStore
-      .getState()
-      .threads[chatId]?.messages.find((x) => x.id === msgId);
     rememberActiveTools(chatId);
     startBranch(chatId, 'regenerate', () =>
       regenerateMessage(msgId, {
-        /* continuing a chat is not a pick, so it can't move the new-chat default */
-        modelId: reply?.modelId ?? d.modelId,
+        modelId: d.modelId,
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),
@@ -429,10 +415,8 @@ export const sendActions = {
     rememberActiveTools(chatId);
     startBranch(chatId, 'retry', () =>
       retryToolCall(msgId, callId, {
-        /* the reply is continued mid-way, so it stays with the model that started it —
-           unless that model left the catalog, in which case the open chat's model (or,
-           on a chat opened without a catalog, the default) answers instead */
-        modelId: hasChatModel(m?.modelId) ? (m?.modelId as string) : d.modelId,
+        /* the reply is continued mid-way, so it stays with the model that started it */
+        modelId: m?.modelId ?? d.modelId,
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),

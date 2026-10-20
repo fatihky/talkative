@@ -6,8 +6,8 @@
  * - every setDraft() write is mirrored to localStorage 'home.draft'
  *   (debounced 400ms), persistParams() writes 'home.lastParams' (thinking
  *   level, overrides, scope, account-wide tool choices) and setModel
- *   writes 'home.lastModel', the default a new chat starts on; boot
- *   restores all three and a successful send clears the draft.
+ *   writes 'home.lastModel'; boot restores all three and a successful
+ *   send clears the draft.
  * - tool choices are layered: account-wide defaultTools, then a per-chat
  *   copy held in a module-scoped map (never serialized), reapplied
  *   whenever ui.context changes so the tool bar always belongs to the
@@ -32,12 +32,6 @@
  *   falls back lastModel → workspace default → first healthy model, and
  *   applyChatModel ignores a model the catalog no longer has so the bar
  *   doesn't read '—'.
- * - setModel writes 'home.lastModel' — the model a new chat starts on —
- *   only when it actually switches the composer, and boot restores it. To
- *   change one chat's model without touching that default, the pickers call
- *   switchChatModel (open chat) or applyChatModel (reopening a chat), which
- *   re-select the model and their own chat's turn records it; browsing or
- *   changing a chat therefore can't move the default underneath the next.
  * - text past 2000 chars raises the long-paste notice, which
  *   convertPasteToFile answers by moving it into a pasted-text.txt
  *   attachment; discardDraft/resetDraft go back to a fresh draft (default
@@ -348,7 +342,7 @@ const commitTools = (
 };
 
 /** selects `id` in the composer and clamps the thinking level; does not touch the app-wide pick */
-const applyModel = (id: string, fromBoot: boolean, quiet = false) => {
+const applyModel = (id: string, fromBoot: boolean) => {
   const model = findModel(useModelsStore.getState().items, id);
   const want = get().thinkingLevel;
   setDraft({ modelId: id });
@@ -362,7 +356,7 @@ const applyModel = (id: string, fromBoot: boolean, quiet = false) => {
   const clamp = clampLevel(want, model);
   if (clamp.changed) {
     setDraft({ thinkingLevel: clamp.level });
-    if (!fromBoot && !quiet)
+    if (!fromBoot)
       useUIStore.setState({
         clampNote: `${model?.shortName ?? 'this model'} does not support “${want}” — adjusted to “${clamp.level}”`,
       });
@@ -450,16 +444,10 @@ export const draftActions = {
   },
 
   /* model bar */
-  /* the user's pick is the app-wide default used when a new chat starts, and a pick that
-     switches the open chat's own model becomes its default too — a model the chat already
-     uses (reloading, the boot restore) is not what the default is set by */
   setModel(id: string, fromBoot = false) {
-    const previous = get().modelId;
     applyModel(id, fromBoot);
-    if (fromBoot) return;
-    const pick = get().modelId;
-    if (pick === previous) return;
-    LS.set('home.lastModel', pick);
+    /* the user's pick is the app-wide default used when a new chat starts */
+    LS.set('home.lastModel', id);
   },
   /* reopening a chat pre-selects its last message's model, leaving the new-chat default alone */
   applyChatModel(id: string) {
@@ -471,11 +459,6 @@ export const draftActions = {
     )
       return;
     applyModel(id, true);
-  },
-  /* re-picks the model of the chat being composed in and leaves the new-chat default alone;
-     a preset the model can't do (e.g. medium thinking on a no-thinking model) clamps quietly */
-  switchChatModel(id: string) {
-    applyModel(id, false, true);
   },
   setThinkingLevel(level: ThinkingLevel) {
     setDraft({ thinkingLevel: level });

@@ -27,8 +27,7 @@
  *   still 'streaming', and on 404 leaves an empty thread and toasts. a
  *   thread already in memory is only re-seeded: the composer takes the
  *   newest modelId on the visible branch (else the chat row's) and the
- *   newest user turn's tool grants, for that chat alone — the chat's model
- *   is never written back as the new-chat default.
+ *   newest user turn's tool grants, for that chat alone.
  * - attachStream follows one reply keyed by message id (`live` stops a
  *   double attach) and resumes from the length of the text already
  *   received as the stream offset, so a network blip, server restart or

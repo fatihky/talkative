@@ -30,7 +30,6 @@ import { useKeyboardScope } from '../lib/keyboard';
 import { useExitDelay } from '../lib/motion';
 import { actions, useLayoutStore, useUIStore } from '../stores';
 import { Composer } from './composer/composer';
-import { ChatModelDialog } from './chat-model-dialog';
 import { ConfirmDialog } from './confirm-dialog';
 import { HelpDialog } from './help-dialog';
 import { CommandPalette } from './palette';
@@ -191,7 +190,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <HelpDialog />
         <ConfirmDialog />
         <PromptDialog />
-        <ChatModelDialog />
         <ToastHost />
       </div>
     );
@@ -266,7 +264,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <HelpDialog />
       <ConfirmDialog />
       <PromptDialog />
-      <ChatModelDialog />
       <ToastHost />
     </div>
   );
