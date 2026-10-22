@@ -26,6 +26,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Wire the right panel's chat-scope system prompt box to the active chat (it was an unwired stub), with Save, Discard and a saved/unsaved label so a stored prompt edit is always visible.
 - Copy `pnpm-workspace.yaml` into the Docker runtime stage so pnpm settings (build allowlist, release-age excludes) still apply to the container's `pnpm db:migrate` command.
 - Fix upward scrolling while a reply is streaming: the auto-scroll's own scroll events no longer re-pin the view to the bottom, so scrolling up mid-stream now sticks instead of being yanked back down by each token.
+- Reset the composer's "last reply cost" to the ~estimate while a reply is regenerated or a tool call is retried, instead of showing the replaced reply's cost: the cost now reads from the visible branch, so the replaced sibling's cost drops out as soon as the new branch starts.
 
 ### Added
 

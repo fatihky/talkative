@@ -37,6 +37,7 @@ import {
   useThreadsStore,
   useUIStore,
 } from '../../stores';
+import { branchPath } from '../../stores/threads';
 import { AttachmentTray } from './attachment-tray';
 import { ComposerFooter } from './composer-footer';
 import { DraftNotice, LongPasteBar, NoToolsNote } from './composer-notices';
@@ -72,8 +73,15 @@ export function Composer() {
   }));
   const actualCost = useThreadsStore((s) => {
     if (context === 'new') return null;
-    const msgs = s.threads[context]?.messages ?? [];
-    const last = msgs.findLast((m) => m.role === 'assistant' && m.usage);
+    const t = s.threads[context];
+    if (!t) return null;
+    /* the last completed reply on the visible branch: a regenerated or retried
+       reply streams as a new sibling with no usage yet, so its predecessor's
+       cost falls off the branch and the footer resets to the ~estimate instead
+       of lingering on the reply that was replaced */
+    const last = branchPath(t.messages, t.leafId).findLast(
+      (m) => m.role === 'assistant' && m.usage,
+    );
     return last?.usage?.costUsd ?? null;
   });
   const enterToSend = usePrefsStore((s) => s.enterToSend);
