@@ -25,6 +25,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.
 - Wire the right panel's chat-scope system prompt box to the active chat (it was an unwired stub), with Save, Discard and a saved/unsaved label so a stored prompt edit is always visible.
 - Copy `pnpm-workspace.yaml` into the Docker runtime stage so pnpm settings (build allowlist, release-age excludes) still apply to the container's `pnpm db:migrate` command.
+- Fix upward scrolling while a reply is streaming: the auto-scroll's own scroll events no longer re-pin the view to the bottom, so scrolling up mid-stream now sticks instead of being yanked back down by each token.
 
 ### Added
 

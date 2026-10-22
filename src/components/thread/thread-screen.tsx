@@ -105,11 +105,23 @@ export function ThreadScreen() {
   }, [chatId, count]);
 
   const lastTop = useRef(0);
+  /* the scrollTop we last set programmatically; a matching scroll event is our own
+     auto-scroll and must not re-pin `pinned` and undo the user's upward scroll */
+  const programmaticTop = useRef(-1);
+
+  /* scroll to the bottom without letting the resulting scroll event re-pin the view */
+  const pinToBottom = () => {
+    const el = listRef.current;
+    if (!el) return;
+    programmaticTop.current = el.scrollHeight;
+    el.scrollTop = el.scrollHeight;
+    lastTop.current = el.scrollTop;
+  };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to bottom when content changes
   useEffect(() => {
-    const el = listRef.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
+    if (pinned.current) pinToBottom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, streaming]);
 
   /* markdown blocks mount and highlight after the commit, so follow the content's size, not just renders */
@@ -118,7 +130,7 @@ export function ThreadScreen() {
     const content = contentRef.current;
     if (!el || !content) return;
     const ro = new ResizeObserver(() => {
-      if (pinned.current) el.scrollTop = el.scrollHeight;
+      if (pinned.current) pinToBottom();
     });
     ro.observe(content);
     return () => ro.disconnect();
@@ -129,6 +141,14 @@ export function ThreadScreen() {
       ref={listRef}
       onScroll={(e) => {
         const el = e.currentTarget;
+        /* a genuine user scroll overrides any pending auto-scroll (e.g. during streaming) */
+        if (el.scrollTop !== programmaticTop.current)
+          programmaticTop.current = -1;
+        /* our own auto-scroll must not re-pin or shadow the user's manual upward scroll */
+        if (programmaticTop.current === el.scrollTop) {
+          lastTop.current = el.scrollTop;
+          return;
+        }
         /* only an upward scroll unpins; content growing under a programmatic scroll must not */
         if (el.scrollHeight - el.scrollTop - el.clientHeight < 32)
           pinned.current = true;
