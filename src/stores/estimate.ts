@@ -7,8 +7,13 @@
  * - counting is a coarse heuristic, not a tokenizer: ceil(chars / 4)
  *   (GROSS_TOKENS) for text, ceil(bytes / 4) for each attachment.
  * - `tokens` is only what's about to be sent (composer text plus
- *   attachments); `contextUsed` adds the thread history to it, and cost
- *   prices `tokens` alone at the model's input rate.
+ *   attachments); `contextUsed` adds the thread history and the effective
+ *   system prompt to it, and cost prices `tokens` alone at the model's
+ *   input rate.
+ * - the effective system prompt is the chat's folder chain outermost-first
+ *   plus its own prompt (on home: the pending folder chain and the draft's
+ *   pending prompt), counted like the rest — ceil(chars / 4) — and kept as
+ *   separate folder and chat parts for the context meter's tooltip.
  * - history counts just the branch on screen — branchPath(messages,
  *   leafId), the same root-to-leaf path the server replays upstream — so
  *   sibling branches left behind by an edit, retry or regenerate are inert
@@ -31,8 +36,10 @@
 
 import { useShallow } from 'zustand/react/shallow';
 import { GROSS_TOKENS } from '../lib/format';
-import type { Draft, Model } from '../types';
+import type { Draft, Folder, Model } from '../types';
+import { useChatsStore } from './chats';
 import { getSelectedModel, useDraftStore, useSelectedModel } from './draft';
+import { useFoldersStore } from './folders';
 import { type Thread, branchPath, useThreadsStore } from './threads';
 import { usePrivateStore } from './transient';
 import { useUIStore } from './ui';
@@ -44,6 +51,10 @@ export type Estimate = {
   window: number | null;
   overflow: boolean;
   hasAttachments: boolean;
+  /** effective system prompt total, split by where it comes from */
+  systemTokens: number;
+  systemFolderTokens: number;
+  systemChatTokens: number;
 };
 
 const messageTokens = (m: {
@@ -54,6 +65,32 @@ const messageTokens = (m: {
   for (const c of m.toolCalls ?? [])
     tokens += GROSS_TOKENS(c.args) + GROSS_TOKENS(c.result ?? '');
   return tokens;
+};
+
+/**
+ * tokens of the effective system prompt, matching what systemTurns() assembles
+ * server-side: every ancestor folder's prompt (outermost first) then the chat's
+ * own. `folderId` and `chatPrompt` are the pending ones on home.
+ */
+const systemPromptTokens = (
+  folders: Folder[],
+  folderId: string | null | undefined,
+  chatPrompt: string | null | undefined,
+): { folder: number; chat: number } => {
+  const byId = new Map(folders.map((f) => [f.id, f]));
+  const parts: string[] = [];
+  /* bounded walk so a corrupt cache can't spin forever */
+  for (
+    let f = folderId ? byId.get(folderId) : undefined, n = 0;
+    f && n <= folders.length;
+    f = f.parentId ? byId.get(f.parentId) : undefined, n++
+  )
+    if (f.systemPrompt?.trim()) parts.unshift(f.systemPrompt.trim());
+  const chat = chatPrompt?.trim();
+  return {
+    folder: parts.length > 0 ? GROSS_TOKENS(parts.join('\n\n')) : 0,
+    chat: chat ? GROSS_TOKENS(chat) : 0,
+  };
 };
 
 /* only the branch on screen is sent upstream, so only that one counts; the
@@ -71,13 +108,15 @@ export const estimate = (
   draft: Pick<Draft, 'text' | 'attachments'>,
   model: Model | null,
   history: number,
+  system: { folder: number; chat: number } = { folder: 0, chat: 0 },
 ): Estimate => {
   const attachTok = draft.attachments.reduce(
     (acc, a) => acc + (a.bytes ? Math.ceil(a.bytes / 4) : 0),
     0,
   );
   const tokens = GROSS_TOKENS(draft.text) + attachTok;
-  const contextUsed = tokens + history;
+  const systemTokens = system.folder + system.chat;
+  const contextUsed = tokens + history + systemTokens;
   const window = model?.context.window ?? null;
   return {
     tokens,
@@ -86,12 +125,15 @@ export const estimate = (
     window,
     overflow: window != null && contextUsed > window,
     hasAttachments: draft.attachments.length > 0,
+    systemTokens,
+    systemFolderTokens: system.folder,
+    systemChatTokens: system.chat,
   };
 };
 
 export const getEstimate = (): Estimate => {
+  const draft = useDraftStore.getState();
   const { context } = useUIStore.getState();
-  const { attachments, text: homeText } = useDraftStore.getState();
   if (context === 'private') {
     const msgs = usePrivateStore.getState().messages;
     const history = msgs.reduce((acc, m) => acc + messageTokens(m), 0);
@@ -101,14 +143,23 @@ export const getEstimate = (): Estimate => {
       history,
     );
   }
-  const thread =
-    context === 'new' ? undefined : useThreadsStore.getState().threads[context];
+  const folders = useFoldersStore.getState().items;
+  if (context === 'new') {
+    return estimate(
+      { text: draft.text, attachments: draft.attachments },
+      getSelectedModel(),
+      0,
+      systemPromptTokens(folders, draft.pendingFolderId, draft.systemPrompt),
+    );
+  }
+  const thread = useThreadsStore.getState().threads[context];
+  const chat = useChatsStore.getState().items.find((c) => c.id === context);
   /* in a thread the composer text lives on the thread, not the home draft */
-  const text = context === 'new' ? homeText : (thread?.draft ?? '');
   return estimate(
-    { text, attachments },
+    { text: thread?.draft ?? '', attachments: draft.attachments },
     getSelectedModel(),
     historyTokens(thread),
+    systemPromptTokens(folders, chat?.folderId, chat?.systemPrompt),
   );
 };
 
@@ -116,6 +167,14 @@ export const getEstimate = (): Estimate => {
 export function useEstimate<T>(pick: (e: Estimate) => T): T {
   const model = useSelectedModel();
   const context = useUIStore((s) => s.context);
+  const folders = useFoldersStore((s) => s.items);
+  const chat = useChatsStore((s) =>
+    context === 'new' || context === 'private'
+      ? null
+      : (s.items.find((c) => c.id === context) ?? null),
+  );
+  const pendingFolderId = useDraftStore((s) => s.pendingFolderId);
+  const pendingPrompt = useDraftStore((s) => s.systemPrompt);
   const history = useThreadsStore((s) =>
     context === 'new' ? 0 : historyTokens(s.threads[context]),
   );
@@ -131,6 +190,12 @@ export function useEstimate<T>(pick: (e: Estimate) => T): T {
   const privateText = usePrivateStore((s) =>
     context === 'private' ? s.draft : null,
   );
+  const system =
+    context === 'private'
+      ? { folder: 0, chat: 0 }
+      : context === 'new'
+        ? systemPromptTokens(folders, pendingFolderId, pendingPrompt)
+        : systemPromptTokens(folders, chat?.folderId, chat?.systemPrompt);
   return useDraftStore(
     useShallow((d) =>
       pick(
@@ -144,6 +209,7 @@ export function useEstimate<T>(pick: (e: Estimate) => T): T {
           },
           model,
           privateText !== null ? privateHistory : history,
+          system,
         ),
       ),
     ),

@@ -257,6 +257,9 @@ function ContextIndicator() {
     used: e.contextUsed,
     window: e.window,
     overflow: e.overflow,
+    system: e.systemTokens,
+    folder: e.systemFolderTokens,
+    chat: e.systemChatTokens,
   }));
   const vw = useLayoutStore((s) => s.vw);
   const pct = est.window
@@ -271,9 +274,22 @@ function ContextIndicator() {
   const label = est.window
     ? `${fmtK(est.used)} / ${fmtK(est.window)}`
     : `${fmtK(est.used)} / —`;
-  const title = est.window
-    ? `${est.used.toLocaleString()} / ${est.window.toLocaleString()} tokens`
-    : `${est.used.toLocaleString()} tokens, window unknown`;
+  /* hover breaks down the system prompt when the chat inherits one */
+  const titleLines = [
+    est.window
+      ? `${est.used.toLocaleString()} / ${est.window.toLocaleString()} tokens`
+      : `${est.used.toLocaleString()} tokens, window unknown`,
+  ];
+  if (est.system > 0) {
+    const split = [
+      est.folder > 0 ? `folder ${est.folder.toLocaleString()}` : null,
+      est.chat > 0 ? `chat ${est.chat.toLocaleString()}` : null,
+    ].filter((s): s is string => s !== null);
+    titleLines.push(
+      `System prompt: ${est.system.toLocaleString()}${split.length > 0 ? ` (${split.join(' · ')})` : ''}`,
+    );
+  }
+  const title = titleLines.join('\n');
   if (!est.window) {
     return (
       <div

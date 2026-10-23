@@ -47,7 +47,7 @@ export function useBanners(): Banner[] {
   /* only track token counts while overflowing, so typing doesn't churn the banner list */
   const ov = useEstimate((e) => ({
     overflow: e.overflow,
-    tokens: e.overflow ? e.tokens : 0,
+    used: e.overflow ? e.contextUsed : 0,
     window: e.overflow ? (e.window ?? 0) : 0,
   }));
 
@@ -101,7 +101,7 @@ export function useBanners(): Banner[] {
       out.push({
         id: 'b-overflow',
         level: 'error',
-        text: `Context overflow — ${ov.tokens.toLocaleString()} est. tokens exceed the ${ov.window.toLocaleString()} window.`,
+        text: `Context overflow — ${ov.used.toLocaleString()} est. tokens exceed the ${ov.window.toLocaleString()} window.`,
         actions: [
           { label: 'Switch to a 1M model', kind: 'use-1m-model' },
           { label: 'Trim attachments', kind: 'trim-attachments' },
