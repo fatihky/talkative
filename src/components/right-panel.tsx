@@ -11,9 +11,14 @@
  *   A scrim overlay below that: the sheet slides in from the right
  *   over a fading scrim, and it closes on an outside click; Esc inside
  *   the panel closes it either way.
- * - The width drags between 280 and 720px, snaps to the nearest of six
- *   stops on release, resets to 420 on double-click, and is persisted —
- *   but the drag handle only exists inline.
+ * - The width drags between 280 and 720px (measured from the panel's
+ *   right edge, since it is docked there), snaps to the nearest of six
+ *   stops on release, resets to 440 on double-click, and is persisted.
+ *   The drag handle exists in the inline layout and on the overlay sheet
+ *   from 768px up; a full-screen phone sheet has none. The pointer is
+ *   captured and a transparent overlay covers the page while dragging,
+ *   so the drag keeps tracking over an artifact/preview iframe instead
+ *   of freezing (iframe documents swallow pointer events).
  * - Preview is a tab, not a mode: it stays disabled until a scoped
  *   snippet exists, and a snippet that scopes out falls back to showing
  *   the artifact body while the stored tab stays 'preview'.
@@ -71,33 +76,52 @@ export function RightPanel() {
   const lastOpen = useRef(mode);
   if (mode !== 'closed') lastOpen.current = mode;
 
+  /* the panel hugs the right edge, so its width is how far the pointer is from that edge,
+     not from the left of the viewport (which is what clientX alone reports) */
+  const widthAt = (clientX: number) =>
+    (escRef.current?.getBoundingClientRect().right ?? window.innerWidth) -
+    clientX;
+
   useEffect(() => {
     if (!dragging) return;
-    const onMove = (e: PointerEvent) => setWidth(e.clientX);
+    const onMove = (e: PointerEvent) => setWidth(widthAt(e.clientX));
     const onUp = (e: PointerEvent) => {
       setDragging(false);
+      /* a cancelled drag keeps the width it reached instead of snapping */
+      if (e.type !== 'pointerup') return;
+      const w = widthAt(e.clientX);
       const snaps = [280, 360, 440, 500, 560, 720];
       const best = snaps.reduce((a, b) =>
-        Math.abs(b - e.clientX) < Math.abs(a - e.clientX) ? b : a,
+        Math.abs(b - w) < Math.abs(a - w) ? b : a,
       );
       setWidth(best);
     };
+    const blow = () => setDragging(false);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('blur', blow);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('blur', blow);
     };
   }, [dragging]);
 
   if (!mounted) return null;
   const inline = vw >= 1440;
+  /* the overlay sheet is resizable too; only a full-screen phone sheet (below
+     768px) has no room to drag a width into */
+  const resizable = vw >= 768;
   const shown = mode === 'closed' ? lastOpen.current : mode;
   const panelWidth: number | string = inline ? width : `min(${width}px, 100vw)`;
   const asideAnim = inline
     ? exiting
       ? 'anim-panel-out pointer-events-none'
-      : 'anim-panel-in'
+      : dragging
+        ? ''
+        : 'anim-panel-in'
     : '';
 
   const panel = (
@@ -111,9 +135,12 @@ export function RightPanel() {
         if (e.key === 'Escape') actions.closePanel();
       }}
     >
+      {/* the inner track stays at the full width even when the aside animates
+          in, so no control inside re-wraps while it grows; on the overlay sheet
+          it may not outgrow the viewport */}
       <div
         className="flex min-h-0 flex-1 flex-col"
-        style={{ width: panelWidth }}
+        style={{ width: inline ? panelWidth : '100%', minWidth: 0 }}
       >
         <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border px-2">
           <PanelTabs />
@@ -135,23 +162,71 @@ export function RightPanel() {
         )}
       </div>
 
-      {/* resize handle — only in inline mode */}
-      {inline && (
+      {/* resize handle — inline and on the overlay sheet; the -left-1 half sits
+          outside the aside's overflow-hidden clip, leaving a ~8px grab area
+          on the inside */}
+      {resizable && (
         // biome-ignore lint/a11y/useSemanticElements: draggable splitter, not a thematic break
         <div
           role="separator"
           aria-orientation="vertical"
           aria-label="Resize panel"
-          onPointerDown={() => setDragging(true)}
+          aria-valuenow={Math.round(width)}
+          aria-valuemin={280}
+          aria-valuemax={720}
+          tabIndex={0}
+          onPointerDown={(e) => {
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            setDragging(true);
+          }}
+          /* stop the drag from selecting text in the thread behind the panel */
+          onMouseDown={(e) => e.preventDefault()}
           onDoubleClick={() => setWidth(440)}
-          className="absolute left-0 top-0 z-20 h-full w-1 cursor-col-resize hover:bg-(--accent-weak)"
-          style={{ background: dragging ? 'var(--accent)' : undefined }}
-        />
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setWidth(width + 16);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              setWidth(width - 16);
+            } else if (e.key === 'Home') {
+              e.preventDefault();
+              setWidth(720);
+            } else if (e.key === 'End') {
+              e.preventDefault();
+              setWidth(280);
+            }
+          }}
+          className="group absolute -left-1 top-0 z-30 h-full w-3 cursor-col-resize touch-none outline-none"
+        >
+          <div
+            className={`mx-auto h-full w-px transition-colors ${
+              dragging
+                ? 'bg-(--accent)'
+                : 'bg-transparent group-hover:bg-(--accent-weak) group-focus-visible:bg-(--accent)'
+            }`}
+          />
+        </div>
       )}
     </aside>
   );
 
-  if (inline) return panel;
+  if (inline)
+    return (
+      <>
+        {panel}
+        {/* keeps pointer events in this document while dragging, so an
+            artifact/preview iframe can't swallow the move and leave the
+            panel frozen mid-drag; rendered after the panel so it sits above
+            it (a z-index alone can't beat the fixed sheet wrapper) */}
+        {dragging && (
+          <div
+            aria-hidden="true"
+            className="fixed inset-0 z-40 cursor-col-resize"
+          />
+        )}
+      </>
+    );
   return (
     <div
       className={`fixed inset-0 z-50 ${
@@ -176,6 +251,14 @@ export function RightPanel() {
         className="sr-only"
         onClick={() => actions.closePanel()}
       />
+      {/* same drag shield as the inline layout: the sheet's iframe previews
+          would otherwise swallow the pointer mid-drag */}
+      {dragging && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-[60] cursor-col-resize"
+        />
+      )}
     </div>
   );
 }
