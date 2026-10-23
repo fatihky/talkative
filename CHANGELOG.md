@@ -15,6 +15,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Let the right panel be resized on the overlay sheet too (768px and up): it now carries the same drag handle, double-click reset and keyboard resize as the docked layout, sharing one stored width, while a full-screen phone sheet stays fixed.
 - Make the user-message Edit and Copy actions icon-only, dropping their text labels (tooltips and accessible names are unchanged).
 - Make moving chats and folders between folders work on phones and tablets: mobile never fires HTML5 drag & drop, so sidebar rows now also start a pointer drag with a lifted ghost copy under the finger and auto-scroll when held near the list's edges.
 - Keep the sidebar rows' ⋯ menu visible on small screens (it was hover-only, so it couldn't be opened on touch) and label "Move to…" as "Move to… (or drag)" on phones so the gesture is discoverable.
@@ -24,6 +25,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
 
 ### Fixed
+- Keep the right panel's width drag anchored to the panel's right edge (it measured `clientX` from the left of the viewport, so any drag on the docked panel snapped to 720px), widen the handle's grab area, and capture the pointer with a drag overlay so dragging across an artifact or preview iframe no longer freezes the panel mid-resize.
 - Keep the new-chat default model from leaking into existing chats: reloading on a chat page no longer overwrites that chat (and the persisted draft) with the default, picking a model inside a chat only re-selects it for that chat instead of also becoming the default, and a chat whose thread hasn't loaded yet shows no model rather than the default it never used.
 - Match the mobile drawer's close bar to the sidebar's stored width (it was pinned to `w-64`) and to the topbar height, so the two pieces no longer show a step where the upper strip is narrower than the list below it.
 - Edit message box now auto-grows to fit the text instead of collapsing to a tiny box on long single-line messages.
