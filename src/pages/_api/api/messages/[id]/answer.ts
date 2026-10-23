@@ -14,7 +14,8 @@
  *   over ANSWER_MAX (4000) chars is rejected, more than MAX_ANSWERS
  *   (3) is rejected, and at least one must survive — the same budget
  *   ask_user gives the model, so a client can't smuggle unbounded text
- *   into the tool result.
+ *   into the tool result. a multi_select answer is the picked labels
+ *   joined by ", " (or the typed text), so it fits the same budget.
  * - ownership is enforced twice: getRun(:id, userId) must find a live
  *   run belonging to this user and answerQuestion() must find the call
  *   still pending; either miss → 409 "no longer waiting" (the run
@@ -33,6 +34,15 @@ type Ctx = ApiContext<'/api/messages/[id]/answer'>;
 
 const ANSWER_MAX = 4000;
 const MAX_ANSWERS = 3;
+
+/*
+ * the labels ask_user allows per option and how many options a question may
+ * offer; a multi_select answer joins them, so this is the most a pick can be
+ * before the typed (allow_other) text, which still gets the full ANSWER_MAX.
+ */
+const MAX_OPTION_LABEL = 80;
+const MAX_OPTIONS = 3;
+const PICK_MAX = MAX_OPTION_LABEL * MAX_OPTIONS + (MAX_OPTIONS - 1) * 2;
 
 /*
  * POST /api/messages/:id/answer {callId, answers} — replies to an ask_user call that
@@ -60,10 +70,13 @@ export const POST = (req: Request, { params }: Ctx) =>
       if (typeof v !== 'string') continue;
       const trimmed = v.trim();
       if (!trimmed) continue;
-      if (trimmed.length > ANSWER_MAX)
-        throw new ValidationError(
-          `answer for "${k}" exceeds ${ANSWER_MAX} characters`,
-        );
+      /* a joined multi_select pick may pass the typed-answer cap, up to PICK_MAX */
+      if (trimmed.length > ANSWER_MAX) {
+        if (trimmed.includes('\n') || trimmed.length > PICK_MAX)
+          throw new ValidationError(
+            `answer for "${k}" exceeds ${ANSWER_MAX} characters`,
+          );
+      }
       answers[k] = trimmed;
       count++;
       if (count > MAX_ANSWERS)

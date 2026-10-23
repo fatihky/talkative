@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Added
+
+- Let `ask_user` ask multi-select questions: the model can set `multi_select` (globally or per question) and the card's options toggle instead of replacing each other, sending the picked labels joined by ", ", while typing a free-text answer still overrides the picks.
+
 ### Changed
 
 - Make the user-message Edit and Copy actions icon-only, dropping their text labels (tooltips and accessible names are unchanged).

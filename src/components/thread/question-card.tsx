@@ -12,7 +12,10 @@
  *   render "(invalid question)".
  * - one question per step; the first option is badged "Recommended".
  * - picking an option clears the typed answer and vice versa; typed
- *   answers count only when allow_other.
+ *   answers count only when allow_other. on a multi_select question
+ *   (per question, falling back to the top level) options toggle and
+ *   several may stay picked; the answer is their labels joined by ", "
+ *   in the option order, and typing still overrides the picks.
  * - a countdown from timeout_ms disables the whole card at zero
  *   ("timed out") — answers must land before the run gives up waiting.
  * - submit sends every answer in one answerToolCall; a failure returns
@@ -33,11 +36,15 @@ type ParsedQuestion = {
   question: string;
   options: ParsedOption[];
   allow_other: boolean;
+  multi_select: boolean;
 };
 type ParsedAskUser = {
   questions: ParsedQuestion[];
   timeout_ms: number;
 };
+
+/* how many picks a multi_select question accepts */
+const MAX_PICKS = 3;
 
 const parseAskUserArgs = (raw: string): ParsedAskUser => {
   try {
@@ -60,6 +67,12 @@ const parseAskUserArgs = (raw: string): ParsedAskUser => {
           : typeof v.allow_other === 'boolean'
             ? v.allow_other
             : true;
+      const multi_select =
+        typeof q.multi_select === 'boolean'
+          ? q.multi_select
+          : typeof v.multi_select === 'boolean'
+            ? v.multi_select
+            : false;
       let options: ParsedOption[] = [];
       if (Array.isArray(q.options)) {
         for (const o of q.options) {
@@ -79,7 +92,14 @@ const parseAskUserArgs = (raw: string): ParsedAskUser => {
         }
       }
       if (options.length < 2) options = [];
-      questions.push({ id, header, question, options, allow_other });
+      questions.push({
+        id,
+        header,
+        question,
+        options,
+        allow_other,
+        multi_select,
+      });
     }
     const timeout_ms =
       typeof v.timeout_ms === 'number' && Number.isFinite(v.timeout_ms)
@@ -129,9 +149,39 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
   const [error, setError] = useState<string | null>(null);
   const remaining = useCountdown(timeout_ms, true);
 
-  const selectOption = (qId: string, label: string) => {
-    setAnswers((prev) => ({ ...prev, [qId]: label }));
-    setTexts((prev) => ({ ...prev, [qId]: '' }));
+  /* the picked labels in option order, read off the joined answer string */
+  const pickedLabels = (q: ParsedQuestion): string[] => {
+    if (!q.multi_select) return [];
+    const seen = answers[q.id];
+    if (!seen) return [];
+    return q.options
+      .map((o) => o.label)
+      .filter((l) => seen.split(', ').includes(l));
+  };
+
+  const toggleOption = (q: ParsedQuestion, label: string) => {
+    const current = pickedLabels(q);
+    const next = current.includes(label)
+      ? current.filter((l) => l !== label)
+      : [...current, label];
+    setAnswers((prev) => {
+      const out = { ...prev };
+      /* replace whatever was stored (typed text clears picks) with the toggled set */
+      if (next.length) out[q.id] = q.options
+        .map((o) => o.label)
+        .filter((l) => next.includes(l))
+        .slice(0, MAX_PICKS)
+        .join(', ');
+      else delete out[q.id];
+      return out;
+    });
+    setTexts((prev) => ({ ...prev, [q.id]: '' }));
+  };
+
+  const selectOption = (q: ParsedQuestion, label: string) => {
+    if (q.multi_select) return toggleOption(q, label);
+    setAnswers((prev) => ({ ...prev, [q.id]: label }));
+    setTexts((prev) => ({ ...prev, [q.id]: '' }));
   };
 
   const canProceed = () => {
@@ -245,16 +295,27 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
         </p>
 
         {q.options.length > 0 && (
-          <div className="q-options">
+          <div
+            className="q-options"
+            role={q.multi_select ? 'group' : 'radiogroup'}
+            aria-label={q.header}
+          >
             {q.options.map((o, oi) => {
-              const selected = answers[q.id] === o.label;
+              const selected = q.multi_select
+                ? pickedLabels(q).includes(o.label)
+                : answers[q.id] === o.label;
+              /* a multi_select question stops taking picks at MAX_PICKS */
+              const full =
+                q.multi_select && !selected &&
+                pickedLabels(q).length >= MAX_PICKS;
               return (
                 <button
                   key={o.label}
                   type="button"
                   className={selected ? 'chosen' : undefined}
-                  disabled={sending || timedOut}
-                  onClick={() => selectOption(q.id, o.label)}
+                  aria-pressed={q.multi_select ? selected : undefined}
+                  disabled={sending || timedOut || full}
+                  onClick={() => selectOption(q, o.label)}
                   title={o.description || undefined}
                 >
                   {oi === 0 && (
@@ -269,12 +330,22 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
           </div>
         )}
 
+        {q.multi_select && q.options.length > 0 && (
+          <span className="num text-[10px] muted">
+            select up to {MAX_PICKS}
+            {pickedLabels(q).length > 0 &&
+              ` · ${pickedLabels(q).length} picked`}
+          </span>
+        )}
+
         {q.allow_other && (
           <input
             className="mt-2 h-7 min-w-0 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]"
             placeholder={
               q.options.length > 0
-                ? 'Or type your own answer…'
+                ? q.multi_select
+                  ? 'Or type a different answer…'
+                  : 'Or type your own answer…'
                 : 'Type your answer…'
             }
             value={texts[q.id] ?? ''}

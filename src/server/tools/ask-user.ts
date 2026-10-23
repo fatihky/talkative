@@ -22,6 +22,11 @@
  *   (free-text only), and every string cut to its length cap.
  * - allow_other defaults to true globally with a per-question override,
  *   controlling whether the card offers a typed answer.
+ * - multi_select defaults to false globally with a per-question override;
+ *   when set the card lets the user toggle several options and the answer
+ *   comes back as one string with the labels joined by ", ". such an
+ *   answer can be longer than a single label or contain newlines, so the
+ *   answer route's budget accounts for it.
  * - keyless 'default' backend: always available when granted (on by
  *   default); its only side effect is the pause itself.
  */
@@ -73,6 +78,7 @@ type QuestionDef = {
   question: string;
   options: QuestionOption[];
   allow_other: boolean;
+  multi_select: boolean;
 };
 
 const clampTimeout = (v: unknown): number => {
@@ -92,6 +98,8 @@ export const normalizeAskUserRequest = (
 ): { questions: QuestionDef[]; allow_other: boolean; timeout_ms: number } => {
   const globalAllowOther =
     typeof args.allow_other === 'boolean' ? args.allow_other : true;
+  const globalMultiSelect =
+    typeof args.multi_select === 'boolean' ? args.multi_select : false;
   const timeout_ms = clampTimeout(args.timeout_ms);
 
   const rawQuestions = Array.isArray(args.questions)
@@ -110,6 +118,10 @@ export const normalizeAskUserRequest = (
 
     const localAllowOther =
       typeof q.allow_other === 'boolean' ? q.allow_other : globalAllowOther;
+    const localMultiSelect =
+      typeof q.multi_select === 'boolean'
+        ? q.multi_select
+        : globalMultiSelect;
 
     let options: QuestionOption[] = [];
     if (Array.isArray(q.options)) {
@@ -137,6 +149,7 @@ export const normalizeAskUserRequest = (
       question,
       options,
       allow_other: localAllowOther,
+      multi_select: localMultiSelect,
     });
   }
 
@@ -152,6 +165,7 @@ export const askUser: ServerTool = {
     "Use when the next step depends on the user's intent, a preference, or a tradeoff you cannot safely infer. " +
     'Each question has 2–3 options; the first option is marked as Recommended. ' +
     'The user can also type a free-text answer unless allow_other is false. ' +
+    'Set multi_select to let the user pick several options at once (the answer comes back as the labels joined by ", "). ' +
     'Do not use for small talk or when you can proceed without clarification.',
   parameters: {
     type: 'object',
@@ -197,6 +211,11 @@ export const askUser: ServerTool = {
               type: 'boolean',
               description: 'override the global allow_other for this question',
             },
+            multi_select: {
+              type: 'boolean',
+              description:
+                'let the user pick several options (labels joined by ", "); override the global multi_select',
+            },
           },
           required: ['question'],
         },
@@ -205,6 +224,11 @@ export const askUser: ServerTool = {
         type: 'boolean',
         description:
           'allow free-text answers by default; per-question setting overrides',
+      },
+      multi_select: {
+        type: 'boolean',
+        description:
+          'allow picking several options by default; per-question setting overrides',
       },
       timeout_ms: {
         type: 'number',
