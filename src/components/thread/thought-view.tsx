@@ -5,8 +5,8 @@
  * Business logic:
  * - collapsed by default; expanding reveals the raw thinking text.
  * - while live (reply still streaming, no duration reported) it shows a
- *   pulsing "Thinking…" pill; once settled it reports the duration, so
- *   the indicator can't hang after the run ends.
+ *   pulsing "Thinking…" pill; once settled it reports the duration and
+ *   drops the pill, so no label says "reasoning" after thinking ended.
  * - thoughts are persisted on the message and replay in place within
  *   the reply on reload.
  */
@@ -28,13 +28,11 @@ export function ThoughtView({ t, live }: { t: Thought; live: boolean }) {
               ? `Thought for ${(t.ms / 1000).toFixed(1)}s`
               : 'Thoughts'}
         </span>
-        {live ? (
+        {live && (
           <span className="pill a">
             <span className="pulse" aria-hidden="true" />
             THINKING
           </span>
-        ) : (
-          <span className="pill g">REASONING</span>
         )}
         <I
           n="chevron-down"
