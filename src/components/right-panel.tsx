@@ -442,9 +442,6 @@ function ContextPanel() {
   );
 }
 
-/* mirrors SYSTEM_PROMPT_MAX in server/chats.ts */
-const PROMPT_MAX = 20_000;
-
 /**
  * the chat-scope system prompt: the active chat's own, or — on home, before a chat exists —
  * the one the next chat starts with. The textarea keeps a local draft, so the button stays
@@ -507,7 +504,6 @@ function ChatPromptBox() {
       <textarea
         rows={3}
         value={draft}
-        maxLength={PROMPT_MAX}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {

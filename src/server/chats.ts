@@ -12,8 +12,8 @@
  * - isUuid gates every id that arrives in a path or a body; routes reject a
  *   malformed one before touching the database.
  * - parseSystemPrompt reads undefined as "leave as is" and null or blank as
- *   "clear", and caps the prompt at SYSTEM_PROMPT_MAX; folders reuse it, so
- *   a chat's prompt and its folder chain obey the same rule.
+ *   "clear"; folders reuse it, so a chat's prompt and its folder chain obey
+ *   the same rule.
  * - parseGenerateInput requires a modelId, takes thinkingLevel only from
  *   off/low/medium/high, and keeps just the correctly typed entries of
  *   toolGrants/toolProviders — unknown tool ids are dropped later, when the
@@ -97,17 +97,11 @@ export const toMessageDto = (m: MessageRow): MessageDto => ({
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (s: string) => UUID.test(s);
 
-export const SYSTEM_PROMPT_MAX = 20_000;
-
 /* undefined = leave as is; null or blank clears it */
 export const parseSystemPrompt = (v: unknown): string | null | undefined => {
   if (v === undefined || v === null) return v;
   if (typeof v !== 'string')
     throw new ValidationError('systemPrompt must be a string or null');
-  if (v.length > SYSTEM_PROMPT_MAX)
-    throw new ValidationError(
-      `systemPrompt is over ${SYSTEM_PROMPT_MAX} characters`,
-    );
   return v.trim() === '' ? null : v;
 };
 

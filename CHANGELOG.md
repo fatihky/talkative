@@ -15,6 +15,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Remove the 20,000-character cap on chat and folder system prompts: `parseSystemPrompt`, the two prompt editors, and the home-draft prompt box no longer truncate or reject long prompts.
 - Let the right panel be resized on the overlay sheet too (768px and up): it now carries the same drag handle, double-click reset and keyboard resize as the docked layout, sharing one stored width, while a full-screen phone sheet stays fixed.
 - Make the user-message Edit and Copy actions icon-only, dropping their text labels (tooltips and accessible names are unchanged).
 - Make moving chats and folders between folders work on phones and tablets: mobile never fires HTML5 drag & drop, so sidebar rows now also start a pointer drag with a lifted ghost copy under the finger and auto-scroll when held near the list's edges.

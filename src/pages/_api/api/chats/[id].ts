@@ -21,8 +21,8 @@
  *   branch rather than on a stale leaf.
  * - PATCH is parseChatPatch's whitelist: title (non-empty), category
  *   (string|null), tags (string[]), pinned → pinnedAt now/null,
- *   folderId (uuid|null), leafId, systemPrompt (≤20k chars, blank
- *   clears). Unknown fields are dropped, a malformed one is a 400, and
+ *   folderId (uuid|null), leafId, systemPrompt (blank clears). Unknown
+ *   fields are dropped, a malformed one is a 400, and
  *   an empty body leaves nothing to set — which the update rejects as
  *   a 500, not a 400.
  * - two cross-reference checks keep PATCH honest, and both answer 400

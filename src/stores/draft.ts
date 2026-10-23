@@ -88,8 +88,6 @@ import { uiActions, useUIStore } from './ui';
 
 const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
 const WORKSPACE_DEFAULT_MODEL = 'claude-4.5-sonnet';
-/* mirrors SYSTEM_PROMPT_MAX in server/chats.ts */
-const SYSTEM_PROMPT_MAX = 20_000;
 
 export const defaultDraft = (modelId: string): Draft => ({
   text: '',
@@ -426,11 +424,10 @@ export const draftActions = {
   },
   /** the chat-scope prompt box on home: held on the draft until the first send stores it */
   setDraftSystemPrompt(text: string) {
-    const systemPrompt = text.slice(0, SYSTEM_PROMPT_MAX);
-    if (get().systemPrompt === systemPrompt) return;
+    if (get().systemPrompt === text) return;
     /* setDraft mirrors the whole draft, so the restored-prompt hint no longer applies */
     setDraft({});
-    useDraftStore.setState({ systemPrompt });
+    useDraftStore.setState({ systemPrompt: text });
     LS.set('home.draft', get());
     useUIStore.setState({ draftNotice: false });
   },

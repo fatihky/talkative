@@ -11,8 +11,6 @@
  *   concatenates them in before the chat's own.
  * - A folder prompt applies to every chat inside it and its subfolders; a
  *   chat prompt applies from its next reply on.
- * - Length is capped at 20,000 chars, mirroring SYSTEM_PROMPT_MAX in
- *   server/chats.ts so the client can't offer what the server rejects.
  * - Saving writes optimistically through the chats/folders store (which
  *   rolls back and toasts on failure); mod+Enter saves, Esc or a scrim
  *   click discards without writing. The save button and an "Unsaved
@@ -28,9 +26,6 @@ import { I } from '../lib/icons';
 import { actions, useChatsStore, useFoldersStore, useUIStore } from '../stores';
 import type { Folder } from '../types';
 import { Kbd } from '../ui/primitives';
-
-/* mirrors SYSTEM_PROMPT_MAX in server/chats.ts */
-const MAX = 20_000;
 
 /* prompts the target inherits, outermost folder first — the order the server sends them in */
 const inheritedFrom = (folders: Folder[], folderId: string | null) => {
@@ -164,7 +159,6 @@ function Editor({
           <textarea
             ref={area}
             value={text}
-            maxLength={MAX}
             rows={12}
             onChange={(e) => setText(e.target.value)}
             placeholder={

@@ -8,7 +8,7 @@
  *   403, no existence leak.
  * - PATCH is parseFolderPatch's whitelist: name (non-empty, ≤255),
  *   parentId (null = top level) and systemPrompt (shared with chats:
- *   ≤20k chars, blank clears). Undefined means "leave as is"; a
+ *   blank clears). Undefined means "leave as is"; a
  *   malformed field is a 400, and an empty body leaves nothing to set,
  *   which the update rejects as a 500 rather than a 400.
  * - a parentId in the patch goes through assertParent(db, userId,

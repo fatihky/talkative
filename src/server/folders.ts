@@ -14,7 +14,7 @@
  *   while parseFolderRef reads undefined as "leave as is", null as "top
  *   level" and anything else as a uuid.
  * - parseFolderPatch reuses parseSystemPrompt from chats.ts, so a folder's
- *   prompt obeys the same 20k cap and blank-clears rule as a chat's. folder
+ *   prompt obeys the same blank-clears rule as a chat's. folder
  *   prompts are stacked outermost-first, ahead of the chat's own, when a
  *   run builds its system turns.
  * - assertParent loads all of the user's folders once, requires the new
