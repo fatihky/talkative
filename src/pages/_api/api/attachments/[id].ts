@@ -21,21 +21,34 @@
  * - cache-control is `private, max-age=31536000, immutable`: private
  *   because the bytes belong to one user, immutable because an id's
  *   content is fixed once stored — that's what makes inline images
- *   and repeat downloads cheap.
+ *   and repeat downloads cheap. renaming an attachment does not change
+ *   its bytes, so the cache stays valid.
  * - no reference counting or pruning here: removing uploads is
  *   pruneAttachments()'s job from the message and chat routes.
+ *
+ * - PATCH /api/attachments/:id renames the row's `name` (the display
+ *   name, also used for the download filename). The name must be a
+ *   non-empty string capped at 255 chars; a missing/foreign id reads
+ *   as 404, matching the GET route.
  */
+import { and, eq } from 'drizzle-orm';
 import type { ApiContext } from 'waku/router';
 import { getDb } from '../../../../db';
+import { attachments } from '../../../../db/schema';
 import {
   findAttachment,
   isImageMime,
 } from '../../../../server/attachments';
 import { isUuid } from '../../../../server/chats';
-import { handle } from '../../../../server/providers';
+import {
+  handle,
+  ValidationError,
+} from '../../../../server/providers';
 import { readUpload } from '../../../../server/uploads';
 
 type Ctx = ApiContext<'/api/attachments/[id]'>;
+
+const NAME_MAX = 255;
 
 /* GET /api/attachments/:id — the stored file bytes; images come from the filesystem */
 export const GET = (_req: Request, { params }: Ctx) =>
@@ -58,4 +71,27 @@ export const GET = (_req: Request, { params }: Ctx) =>
         'cache-control': 'private, max-age=31536000, immutable',
       },
     });
+  });
+
+/* PATCH /api/attachments/:id — rename an upload's display name */
+export const PATCH = (req: Request, { params }: Ctx) =>
+  handle(async (userId) => {
+    if (!isUuid(params.id))
+      return Response.json({ error: 'attachment not found' }, { status: 404 });
+    const body = (await req.json().catch(() => null)) as {
+      name?: unknown;
+    } | null;
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    if (!name) throw new ValidationError('name must be a non-empty string');
+    if (name.length > NAME_MAX)
+      throw new ValidationError(`name is over ${NAME_MAX} characters`);
+    const updated = await getDb()
+      .update(attachments)
+      .set({ name })
+      .where(and(eq(attachments.id, params.id), eq(attachments.userId, userId)))
+      .returning();
+    const row = updated[0];
+    if (!row)
+      return Response.json({ error: 'attachment not found' }, { status: 404 });
+    return Response.json({ id: row.id, name: row.name });
   });

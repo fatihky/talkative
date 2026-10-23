@@ -304,21 +304,24 @@ export const sendActions = {
     const t = useThreadsStore.getState().threads[chatId];
     if (!t) return;
     const text = t.draft.trim();
-    if (text === '') return;
+    const attachments = useDraftStore.getState().attachments;
+    if (text === '' && attachments.length === 0) return;
 
     /* queue the message if the assistant is currently generating */
     if (t.streaming) {
       const queued: QueuedMessage = {
         id: uid(),
         content: text,
-        attachments: [],
-        payload: payloadFor(chatId, text, [], null),
+        attachments,
+        payload: payloadFor(chatId, text, attachments, null),
         createdAt: Date.now(),
       };
       patchThread(chatId, {
         queue: [...t.queue, queued],
         draft: '',
       });
+      /* the queued message owns the staged attachments, so clear them right away */
+      setDraft({ attachments: [] });
       return;
     }
 
@@ -331,7 +334,7 @@ export const sendActions = {
       parentId,
       role: 'user',
       content: text,
-      attachments: [],
+      attachments,
       createdAt: Date.now(),
       status: 'sending',
     };
@@ -347,8 +350,11 @@ export const sendActions = {
       leafId: msg.id,
       draft: '',
     });
-    sendMessage(chatId, payloadFor(chatId, text, [], parentId), dev())
-      .then((res) => applySent(chatId, msg.id, res))
+    sendMessage(chatId, payloadFor(chatId, text, attachments, parentId), dev())
+      .then((res) => {
+        setDraft({ attachments: [] });
+        applySent(chatId, msg.id, res);
+      })
       .catch((e: unknown) => {
         setMsgStatus(chatId, msg.id, 'failed');
         uiActions.toast(

@@ -682,3 +682,10 @@ export async function uploadAttachment(
   }
   return attachment;
 }
+
+/** renames a stored attachment's display name (and download filename) */
+export const renameAttachment = (id: string, name: string) =>
+  request<{ id: string; name: string }>(`/api/attachments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });

@@ -59,7 +59,8 @@
 
 import { create } from 'zustand';
 import { toolPreferencesApi } from '../lib/api';
-import { debouncedSet, LS, uid } from '../lib/storage';
+import { renameAttachment, uploadAttachment } from '../lib/api';
+import { debouncedSet, LS, uuid } from '../lib/storage';
 import {
   DEFAULT_CONCURRENCIES,
   DEFAULT_COUNTS,
@@ -446,7 +447,7 @@ export const draftActions = {
       attachments: [
         ...attachments,
         {
-          id: uid(),
+          id: uuid(),
           kind: 'file',
           name: 'pasted-text.txt',
           bytes: text.length,
@@ -455,6 +456,12 @@ export const draftActions = {
       ],
     });
     useUIStore.setState({ longPaste: false });
+    /* upload the bytes so the server can inline them; a storage outage keeps the
+       metadata and the paste still rides with the send (see attachFiles) */
+    const last = get().attachments.at(-1);
+    if (!last || text === '') return;
+    void uploadAttachment(last, new File([text], last.name, { type: 'text/plain' }))
+      .catch(() => {});
   },
 
   addAttachments(items: Attachment[]) {
@@ -462,6 +469,18 @@ export const draftActions = {
   },
   removeAttachment(id: string) {
     setDraft({ attachments: get().attachments.filter((a) => a.id !== id) });
+  },
+  renameAttachment(id: string, name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setDraft({
+      attachments: get().attachments.map((a) =>
+        a.id === id ? { ...a, name: trimmed } : a,
+      ),
+    });
+    /* persist the display name server-side; a failed call only drops the stored
+       name, never the staged attachment (bytes are under the same id) */
+    renameAttachment(id, trimmed).catch(() => {});
   },
 
   /* model bar */

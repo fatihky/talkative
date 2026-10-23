@@ -9,6 +9,9 @@
  *   fallback); the name truncates and a stored upload adds its size.
  * - scope 'chat' items get a badge: they were dropped as chat context,
  *   not just for the next message.
+ * - the name is editable: clicking it opens an inline input, Enter
+ *   (or blur) commits the rename, Escape cancels. renames persist
+ *   server-side via renameAttachment and never change the bytes.
  * - the x unstages (removeAttachment); an upload taken back out before
  *   sending is orphaned and collected later by `pnpm uploads:gc`.
  * - staged items ride with the next send: images go to the model as
@@ -17,6 +20,7 @@
  */
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { bytesFmt } from '../../lib/format';
 import { I } from '../../lib/icons';
 import { actions } from '../../stores';
@@ -38,10 +42,59 @@ function AttachmentChip({
   onRemove: () => void;
 }) {
   const icon = ICONS[a.kind as keyof typeof ICONS] ?? 'file';
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(a.name);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  /* the attachment prop is replaced wholesale on rename/draft rebuilds; keep the
+     editor's scratch text in step so an external change isn't clobbered */
+  useEffect(() => {
+    setName(a.name);
+  }, [a.name, a.id]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const next = name.trim();
+    setEditing(false);
+    if (next !== '' && next !== a.name) actions.renameAttachment(a.id, next);
+    else setName(a.name);
+  };
+
   return (
     <span className="inline-flex h-5 max-w-full items-center gap-1 rounded-[4px] border border-[var(--border)] bg-[var(--sunken)] pl-1.5 pr-0.5 text-[12px]">
       <I n={icon} s={12} className="shrink-0 muted" />
-      <span className="max-w-[160px] truncate">{a.name}</span>
+      {editing ? (
+        <input
+          ref={inputRef}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            else if (e.key === 'Escape') {
+              setName(a.name);
+              setEditing(false);
+            }
+          }}
+          aria-label="Rename attachment"
+          className="h-4 w-[120px] bg-transparent text-[12px] outline-none"
+        />
+      ) : (
+        <button
+          type="button"
+          title="Rename"
+          onClick={() => setEditing(true)}
+          className="max-w-[160px] truncate hover:underline"
+        >
+          {a.name}
+        </button>
+      )}
       {a.bytes !== undefined && (
         <span className="num shrink-0 muted">{bytesFmt(a.bytes)}</span>
       )}
