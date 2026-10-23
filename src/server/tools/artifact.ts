@@ -22,8 +22,8 @@
  *   throw with guidance to view the artifact or add context; view without
  *   an id lists the chat's artifacts, with an id returns the full content.
  * - model-chosen ids are slugified (lowercase, dashes, ≤64 chars) to stay
- *   usable as file names, and content is capped at ARTIFACT_MAX (80k chars)
- *   because raw is capped at 200k and json escaping can double the size.
+ *   usable as file names, and content is capped at ARTIFACT_MAX (1M chars)
+ *   because raw is capped at RAW_MAX and json escaping can double the size.
  * - the model only sees a short confirmation ("created artifact … (vN); it
  *   is shown to the user in the artifact panel"), never the content back.
  */

@@ -8,8 +8,8 @@
  *   on screen are simply the ones written along the branch being viewed.
  *   Publishing is the exception — it copies a snapshot into its own row.
  * - ARTIFACT_KINDS is the closed set both the tool and parseSnapshot
- *   accept; ARTIFACT_MAX (80k chars) is the cap the tool enforces, because
- *   a call's `raw` is truncated at RAW_MAX (200k) and json escaping can
+ *   accept; ARTIFACT_MAX (1M chars) is the cap the tool enforces, because
+ *   a call's `raw` is truncated at RAW_MAX (1.5M) and json escaping can
  *   double the size.
  * - parseSnapshot checks every field it needs and returns null instead of
  *   throwing, so a truncated or foreign `raw` simply isn't an artifact.
@@ -36,8 +36,8 @@ export const ARTIFACT_KINDS = [
 ] as const;
 export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
 
-/* raw is capped at RAW_MAX (200k) and json escaping can double the size */
-export const ARTIFACT_MAX = 80_000;
+/* raw is capped at RAW_MAX (1.5M) and json escaping can double the size */
+export const ARTIFACT_MAX = 1_000_000;
 
 /** one version of an artifact, exactly as stored in the call's `raw` */
 export type ArtifactSnapshot = {

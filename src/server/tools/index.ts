@@ -22,8 +22,9 @@
  *   react to instead of killing the reply.
  * - the model sees only `result`, truncated at RESULT_MAX (20k chars) so one
  *   big page can't eat the context; the untouched upstream response rides
- *   along as `raw`, truncated at RAW_MAX (200k), for the ui — artifact
- *   snapshots are persisted there.
+ *   along as `raw`, truncated at RAW_MAX (1.5M), for the ui — artifact
+ *   snapshots are persisted there, so a 1M-char artifact survives json
+ *   escaping.
  * - a call carrying a concurrency preference runs under withConcurrency,
  *   scoped `user:<id>:<tool>` for an own key or `shared:<provider>:<tool>`
  *   for an env key, so users of a shared system key throttle together;
@@ -190,8 +191,8 @@ const REGISTRY = new Map<ToolId, ServerTool>(
 
 /* results are capped so one big page can't eat the context window */
 export const RESULT_MAX = 20_000;
-/* raw responses only feed the ui, so they get more room */
-export const RAW_MAX = 200_000;
+/* raw responses only feed the ui, so they get more room (artifact snapshots live here) */
+export const RAW_MAX = 1_500_000;
 
 export const truncate = (s: string, max = RESULT_MAX) =>
   s.length <= max
