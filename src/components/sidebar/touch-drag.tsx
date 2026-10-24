@@ -8,7 +8,10 @@
  *   dragged fades in place and a DragGhost — a fixed copy of it, lifted
  *   with a shadow — follows the finger.
  * - A press that moves past DRAG_THRESHOLD picks the row up; a press that
- *   stops within it still taps the link, and a swipe still scrolls.
+ *   stops within it still taps whatever it landed on, and a swipe still
+ *   scrolls. A press on one of the row's own controls (the ⋯ trigger, the
+ *   folder chevron) never arms the drag, so that control's own click fires
+ *   even on touch.
  * - The pressed element captures the pointer, so the drop target is read
  *   with elementFromPoint. Targets carry data-drop-id (a folder id, or ''
  *   for the unfiled rest of the list), which keeps the thread visible
@@ -64,6 +67,9 @@ type TouchDragValue = {
 
 const Ctx = createContext<TouchDragValue | null>(null);
 
+/* a press that starts on one of these belongs to that control, not a drag */
+const CONTROL = 'button, a, input, textarea, select, [contenteditable="true"]';
+
 /** the zone under a viewport point: folder id, '' for the unfiled area, null for neither */
 export function dropIdAt(x: number, y: number): string | null {
   const el = document.elementFromPoint(x, y);
@@ -101,6 +107,12 @@ export function TouchDragProvider({
   const begin = useCallback(
     (drag: Drag, e: React.PointerEvent<HTMLElement>) => {
       if (e.pointerType === 'mouse' || e.button !== 0) return;
+      /* a press on one of the row's own controls is that control's tap, not
+         a drag — the same rule a mouse gets from native drag & drop */
+      const row = e.currentTarget as HTMLElement;
+      const control = (e.target as HTMLElement | null)?.closest(CONTROL);
+      const armed = !control || !row.contains(control);
+      if (!armed) return;
       const from = { x: e.clientX, y: e.clientY };
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - from.x;

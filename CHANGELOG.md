@@ -31,6 +31,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Make the sidebar rows' ⋯ menus open on phones again: the menus portal at z 40, under the mobile drawer's z-50 scrim, so a tap hit the scrim instead of the menu — they now paint at z 55, above the drawer, and a press on a row's own ⋯ trigger (or folder chevron) no longer arms the touch drag that was swallowing the click.
 - Drop the `REASONING` pill from a thought block once thinking has settled, so the header reports only the duration instead of still labeling finished reasoning as reasoning.
 - Keep the right panel's width drag anchored to the panel's right edge (it measured `clientX` from the left of the viewport, so any drag on the docked panel snapped to 720px), widen the handle's grab area, and capture the pointer with a drag overlay so dragging across an artifact or preview iframe no longer freezes the panel mid-resize.
 - Keep the new-chat default model from leaking into existing chats: reloading on a chat page no longer overwrites that chat (and the persisted draft) with the default, picking a model inside a chat only re-selects it for that chat instead of also becoming the default, and a chat whose thread hasn't loaded yet shows no model rather than the default it never used.
