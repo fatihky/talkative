@@ -10,9 +10,9 @@
  *   the fixed-width content, so nothing inside reflows. The width
  *   transition is suspended while the resizer drags and never applies
  *   in the drawer.
- * - The edge resizer follows the pointer and snaps to the nearest of
- *   200/264/320/360 on release; double-click resets to 264. It only
- *   exists outside the drawer.
+ * - The edge resizer follows the pointer and keeps the width where the
+ *   pointer is released (clamped 200–360); double-click resets to 264.
+ *   It only exists outside the drawer.
  * - The filter input drives ChatList's title/tag search; the folder-plus
  *   button creates a top-level folder.
  * - "New chat" and every section link close the mobile drawer.
@@ -50,11 +50,7 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
     const onMove = (e: PointerEvent) => actions.setSidebarWidth(e.clientX);
     const onUp = (e: PointerEvent) => {
       setDragging(false);
-      const snaps = [200, 264, 320, 360];
-      const best = snaps.reduce((a, b) =>
-        Math.abs(b - e.clientX) < Math.abs(a - e.clientX) ? b : a,
-      );
-      actions.setSidebarWidth(best);
+      actions.setSidebarWidth(e.clientX);
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -70,7 +66,10 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
       className={`relative flex h-full shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)] ${
         !inDrawer && !dragging ? 'anim-width' : ''
       }`}
-      style={{ width: collapsed ? 'var(--w-rail)' : width }}
+      style={{
+        width: collapsed ? 'var(--w-rail)' : width,
+        minWidth: 'var(--w-rail)',
+      }}
     >
       {/* clip layer — tracks the animating nav width and hides the
           fixed-width content while the nav slides between rail and full */}

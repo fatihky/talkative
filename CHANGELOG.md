@@ -13,6 +13,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
      ### Added / ### Changed / ### Fixed / ### Removed / ### Security
      One line per change, imperative mood. Cut a versioned heading only on release. -->
 
+### Changed
+
+- Stop snapping the sidebar width to fixed presets on resize release; keep it exactly where the pointer is dropped.
+
 ### Added
 
 - Show the hover action row (copy, provider stats, delete) under private chat message bubbles.
