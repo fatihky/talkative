@@ -48,6 +48,7 @@ function AttachmentChip({
 
   /* the attachment prop is replaced wholesale on rename/draft rebuilds; keep the
      editor's scratch text in step so an external change isn't clobbered */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a swapped attachment re-seeds even when the name matches
   useEffect(() => {
     setName(a.name);
   }, [a.name, a.id]);

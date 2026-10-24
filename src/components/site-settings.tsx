@@ -81,6 +81,7 @@ export function SiteSettings() {
   return (
     <section className="rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-3">
       <div className="sec-label mb-2">Site</div>
+      {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps a Switch, which is a button */}
       <label className="flex items-center justify-between text-[13px]">
         <span>
           Allow new registrations

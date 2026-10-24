@@ -484,6 +484,7 @@ export function DecisionEditor() {
             /* keyed by position: a card keyed on its name would remount — and lose
                focus — on every keystroke of the name field */
             <QuestionCard
+              // biome-ignore lint/suspicious/noArrayIndexKey: see above
               key={i}
               q={q}
               index={i}
@@ -790,6 +791,7 @@ function EntryList({
   return (
     <div className="flex flex-col gap-1.5">
       {rows.map((r, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: keyed by position so editing a row's key doesn't remount its inputs
         <div key={i} className="flex items-center gap-1.5">
           {numbered && (
             <span className="num w-4 shrink-0 text-right text-[11px] muted">
@@ -906,6 +908,7 @@ function AnswerBlock({
                 : String(p.value);
             const picked = a.type === 'choice' && p.value === a.choice;
             return (
+              // biome-ignore lint/suspicious/noArrayIndexKey: read-only rows that are never reordered
               <div key={i} className="flex items-center gap-2 text-[11px]">
                 <span
                   className={`w-[150px] shrink-0 truncate ${picked ? 'font-medium' : ''}`}

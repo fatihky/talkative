@@ -79,11 +79,11 @@ export function ThreadScreen() {
     () => new URLSearchParams(router.query).get('leaf'),
     [router.query],
   );
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry once the thread loads or grows, not on every store update
   useEffect(() => {
     if (!leafParam || !thread) return;
     const target = thread.messages.find((m) => m.id === leafParam);
     if (target) actions.switchBranch(chatId, leafParam);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leafParam, thread?.messages.length, chatId]);
 
   const all = thread?.messages ?? [];
@@ -130,6 +130,7 @@ export function ThreadScreen() {
   }, [messages, streaming]);
 
   /* markdown blocks mount and highlight after the commit, so follow the content's size, not just renders */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pinToBottom only touches refs
   useEffect(() => {
     const el = listRef.current;
     const content = contentRef.current;

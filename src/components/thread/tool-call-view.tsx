@@ -153,6 +153,7 @@ export function ToolCallView({
     <div
       className={`tool-card ${open ? '' : 'collapsed'} ${resolved ? 'resolved' : ''}`}
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: the head holds a retry button, and buttons can't nest */}
       <div
         className="tool-card-head"
         role="button"

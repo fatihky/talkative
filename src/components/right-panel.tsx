@@ -82,6 +82,7 @@ export function RightPanel() {
     (escRef.current?.getBoundingClientRect().right ?? window.innerWidth) -
     clientX;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: widthAt only reads a ref; one set of listeners per drag
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e: PointerEvent) => setWidth(widthAt(e.clientX));

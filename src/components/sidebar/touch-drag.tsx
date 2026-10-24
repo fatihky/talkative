@@ -134,6 +134,7 @@ export function TouchDragProvider({
   /* while a row is held: follow the finger, scroll at the edges, track the target */
   const kind = live?.drag.kind;
   const id = live?.drag.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: one set of listeners per drag, still reading the live state through setLive
   useEffect(() => {
     if (kind === undefined || id === undefined) return;
     const drag = { kind, id };
@@ -224,7 +225,6 @@ export function TouchDragProvider({
       window.removeEventListener('keydown', onKey, true);
       document.removeEventListener('touchmove', gate);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps — one set of listeners per drag, still reading the live state through setLive
   }, [kind, id]);
 
   /* swallow the click a finished drag would otherwise send to the row's link */

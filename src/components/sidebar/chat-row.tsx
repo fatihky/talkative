@@ -62,7 +62,6 @@ export function ChatRow({
   );
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div
     <Draggable
       drag={{ kind: 'chat', id: chat.id }}
       className={`group relative flex h-10 w-full items-center gap-2 border-l-2 pr-1 text-left ${
@@ -71,6 +70,7 @@ export function ChatRow({
           : 'border-l-transparent hover:bg-[var(--sunken)]'
       }`}
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div */}
       <div
         className="flex size-full items-center gap-2"
         style={{ paddingLeft: indent(depth) }}

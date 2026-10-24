@@ -53,6 +53,7 @@ export function ToolCredentials() {
         setStatus('error');
       });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: load once on mount
   useEffect(() => {
     void load();
   }, []);

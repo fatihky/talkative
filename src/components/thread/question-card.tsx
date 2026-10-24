@@ -298,6 +298,7 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
         </p>
 
         {q.options.length > 0 && (
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: group and radiogroup both take aria-label
           <div
             className="q-options"
             role={q.multi_select ? 'group' : 'radiogroup'}

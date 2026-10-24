@@ -32,10 +32,12 @@ export function PrivateScreen() {
   }, []);
 
   const count = messages.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-pin on a new message
   useEffect(() => {
     pinned.current = true;
   }, [count]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll to bottom when content changes
   useEffect(() => {
     const el = listRef.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;

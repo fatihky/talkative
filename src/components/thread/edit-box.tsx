@@ -35,6 +35,7 @@ export function EditBox({
   }, []);
 
   /* auto-grow to fit the content, capped at 12 rows */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the text changes
   useEffect(() => {
     const el = ref.current;
     if (!el) return;

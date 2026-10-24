@@ -58,7 +58,6 @@ export function FolderRow({
   }, [renaming]);
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: virtualized rows live inside a positioned spacer div
     <Draggable
       drag={{ kind: 'folder', id: folder.id }}
       className={`group relative flex size-full items-center gap-1.5 border-l-2 pr-1 ${

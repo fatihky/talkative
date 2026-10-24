@@ -101,6 +101,7 @@ function ToolPermissionBar() {
         <span className="glyph-slot">
           <I n={TOOL_GLYPH[t.id] ?? 'wrench'} s={12} />
         </span>
+        {/* biome-ignore lint/a11y/noLabelWithoutControl: wraps a Switch, which is a button */}
         <label
           className={`flex min-w-0 flex-1 items-center gap-2 ${off ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
