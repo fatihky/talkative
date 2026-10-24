@@ -98,6 +98,9 @@ const payloadFor = (
 ): OutgoingMessage => {
   const d = useDraftStore.getState();
   rememberActiveTools(chatId);
+  /* one-shot: consume the timestamp-prefix toggle, then reset it */
+  const timestamps = useUIStore.getState().timestampPrefix;
+  if (timestamps) useUIStore.setState({ timestampPrefix: false });
   return {
     role: 'user',
     content,
@@ -109,6 +112,7 @@ const payloadFor = (
     toolProviders: d.toolProviders,
     paramOverrides: d.paramOverrides,
     paramScope: 'message',
+    timestamps,
   };
 };
 

@@ -76,13 +76,14 @@ import {
   findChat,
   isUuid,
   parseSendInput,
+  parseTimestampPrefix,
   toChatDto,
   toMessageDto,
 } from '../../../../../server/chats';
 import { stripText, withAttachmentText } from '../../../../../server/attachments';
 import { collectRefs } from '../../../../../server/refs';
 import { handle, ValidationError } from '../../../../../server/providers';
-import { hasActiveRun, historyTurns, startRun, userContent, userParts } from '../../../../../server/runs';
+import { hasActiveRun, historyTurns, localStamp, prefixTurn, startRun, userContent, userParts } from '../../../../../server/runs';
 import type { InlineAttachment } from '../../../../../server/runs';
 import { isAdmin } from '../../../../../server/settings';
 import { systemTurns } from '../../../../../server/system-prompt';
@@ -112,6 +113,9 @@ export const POST = (req: Request, { params }: Ctx) =>
   handle(async (userId) => {
     if (!isUuid(params.id)) throw new ValidationError('chat id must be a uuid');
     const input = parseSendInput(await req.json());
+    /* an optional `[yyyy/mm/dd HH:mm]` prefix backdates this turn and its reply */
+    const stamp = parseTimestampPrefix(input.content);
+    if (stamp) input.content = stamp.text;
     if (hasActiveRun(params.id))
       return Response.json(
         { error: 'a reply is still generating in this chat' },
@@ -191,22 +195,28 @@ export const POST = (req: Request, { params }: Ctx) =>
     const lastHasImage = (lastAttachment as InlineAttachment[]).some(
       (a) => a.dataUrl !== undefined,
     );
+    /* +1ms keeps user-before-assistant ordering stable under createdAt sort */
+    const now = stamp?.at ?? Date.now();
+    /* the newest user turn isn't produced by historyTurns, so stamp it here */
+    const prefix =
+      input.timestamps ? localStamp(now) : undefined;
+
     const history = [
       ...(await systemTurns(db, chat)),
-      ...historyTurns(withText, refs),
-      {
-        role: 'user' as const,
-        content: lastHasImage
-          ? userParts({ attachments: lastAttachment, content: input.content }, refs)
-          : userContent(
-              { attachments: lastAttachment, content: input.content },
-              refs,
-            ),
-      },
+      ...historyTurns(withText, refs, { timestamps: input.timestamps }),
+      prefixTurn(
+        {
+          role: 'user' as const,
+          content: lastHasImage
+            ? userParts({ attachments: lastAttachment, content: input.content }, refs)
+            : userContent(
+                { attachments: lastAttachment, content: input.content },
+                refs,
+              ),
+        },
+        prefix,
+      ),
     ];
-
-    /* +1ms keeps user-before-assistant ordering stable under createdAt sort */
-    const now = Date.now();
     const userMessageId = crypto.randomUUID();
     const assistantId = crypto.randomUUID();
 

@@ -12,6 +12,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Let `ask_user` ask multi-select questions: the model can set `multi_select` (globally or per question) and the card's options toggle instead of replacing each other, sending the picked labels joined by ", ", while typing a free-text answer still overrides the picks.
+- Backdate a send by opening it with a `[yyyy/mm/dd HH:mm]` prefix: the turn (and its reply) are timestamped to that local wall-clock time and the prefix is dropped from the stored text, so long-running chats can slot historical entries into the transcript.
+- Add a composer clock toggle that, for one send, prefixes every history turn sent to the model with its `[yyyy/mm/dd HH:mm]` timestamp so a long conversation carries its timeline into context.
 
 ### Changed
 

@@ -97,6 +97,37 @@ export const toMessageDto = (m: MessageRow): MessageDto => ({
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (s: string) => UUID.test(s);
 
+/*
+ * parses a leading `[yyyy/mm/dd HH:mm]` prefix off a message. when present it
+ * backdates the turn (and its reply) to that local wall-clock time, which is how
+ * a long-running chat gets historical entries slotted into the transcript; the
+ * prefix is control text, so it is dropped from the stored content. returns
+ * null when the text doesn't open with a well-formed prefix, leaving it untouched.
+ */
+export const parseTimestampPrefix = (
+  content: string,
+): { at: number; text: string } | null => {
+  const m = /^\[(\d{4})\/(\d{2})\/(\d{2})[ T](\d{2}):(\d{2})\]/.exec(content);
+  if (!m) return null;
+  const [, year, month, day, hour, minute] = m;
+  const y = Number(year);
+  const mo = Number(month);
+  const d = Number(day);
+  const h = Number(hour);
+  const mi = Number(minute);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
+  const at = new Date(y, mo - 1, d, h, mi).getTime();
+  if (Number.isNaN(at)) return null;
+  return { at, text: content.slice(m[0].length) };
+};
+
+/* the inverse of parseTimestampPrefix: epoch ms → "[yyyy/mm/dd HH:mm]" in local time */
+export const formatTimestampPrefix = (ts: number): string => {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `[${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}]`;
+};
+
 /* undefined = leave as is; null or blank clears it */
 export const parseSystemPrompt = (v: unknown): string | null | undefined => {
   if (v === undefined || v === null) return v;
@@ -143,6 +174,8 @@ export type SendInput = GenerateInput & {
   parentId?: string | null | undefined;
   /* a not-yet-created chat's own prompt, stored with the row the first send inserts */
   systemPrompt?: string | null | undefined;
+  /* prefix every turn in the history sent to the model with its [yyyy/mm/dd HH:mm] timestamp */
+  timestamps?: boolean | undefined;
 };
 
 /* keeps only entries whose value has the expected type; unknown tool ids are dropped later */
@@ -199,6 +232,7 @@ export const parseSendInput = (body: unknown): SendInput => {
     ...(b.systemPrompt !== undefined
       ? { systemPrompt: parseSystemPrompt(b.systemPrompt) }
       : {}),
+    timestamps: b.timestamps === true,
   };
 };
 

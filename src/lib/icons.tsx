@@ -48,6 +48,7 @@ const P = {
   folder: 'M3 6h6l2 2h10v11H3z',
   'folder-plus': 'M3 6h6l2 2h10v11H3zM12 11v5M9.5 13.5h5',
   info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8h.01M12 11v5',
+  clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   alert: 'M12 3l10 18H2zM12 10v5M12 18.5h.01',
   file: 'M7 3h7l4 4v14H7zM14 3v4h4',

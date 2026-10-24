@@ -79,6 +79,8 @@ type UIState = {
   noToolsNote: boolean;
   noticesExpanded: boolean;
   clampNote: string | null;
+  /* prefix history turns with their timestamps for the next send; one-shot, resets after */
+  timestampPrefix: boolean;
   toasts: Toast[];
   mod: '⌘' | 'Ctrl';
   systemPromptFor: SystemPromptTarget | null;
@@ -107,6 +109,7 @@ export const useUIStore = create<UIState>()(() => ({
   noToolsNote: false,
   noticesExpanded: false,
   clampNote: null,
+  timestampPrefix: false,
   toasts: [],
   mod: '⌘',
   systemPromptFor: null,
@@ -164,6 +167,10 @@ export const uiActions = {
   },
   closeToolConfirm() {
     set({ confirmToolFor: null });
+  },
+  /** one-shot toggle: prefix the next send's history turns with their timestamps */
+  setTimestampPrefix(on: boolean) {
+    set({ timestampPrefix: on });
   },
   openModelBarPopover(which: Exclude<ModelBarPopover, null>) {
     /* §7.4 only one model/tool-bar popover at a time — instant swap */

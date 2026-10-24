@@ -449,6 +449,8 @@ export type OutgoingMessage = {
   parentId: string | null;
   /* a chat that doesn't exist yet is created with this prompt on its first send */
   systemPrompt?: string;
+  /* prefix every history turn sent to the model with its [yyyy/mm/dd HH:mm] timestamp */
+  timestamps?: boolean;
 };
 
 export type SendResult = {

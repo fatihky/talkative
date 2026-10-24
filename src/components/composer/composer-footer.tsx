@@ -20,6 +20,7 @@ import { $fmt, kfmt } from '../../lib/format';
 import { I } from '../../lib/icons';
 import { Tip } from '../../lib/popover';
 import {
+  actions,
   useLayoutStore,
   useNetworkStore,
   usePrefsStore,
@@ -28,6 +29,35 @@ import {
 import { Kbd } from '../../ui/primitives';
 import { ModelPicker, ParamsButton } from './model-picker';
 import { SendButton } from './send-button';
+
+/** one-shot toggle: stamp history turns with their timestamps on the next send */
+function TimestampToggle() {
+  const on = useUIStore((s) => s.timestampPrefix);
+  return (
+    <Tip
+      label={
+        on
+          ? 'Timestamps on — next send prefixes every message with its time.\n[2026/10/20 09:15] let’s start planning'
+          : 'Prefix history with message timestamps for one send.\n\nTurns each message into "[2026/10/20 09:15] …" so the model sees the timeline.'
+      }
+      side="top"
+    >
+      <button
+        type="button"
+        aria-pressed={on}
+        aria-label="Prefix history with message timestamps"
+        onClick={() => actions.setTimestampPrefix(!on)}
+        className={`ctl-icon size-5 border-transparent bg-transparent ${
+          on
+            ? 'text-[var(--accent)] hover:bg-[var(--sunken)]'
+            : 'text-[var(--text-3)] hover:bg-[var(--sunken)]'
+        }`}
+      >
+        <I n="clock" s={13} />
+      </button>
+    </Tip>
+  );
+}
 
 export function ComposerFooter({
   empty,
@@ -84,6 +114,7 @@ export function ComposerFooter({
       </div>
       <div className="flex items-center gap-2" id="composer-hint">
         <ModelPicker /> <ParamsButton />
+        <TimestampToggle />
         {wide && (
           <span className="flex items-center gap-1.5 text-[11px] muted">
             {conn === 'offline' ? (

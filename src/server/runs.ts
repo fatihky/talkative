@@ -156,6 +156,33 @@ const toWire = (c: Pick<ToolCall, 'id' | 'name' | 'args'>): WireCall => ({
   function: { name: c.name, arguments: c.args || '{}' },
 });
 
+/* epoch ms → "[yyyy/mm/dd HH:mm]" in the server's local time */
+export const localStamp = (ts: number): string => {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `[${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}]`;
+};
+
+/* prepends a "[yyyy/mm/dd HH:mm]" stamp to a turn's text content */
+export const prefixTurn = <T extends Turn>(t: T, stamp: string | undefined): T => {
+  if (!stamp || t.role === 'tool') return t;
+  if (typeof t.content === 'string')
+    return { ...t, content: `${stamp} ${t.content}` } as T;
+  if (Array.isArray(t.content)) {
+    const first = t.content.findIndex((p) => p.type === 'text');
+    const content: ContentPart[] =
+      first === -1
+        ? [{ type: 'text', text: stamp }, ...t.content]
+        : t.content.map((p, i) =>
+            i === first && p.type === 'text'
+              ? { ...p, text: `${stamp} ${p.text}` }
+              : p,
+          );
+    return { ...t, content } as T;
+  }
+  return t;
+};
+
 /**
  * replays a stored message as provider turns: each tool step becomes an assistant
  * turn carrying the text written before it plus its calls, followed by the results
@@ -289,9 +316,10 @@ export const userParts = (
 export const historyTurns = (
   path: Pick<
     MessageRow,
-    'role' | 'content' | 'attachments' | 'toolCalls' | 'status'
+    'role' | 'content' | 'attachments' | 'toolCalls' | 'status' | 'createdAt'
   >[],
   refs: Refs = emptyRefs(),
+  opts: { timestamps?: boolean | undefined } = {},
 ): Turn[] =>
   path
     .map((m) => {
@@ -308,7 +336,19 @@ export const historyTurns = (
     .filter(
       (m) => m.content !== '' && (m.role === 'user' || m.status !== 'error'),
     )
-    .flatMap(messageTurns);
+    .flatMap((m) => {
+      const turns = messageTurns(m);
+      if (!opts.timestamps) return turns;
+      /* stamp the message's first textual turn; tool-result turns stay untouched */
+      const stamp = localStamp(m.createdAt.getTime());
+      const first = turns.findIndex(
+        (t) => t.role === 'user' || (t.role === 'assistant' && t.content),
+      );
+      if (first === -1) return turns;
+      return turns.map((t, i) =>
+        i === first ? prefixTurn(t, stamp) : t,
+      );
+    });
 
 /** where a retried reply picks up: the step to redo, with the reply as it stood before it */
 export type Resume = {
