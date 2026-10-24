@@ -12,7 +12,7 @@
  *   its own enter/exit animations the same way.
  * - /settings and public artifact links (/a/*) render standalone with no
  *   sidebar, composer, or panels; note and decision detail routes also drop
- *   the composer (both are editors, not a chat).
+ *   the composer (both are editors, not a chat), and so does /search.
  * - pendingNav — a route path or bare chat id left by the send flow or
  *   banner actions — is pushed once, then cleared.
  * - Global shortcuts (mod+k/n/b/., ctrl+t, ctrl+shift+p, mod+/) are
@@ -194,10 +194,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  /* a note or a decision run is an editor, not a chat: no composer */
+  /* a note or a decision run is an editor, not a chat, and search is a results page: no composer */
   const noComposer =
     /^\/notes\/[^/]+/.test(router.path) ||
-    /^\/decisions\/[^/]+/.test(router.path);
+    /^\/decisions\/[^/]+/.test(router.path) ||
+    router.path === '/search';
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">

@@ -5,13 +5,17 @@
  * Business logic:
  * - An empty query shows shortcuts, not search: the 6 newest chats, 3
  *   notes and 2 settings entries.
- * - A query searches chat titles, chat first prompts (as "Messages"),
- *   note titles and bodies, and settings labels, always grouped in that
- *   order and capped per group (8/12/5/5) so one kind can't crowd out the
- *   rest. Message hits come from two places: first prompts of the 24
- *   newest chats (local) and a debounced GET /api/search that matches
- *   message content across every branch, so a message parked on a dead
- *   branch still surfaces.
+ * - A query searches chat titles, messages, note titles and bodies, and
+ *   settings labels, always grouped in that order and capped per group
+ *   (8/12/5/5) so one kind can't crowd out the rest. Titles, notes and
+ *   settings match locally; messages come from a debounced, ranked GET
+ *   /api/search (an older request is aborted) that spans every branch, so
+ *   a message parked on a dead branch still surfaces — at most 2 per chat,
+ *   each shown as its chat title over a two-line snippet with the matched
+ *   words marked.
+ * - A message hit opens /c/<chat>?m=<message>&q=<query>, which switches to
+ *   its branch, centers it and highlights the words; the last row, "See
+ *   all results", opens the /search page for the query.
  * - Opening a chat goes through the caller's onOpenChat with a full path
  *   (client-side routing, folder paths included); notes navigate via the
  *   store.
@@ -26,9 +30,10 @@
 
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { searchApi } from '../lib/api';
+import { type SearchHit, searchApi } from '../lib/api';
 import { I } from '../lib/icons';
 import { SETTINGS_ITEMS } from '../lib/mock';
+import { Marked } from '../lib/search';
 import { actions, useChatsStore, useNotesStore, useUIStore } from '../stores';
 import { Kbd } from '../ui/primitives';
 
@@ -36,6 +41,8 @@ type Row = {
   id: string;
   group: string;
   label: string;
+  /* a server snippet; shown with its matches marked on a second line under `label` */
+  marked?: string;
   sub?: string;
   icon: string;
   run: () => void;
@@ -54,16 +61,7 @@ export function CommandPalette({
   const [idx, setIdx] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   /* server-side message hits for the current query; nulls out while loading */
-  const [hits, setHits] = useState<
-    | {
-        id: string;
-        chatId: string;
-        chatTitle: string;
-        role: string;
-        snippet: string;
-      }[]
-    | null
-  >(null);
+  const [hits, setHits] = useState<SearchHit[] | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -80,19 +78,17 @@ export function CommandPalette({
       setHits(null);
       return;
     }
-    let cancelled = false;
+    const ctl = new AbortController();
     const timer = setTimeout(() => {
       searchApi
-        .search(t)
-        .then((res) => {
-          if (!cancelled) setHits(res.messages);
-        })
+        .search({ q: t, limit: 30 }, ctl.signal)
+        .then((res) => setHits(res.messages))
         .catch(() => {
-          if (!cancelled) setHits([]);
+          if (!ctl.signal.aborted) setHits([]);
         });
     }, 150);
     return () => {
-      cancelled = true;
+      ctl.abort();
       clearTimeout(timer);
     };
   }, [q]);
@@ -138,26 +134,22 @@ export function CommandPalette({
         icon: 'chat',
         run: () => onOpenChat(`/c/${c.id}`),
       });
-    for (const c of chats.slice(0, 24)) {
-      const p = c.firstPrompt;
-      if (p && match(p))
-        out.push({
-          id: `m-${c.id}`,
-          group: 'Messages',
-          label: p.slice(0, 60),
-          sub: `in ${c.title}`,
-          icon: 'note',
-          run: () => onOpenChat(`/c/${c.id}`),
-        });
-    }
+    /* ranked server hits, at most 2 per chat so one long chat can't fill the group */
+    const perChat = new Map<string, number>();
     for (const h of hits ?? []) {
+      const n = perChat.get(h.chatId) ?? 0;
+      if (n >= 2) continue;
+      perChat.set(h.chatId, n + 1);
       out.push({
         id: `m-${h.id}`,
         group: 'Messages',
-        label: h.snippet,
-        sub: `in ${h.chatTitle}`,
-        icon: 'note',
-        run: () => onOpenChat(`/c/${h.chatId}`),
+        label: h.chatTitle,
+        marked: h.snippet,
+        icon: h.role === 'user' ? 'user' : 'bot',
+        run: () =>
+          onOpenChat(
+            `/c/${h.chatId}?m=${encodeURIComponent(h.id)}&q=${encodeURIComponent(q.trim())}`,
+          ),
       });
     }
     for (const n of notes.filter((n) => match(n.title) || match(n.text)))
@@ -184,10 +176,18 @@ export function CommandPalette({
       Settings: 5,
     };
     const seen: Record<string, number> = {};
-    return out.filter((r) => {
+    const capped = out.filter((r) => {
       seen[r.group] = (seen[r.group] ?? 0) + 1;
       return (seen[r.group] ?? 0) <= (cap[r.group] ?? 5);
     });
+    capped.push({
+      id: 'search-all',
+      group: 'Search',
+      label: `See all results for “${q.trim()}”`,
+      icon: 'search',
+      run: () => onOpenChat(`/search?q=${encodeURIComponent(q.trim())}`),
+    });
+    return capped;
   }, [q, chats, notes, hits, onOpenChat]);
 
   useEffect(
@@ -254,7 +254,11 @@ export function CommandPalette({
           tabIndex={-1}
           className="scroll-thin min-h-0 flex-1 overflow-y-auto py-1 outline-none"
         >
-          {rows.length === 0 && (
+          {/* only the trailing "See all results" row left once the server answered */}
+          {(rows.length === 0 ||
+            (rows.length === 1 &&
+              rows[0]?.id === 'search-all' &&
+              hits !== null)) && (
             <div className="px-3 py-6 text-center text-[12px] muted">
               No results for “{q}”.
             </div>
@@ -272,12 +276,25 @@ export function CommandPalette({
                   aria-selected={i === idx}
                   onMouseEnter={() => setIdx(i)}
                   onClick={() => run(r)}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] ${
-                    i === idx ? 'bg-[var(--sunken)]' : ''
-                  }`}
+                  className={`flex w-full gap-2 px-3 py-1.5 text-left text-[13px] ${
+                    r.marked ? 'items-start' : 'items-center'
+                  } ${i === idx ? 'bg-[var(--sunken)]' : ''}`}
                 >
-                  <I n={r.icon} s={13} className="muted shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                  <I
+                    n={r.icon}
+                    s={13}
+                    className={`muted shrink-0 ${r.marked ? 'mt-[3px]' : ''}`}
+                  />
+                  {r.marked ? (
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate font-[500]">{r.label}</span>
+                      <span className="line-clamp-2 text-[12px] leading-[1.45] text-[var(--text-2)]">
+                        <Marked text={r.marked} lead={60} />
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                  )}
                   {r.sub && (
                     <span className="num max-w-[160px] shrink-0 truncate text-[11px] muted">
                       {r.sub}

@@ -28,6 +28,7 @@ const groups = (mod: string): { title: string; rows: Row[] }[] => [
     title: 'General',
     rows: [
       { keys: [`${mod}K`], label: 'Search & commands' },
+      { keys: [`${mod}F`], label: 'Find in chat' },
       { keys: [`${mod}N`], label: 'New chat' },
       { keys: [`${mod}B`], label: 'Toggle sidebar' },
       { keys: [`${mod}.`], label: 'Toggle right panel' },

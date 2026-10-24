@@ -2,7 +2,7 @@
  * Sidebar — left nav: new chat, chat filter, chat list, section links.
  *
  * Business logic:
- * - Collapses to an icon rail (new chat, expand, notes/decisions)
+ * - Collapses to an icon rail (new chat, expand, notes/decisions/search)
  *   when sidebarCollapsed is set — never inside the mobile drawer,
  *   which always renders full width.
  * - Collapsing/expanding animates: the nav's width slides between
@@ -114,6 +114,7 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
             <RailLink to="/" label="Home" icon="home" />
             <RailLink to="/notes" label="Notes" icon="note" />
             <RailLink to="/decisions" label="Decisions" icon="decision" />
+            <RailLink to="/search" label="Search" icon="search" />
           </div>
         ) : (
           <div
@@ -174,6 +175,7 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
               <IndexItem to="/" label="Home" icon="home" />
               <IndexItem to="/notes" label="Notes" icon="note" />
               <IndexItem to="/decisions" label="Decisions" icon="decision" />
+              <IndexItem to="/search" label="Search" icon="search" />
             </nav>
 
             <div className="sec-label px-3 pb-1">Chats</div>

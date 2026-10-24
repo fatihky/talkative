@@ -2,18 +2,19 @@
  * tools/chat-search — keyword search across the user's other chats.
  *
  * Business logic:
- * - matches chat titles and message content with case-insensitive substring
- *   (ILIKE); the query is escaped first so a user-typed % or _ can't act as
- *   a wildcard.
+ * - runs the same ranked full-text search as GET /api/search
+ *   (server/search.ts): prefix words, "phrases", -exclusions and `or`, with
+ *   a substring fallback for plain text, so the model can search the way a
+ *   person types.
  * - strictly scoped to ctx.userId, and the chat being answered is excluded
  *   (looked up via the reply's messageId) because it is already in the
  *   model's context.
  * - the message scan spans every branch of the other chats and takes the
- *   newest limit*4 matches; title hits seed the result set, and each chat
- *   keeps at most 2 snippets — a ~160-char window around the first hit, so
- *   the model sees why the message matched.
+ *   best limit*4 matches by rank; title hits seed the result set, and each
+ *   chat keeps at most 2 snippets — a short excerpt around the match, with
+ *   the highlight marks stripped, so the model sees why the message matched.
  * - limit is clamped to 1–20 (default 8) and title-matched chats come
- *   first, then message-matched ones newest first.
+ *   first, then message-matched ones in rank order.
  * - the output is markdown the model can quote: "## title (chat <id>,
  *   updated <date>)" plus role-tagged snippet lines — the chat id lets a
  *   follow-up (e.g. a link) point at the source; no hits returns
@@ -21,31 +22,25 @@
  * - read-only and keyless ('default' backend): always available when
  *   granted (off by default).
  */
-import { and, desc, eq, ilike, inArray, ne } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { chats, messages } from '../../db/schema';
+import {
+  parseQuery,
+  searchChatTitles,
+  searchMessages,
+  stripMarks,
+} from '../search';
 import type { ServerTool } from './index';
 
 const LIMIT_MAX = 20;
-const SNIPPET = 160;
-
-/* the query is user text; % and _ would otherwise act as wildcards */
-const escapeLike = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-
-/* a window around the first hit, so the model sees why the message matched */
-const snippet = (text: string, q: string) => {
-  const at = text.toLowerCase().indexOf(q.toLowerCase());
-  const start = Math.max(0, at - SNIPPET / 2);
-  const end = Math.min(text.length, start + SNIPPET);
-  const body = text.slice(start, end).replace(/\s+/g, ' ').trim();
-  return `${start > 0 ? '…' : ''}${body}${end < text.length ? '…' : ''}`;
-};
 
 export const chatSearch: ServerTool = {
   id: 'chat_search',
   description:
     "Search the user's other chats by keyword. Matches chat titles and message text " +
-    '(case-insensitive substring) and returns the matching chats with snippets, newest first. ' +
+    '(words match as prefixes; "quoted phrase", -exclude and `or` work too) and returns the ' +
+    'best-matching chats with snippets. ' +
     'Use it when the user refers to something discussed in a previous conversation.',
   parameters: {
     type: 'object',
@@ -75,49 +70,27 @@ export const chatSearch: ServerTool = {
       .select({ chatId: messages.chatId })
       .from(messages)
       .where(eq(messages.id, ctx.messageId))
-      .then((rows) => rows[0]?.chatId ?? null);
-    const like = `%${escapeLike(q)}%`;
+      .then((rows) => rows[0]?.chatId ?? undefined);
+    const parsed = parseQuery(q);
 
     const [byTitle, msgs] = await Promise.all([
-      db
-        .select()
-        .from(chats)
-        .where(
-          and(
-            eq(chats.userId, ctx.userId),
-            ilike(chats.title, like),
-            ...(self ? [ne(chats.id, self)] : []),
-          ),
-        )
-        .orderBy(desc(chats.updatedAt))
-        .limit(limit),
-      db
-        .select({
-          chatId: messages.chatId,
-          role: messages.role,
-          content: messages.content,
-          createdAt: messages.createdAt,
-        })
-        .from(messages)
-        .innerJoin(chats, eq(chats.id, messages.chatId))
-        .where(
-          and(
-            eq(chats.userId, ctx.userId),
-            ilike(messages.content, like),
-            ...(self ? [ne(messages.chatId, self)] : []),
-          ),
-        )
-        .orderBy(desc(messages.createdAt))
-        .limit(limit * 4),
+      searchChatTitles(db, ctx.userId, parsed, limit, self),
+      searchMessages(
+        db,
+        ctx.userId,
+        parsed,
+        { excludeChatId: self },
+        { limit: limit * 4, offset: 0 },
+      ),
     ]);
 
-    /* one entry per chat, keeping its newest matching message */
+    /* title hits first, then chats in the order of their best message */
     const hits = new Map<string, { role: string; text: string }[]>();
     for (const c of byTitle) hits.set(c.id, []);
-    for (const m of msgs) {
+    for (const m of msgs.hits) {
       const list = hits.get(m.chatId) ?? [];
       if (list.length < 2)
-        list.push({ role: m.role, text: snippet(m.content, q) });
+        list.push({ role: m.role, text: stripMarks(m.snippet) });
       hits.set(m.chatId, list);
     }
     const ids = [...hits.keys()].slice(0, limit);

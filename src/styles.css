@@ -173,6 +173,33 @@ body {
   color: var(--text);
 }
 
+/* search: <mark> in result snippets, and CSS highlights painted over the thread */
+.search-mark {
+  background: color-mix(in oklch, var(--warn) 32%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+::highlight(search-hit) {
+  background-color: color-mix(in oklch, var(--warn) 32%, transparent);
+}
+::highlight(search-current) {
+  background-color: color-mix(in oklch, var(--warn) 75%, transparent);
+}
+/* the message a search result opened, flashed once */
+.msg.search-flash {
+  animation: search-flash 1.6s ease-out;
+  border-radius: 8px;
+}
+@keyframes search-flash {
+  0%,
+  30% {
+    background: color-mix(in oklch, var(--warn) 18%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
 /* Visible focus ring everywhere, never bare outline:none */
 :where(button, a, [role="switch"], [role="radio"], [tabindex]):focus-visible {
   box-shadow: var(--ring);

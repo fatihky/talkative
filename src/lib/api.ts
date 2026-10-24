@@ -119,20 +119,52 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+export type SearchHit = {
+  id: string;
+  chatId: string;
+  chatTitle: string;
+  folderId: string | null;
+  role: 'user' | 'assistant';
+  modelId: string | null;
+  createdAt: number;
+  /* matches wrapped in MARK_START/MARK_END (lib/search.ts), never html */
+  snippet: string;
+  /* the reply text, or its reasoning/tool output (only with `extra`) */
+  in: 'content' | 'extra';
+};
+
 export type SearchResults = {
-  chats: { id: string; title: string }[];
-  messages: {
-    id: string;
-    chatId: string;
-    chatTitle: string;
-    role: 'user' | 'assistant';
-    snippet: string;
-  }[];
+  chats: { id: string; title: string; updatedAt: number }[];
+  messages: SearchHit[];
+  /* the query's positive words, for highlighting inside the opened thread */
+  terms: string[];
+  next: number | null;
+};
+
+export type SearchParams = {
+  q: string;
+  role?: 'user' | 'assistant' | undefined;
+  chat?: string | undefined;
+  folder?: string | undefined;
+  model?: string | undefined;
+  after?: string | undefined;
+  before?: string | undefined;
+  extra?: boolean | undefined;
+  sort?: 'relevance' | 'newest' | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
 };
 
 export const searchApi = {
-  search: (q: string) =>
-    request<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
+  search: (p: SearchParams, signal?: AbortSignal) => {
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(p))
+      if (v !== undefined && v !== '' && v !== false)
+        qs.set(k, v === true ? '1' : String(v));
+    return request<SearchResults>(`/api/search?${qs}`, {
+      signal: signal ?? null,
+    });
+  },
 };
 
 export type CatalogResponse = {

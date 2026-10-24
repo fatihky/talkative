@@ -109,14 +109,17 @@ export function MessageBubble({
   const modelLabel = !isUser && m.modelId ? m.modelId.replace(/^\d+:/, '') : '';
 
   return (
-    <article className={`msg ${isUser ? 'user' : 'assistant'}`}>
+    <article
+      className={`msg ${isUser ? 'user' : 'assistant'}`}
+      data-msg-id={m.id}
+    >
       <div className="msg-row">
         <div className="msg-avatar">
           <I n={isUser ? 'user' : 'bot'} s={14} />
         </div>
 
         <div className="msg-body">
-          <div className="msg-meta">
+          <div className="msg-meta" data-no-find>
             <span>{isUser ? 'You' : modelLabel || 'Assistant'}</span>
             {m.createdAt && (
               <Tip label={fullTimestamp(m.createdAt)} side="bottom">

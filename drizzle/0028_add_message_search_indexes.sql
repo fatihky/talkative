@@ -1,0 +1,4 @@
+CREATE INDEX "chats_title_trgm_idx" ON "chats" USING gin ("title" gin_trgm_ops);--> statement-breakpoint
+CREATE INDEX "messages_search_idx" ON "messages" USING gin (to_tsvector('simple'::regconfig, left("content", 100000)));--> statement-breakpoint
+CREATE INDEX "messages_search_extra_idx" ON "messages" USING gin (to_tsvector('simple'::regconfig, left(regexp_replace((jsonb_path_query_array("thoughts", '$[*].text') || jsonb_path_query_array("tool_calls", '$[*].args') || jsonb_path_query_array("tool_calls", '$[*].result'))::text, '\\[nrt]', ' ', 'g'), 100000)));--> statement-breakpoint
+CREATE INDEX "messages_content_trgm_idx" ON "messages" USING gin ("content" gin_trgm_ops);

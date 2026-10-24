@@ -10,6 +10,13 @@
  *   persists into home.draft — the new-chat default it hasn't used.
  * - a ?leaf=<messageId> query switches to that branch — how published
  *   artifacts and settings links return to their source chat/branch.
+ * - a ?m=<messageId> query (a search result) also switches to the branch
+ *   holding that message, then scrolls it to the middle, flashes it once
+ *   and paints the words of an accompanying ?q= over it; the view stops
+ *   following the bottom so the reader stays on the hit.
+ * - mod+F / Ctrl+F (or the header's search button) opens FindBar over the
+ *   branch on screen, through a 'thread' keyboard scope stacked above the
+ *   shell's, inert while the palette is open.
  * - the header carries the title, a branch-count badge, and a ⋯ menu
  *   with the same chat actions as the sidebar row (rename, pin, system
  *   prompt, move to…, export, delete); rename there opens a prompt
@@ -30,17 +37,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'waku';
 import { useParams_UNSTABLE } from 'waku/router/client';
 import { I } from '../../lib/icons';
+import { useKeyboardScope } from '../../lib/keyboard';
 import { Menu, Tip } from '../../lib/popover';
+import { findRanges, paintHighlights, queryTerms } from '../../lib/search';
 import {
   actions,
   useChatsStore,
   useFoldersStore,
   useThreadsStore,
+  useUIStore,
 } from '../../stores';
 import { applyThreadModel, branchPath } from '../../stores/threads';
 import { chatActionsMenu } from '../chat-actions';
 import { MoveMenu } from '../sidebar/move-menu';
 import { ErrorCard } from './error-card';
+import { FindBar } from './find-bar';
 import { MessageBubble } from './message-bubble';
 
 export function ThreadScreen() {
@@ -56,6 +67,8 @@ export function ThreadScreen() {
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
   const [menu, setMenu] = useState<'actions' | 'move' | null>(null);
   const hasFolders = useFoldersStore((s) => s.items.length > 0);
+  /* null while closed; otherwise bumped by each shortcut press to refocus the input */
+  const [find, setFind] = useState<number | null>(null);
   /* the conversation exists even before its summary loads (e.g. a just-sent chat) */
   const exists = chat !== null || thread !== null;
 
@@ -85,6 +98,15 @@ export function ThreadScreen() {
     const target = thread.messages.find((m) => m.id === leafParam);
     if (target) actions.switchBranch(chatId, leafParam);
   }, [leafParam, thread?.messages.length, chatId]);
+
+  /* `?m=<messageId>&q=…` — a search result: open its branch, center it and mark the words */
+  const hit = useMemo(() => {
+    const p = new URLSearchParams(router.query);
+    const m = p.get('m');
+    return m ? { id: m, q: p.get('q') ?? '' } : null;
+  }, [router.query]);
+  /* the hit already revealed, so a growing thread doesn't keep yanking back to it */
+  const revealed = useRef<string | null>(null);
 
   const all = thread?.messages ?? [];
   const leafId = thread?.leafId ?? null;
@@ -142,6 +164,48 @@ export function ThreadScreen() {
     return () => ro.disconnect();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry once the thread loads or grows
+  useEffect(() => {
+    if (!hit || !thread || revealed.current === `${chatId}:${hit.id}`) return;
+    if (!thread.messages.some((m) => m.id === hit.id)) return;
+    revealed.current = `${chatId}:${hit.id}`;
+    pinned.current = false;
+    actions.switchBranch(chatId, hit.id);
+    let el: HTMLElement | null = null;
+    /* two frames: one for the branch switch to commit, one for layout */
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        el =
+          contentRef.current?.querySelector<HTMLElement>(
+            `[data-msg-id="${CSS.escape(hit.id)}"]`,
+          ) ?? null;
+        if (!el) return;
+        el.scrollIntoView({ block: 'center' });
+        el.classList.add('search-flash');
+        paintHighlights(findRanges(el, queryTerms(hit.q)));
+      }),
+    );
+    return () => {
+      cancelAnimationFrame(raf);
+      el?.classList.remove('search-flash');
+    };
+  }, [hit, chatId, thread?.messages.length]);
+
+  /* a hit's highlights and an open find bar belong to the chat they were opened in */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on chat switch only
+  useEffect(() => {
+    setFind(null);
+    return () => paintHighlights([]);
+  }, [chatId]);
+
+  /* find-in-chat; a scope above the shell's so it wins mod+f, skipped while the palette is up */
+  const kb = useKeyboardScope('thread');
+  const openFind = () => {
+    if (useUIStore.getState().palette) return;
+    setFind((k) => (k ?? 0) + 1);
+  };
+  kb.bind({ 'mod+f': openFind, 'ctrl+f': openFind });
+
   return (
     <main
       ref={listRef}
@@ -167,6 +231,18 @@ export function ThreadScreen() {
         ref={contentRef}
         className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col gap-3"
       >
+        {find !== null && (
+          <FindBar
+            rootRef={contentRef}
+            scrollRef={listRef}
+            version={messages}
+            focusKey={find}
+            onClose={() => setFind(null)}
+            onNavigate={() => {
+              pinned.current = false;
+            }}
+          />
+        )}
         <div className="flex items-center gap-2 pb-1">
           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">
             {chat?.title ?? (thread ? 'New chat' : 'Loading…')}
@@ -175,6 +251,18 @@ export function ThreadScreen() {
             <span className="num flex shrink-0 items-center gap-1 text-[11px] muted">
               <I n="branch" s={11} /> {Math.max(1, chat.branchCount)}
             </span>
+          )}
+          {exists && (
+            <Tip label="Find in chat" side="bottom">
+              <button
+                type="button"
+                aria-label="Find in chat"
+                onClick={openFind}
+                className="ctl-icon size-6 shrink-0 border-transparent bg-transparent text-[var(--text-3)] hover:bg-[var(--sunken)] hover:text-[var(--text)]"
+              >
+                <I n="search" s={13} />
+              </button>
+            </Tip>
           )}
           {exists && (
             <Tip label="Chat actions" side="bottom">

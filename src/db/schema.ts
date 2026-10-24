@@ -48,11 +48,20 @@
  *   (userId,createdAt); attachments and providerConnections userId;
  *   memories unique (userId,key); toolPreferences/toolCredentials use
  *   composite PKs (userId,toolId) / (userId,provider).
+ * - Search runs on expression indexes, not stored columns, so whole-row
+ *   selects stay as lean as before: GIN over messageSearchDoc (content) and
+ *   messageExtraDoc (thought text plus tool-call args/results), both on the
+ *   'simple' config (chats mix languages and code, stemming mangles
+ *   identifiers) and capped at SEARCH_DOC_CHARS so a huge paste can't hit
+ *   the 1MB tsvector limit and fail its insert; pg_trgm GIN indexes on
+ *   messages.content and chats.title keep substring (ILIKE) matching fast.
+ *   Queries must build the doc with these same helpers or the planner
+ *   won't match the index.
  * - app_settings is a key/value store (key PK, jsonb value), one row per
  *   settings key; todos are volatile chat-scoped working memory that
  *   cascades away with their chat.
  */
-import { relations } from 'drizzle-orm';
+import { type AnyColumn, relations, type SQL, sql } from 'drizzle-orm';
 import {
   boolean,
   customType,
@@ -67,6 +76,27 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+
+/* text past this point is left out of the search docs; keeps a tsvector well under its 1MB cap */
+export const SEARCH_DOC_CHARS = 100_000;
+
+/** a message's searchable text as a tsvector; must match messages_search_idx exactly */
+export const messageSearchDoc = (content: AnyColumn | SQL): SQL =>
+  sql`to_tsvector('simple'::regconfig, left(${content}, ${sql.raw(String(SEARCH_DOC_CHARS))}))`;
+
+/** reasoning text plus tool-call args and results, flattened from their jsonb (escapes blanked) */
+export const messageExtraText = (
+  thoughts: AnyColumn | SQL,
+  toolCalls: AnyColumn | SQL,
+): SQL =>
+  sql`left(regexp_replace((jsonb_path_query_array(${thoughts}, '$[*].text') || jsonb_path_query_array(${toolCalls}, '$[*].args') || jsonb_path_query_array(${toolCalls}, '$[*].result'))::text, '\\\\[nrt]', ' ', 'g'), ${sql.raw(String(SEARCH_DOC_CHARS))})`;
+
+/** messageExtraText as a tsvector; must match messages_search_extra_idx exactly */
+export const messageExtraDoc = (
+  thoughts: AnyColumn | SQL,
+  toolCalls: AnyColumn | SQL,
+): SQL =>
+  sql`to_tsvector('simple'::regconfig, ${messageExtraText(thoughts, toolCalls)})`;
 
 /* postgres bytea; drizzle has no first-party column for it. nullable: images are
    stored on the filesystem, so their row keeps only metadata and a null `data`. */
@@ -284,6 +314,7 @@ export const chats = pgTable(
     index('chats_user_id_updated_at_idx').on(table.userId, table.updatedAt),
     index('chats_user_id_created_at_idx').on(table.userId, table.createdAt),
     index('chats_folder_id_idx').on(table.folderId),
+    index('chats_title_trgm_idx').using('gin', table.title.op('gin_trgm_ops')),
   ],
 );
 
@@ -327,6 +358,15 @@ export const messages = pgTable(
   (table) => [
     index('messages_chat_id_idx').on(table.chatId),
     index('messages_parent_id_idx').on(table.parentId),
+    index('messages_search_idx').using('gin', messageSearchDoc(table.content)),
+    index('messages_search_extra_idx').using(
+      'gin',
+      messageExtraDoc(table.thoughts, table.toolCalls),
+    ),
+    index('messages_content_trgm_idx').using(
+      'gin',
+      table.content.op('gin_trgm_ops'),
+    ),
   ],
 );
 

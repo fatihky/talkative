@@ -20,9 +20,10 @@
  *   mounted below the caller's.
  * - The scope object and the returned api are stable refs, and bind replaces
  *   the whole handler map, so callers re-bind on every render.
- * - One consumer today: the shell's `home` scope — mod+k palette, mod+n new
+ * - Two consumers: the shell's `home` scope — mod+k palette, mod+n new
  *   chat, mod+b sidebar, mod+. right panel, ctrl+t tools, ctrl+shift+p
- *   params, mod+/ focus composer.
+ *   params, mod+/ focus composer — and the thread's `thread` scope above
+ *   it for mod+f / ctrl+f find-in-chat.
  */
 'use client';
 

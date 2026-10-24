@@ -15,6 +15,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Backdate a send by opening it with a `[yyyy/mm/dd HH:mm]` prefix: the turn (and its reply) are timestamped to that local wall-clock time and the prefix is dropped from the stored text, so long-running chats can slot historical entries into the transcript.
 - Add a composer clock toggle that, for one send, prefixes every history turn sent to the model with its `[yyyy/mm/dd HH:mm]` timestamp so a long conversation carries its timeline into context.
 - Store the timestamp-prefix toggle on the user turn (`messages.timestamp_prefix`) and mark such turns with a clock icon in the transcript; regenerating or retrying their reply re-sends the history timestamped too.
+- Add ranked full-text message search on Postgres GIN indexes (`simple` config, expression indexes over message text and, optionally, reasoning and tool-call output) plus `pg_trgm` indexes for substring matches; queries support prefix words, `"phrases"`, `-exclusions` and `or` (migrations `add_pg_trgm_extension` and `add_message_search_indexes`).
+- Add a `/search` page (sidebar and palette "See all results") with author, time range, folder, model, reasoning/tool-output and sort filters, highlighted snippets grouped by chat, and infinite scroll.
+- Add find-in-chat (⌘F / Ctrl+F or the thread header's search button) that highlights matches on the visible branch and steps through them.
+- Open a search hit at its message: `/c/<chat>?m=<message>&q=<query>` switches to the hit's branch, centers and flashes the message and highlights the matched words.
 
 ### Changed
 
@@ -29,6 +33,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - List `get_current_timestamp` first in the Tools grants popover so the clock tool sits at the top of the list.
 - Ask for confirmation before deleting a folder from the sidebar, noting that its subfolders and chats move up a level instead of being removed.
 - Let the right panel's chat-scope system prompt box be used on home, before a chat exists: the prompt is kept on the composer draft and stored on the new chat by its first send, so that first reply already runs with it.
+- Rank `chat_search` tool results with the same full-text search as the UI and accept its query syntax.
+- Extend `GET /api/search` with filters (`role`, `chat`, `folder`, `model`, `after`, `before`, `extra`), `sort`, paging (`limit`/`offset`/`next`) and highlight-marked snippets; the palette's message hits are now ranked and come only from the server.
 
 ### Fixed
 

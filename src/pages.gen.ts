@@ -26,6 +26,8 @@ import type { getConfig as File_NotesIndex_getConfig } from './pages/notes/index
 // prettier-ignore
 import type { getConfig as File_P_getConfig } from './pages/p';
 // prettier-ignore
+import type { getConfig as File_Search_getConfig } from './pages/search';
+// prettier-ignore
 import type { getConfig as File_SettingsAccount_getConfig } from './pages/settings/account';
 // prettier-ignore
 import type { getConfig as File_SettingsAppearance_getConfig } from './pages/settings/appearance';
@@ -63,6 +65,7 @@ type Page =
 | ({ path: '/notes/[slug]' } & GetConfigResponse<typeof File_NotesSlug_getConfig>)
 | ({ path: '/notes' } & GetConfigResponse<typeof File_NotesIndex_getConfig>)
 | ({ path: '/p' } & GetConfigResponse<typeof File_P_getConfig>)
+| ({ path: '/search' } & GetConfigResponse<typeof File_Search_getConfig>)
 | ({ path: '/settings/account' } & GetConfigResponse<typeof File_SettingsAccount_getConfig>)
 | ({ path: '/settings/appearance' } & GetConfigResponse<typeof File_SettingsAppearance_getConfig>)
 | ({ path: '/settings/artifacts' } & GetConfigResponse<typeof File_SettingsArtifacts_getConfig>)
