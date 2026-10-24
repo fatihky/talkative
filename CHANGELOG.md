@@ -9,6 +9,12 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+<!-- Add entries under the matching group below (create it if missing):
+     ### Added / ### Changed / ### Fixed / ### Removed / ### Security
+     One line per change, imperative mood. Cut a versioned heading only on release. -->
+
+## [0.2.0] - 2026-10-24
+
 ### Added
 
 - Let `ask_user` ask multi-select questions: the model can set `multi_select` (globally or per question) and the card's options toggle instead of replacing each other, sending the picked labels joined by ", ", while typing a free-text answer still overrides the picks.
@@ -38,10 +44,6 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Keep the new-chat default model from leaking into existing chats: reloading on a chat page no longer overwrites that chat (and the persisted draft) with the default, picking a model inside a chat only re-selects it for that chat instead of also becoming the default, and a chat whose thread hasn't loaded yet shows no model rather than the default it never used.
 - Fix upward scrolling while a reply is streaming: the auto-scroll's own scroll events no longer re-pin the view to the bottom, so scrolling up mid-stream now sticks instead of being yanked back down by each token.
 - Reset the composer's "last reply cost" to the ~estimate while a reply is regenerated or a tool call is retried, instead of showing the replaced reply's cost: the cost now reads from the visible branch, so the replaced sibling's cost drops out as soon as the new branch starts.
-
-<!-- Add entries under the matching group below (create it if missing):
-     ### Added / ### Changed / ### Fixed / ### Removed / ### Security
-     One line per change, imperative mood. Cut a versioned heading only on release. -->
 
 ## [0.1.2] - 2026-10-20
 
@@ -92,4 +94,5 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 [0.1.1]: https://github.com/fatihky/talkative/releases/tag/v0.1.1
 [0.1.2]: https://github.com/fatihky/talkative/releases/tag/v0.1.2
-[Unreleased]: https://github.com/fatihky/talkative/compare/v0.1.2...HEAD
+[0.2.0]: https://github.com/fatihky/talkative/releases/tag/v0.2.0
+[Unreleased]: https://github.com/fatihky/talkative/compare/v0.2.0...HEAD
