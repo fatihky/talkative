@@ -482,6 +482,8 @@ export type Message = {
   /* user only: the tools granted for this turn, so reopening the chat restores the selection */
   toolGrants?: Record<ToolId, boolean> | undefined;
   toolProviders?: Record<ToolId, ProviderId> | undefined;
+  /* user only: this send prefixed every history turn with its [yyyy/mm/dd HH:mm] timestamp */
+  timestampPrefix?: boolean | undefined;
   /* assistant only: function calls made while writing the reply */
   toolCalls?: ToolCall[] | undefined;
   /* assistant only: reasoning the model streamed, one block per agent-loop step */

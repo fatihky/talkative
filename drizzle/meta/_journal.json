@@ -183,6 +183,13 @@
       "when": 1791989900647,
       "tag": "0025_add_decision_kind_for_systemone",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792842002608,
+      "tag": "0026_add_message_timestamp_prefix",
+      "breakpoints": true
     }
   ]
 }

@@ -306,6 +306,8 @@ export const messages = pgTable(
     /* per-message tool permissions, carried on the user turn so a queued run keeps them */
     toolGrants: jsonb('tool_grants'),
     toolProviders: jsonb('tool_providers'),
+    /* user only: this send prefixed every history turn with its [yyyy/mm/dd HH:mm] timestamp */
+    timestampPrefix: boolean('timestamp_prefix').notNull().default(false),
     modelId: text('model_id'),
     status: messageStatusEnum('status').notNull().default('done'),
     error: text('error'),

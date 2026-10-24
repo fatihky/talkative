@@ -75,6 +75,7 @@ export const toMessageDto = (m: MessageRow): MessageDto => ({
   ...(m.toolProviders
     ? { toolProviders: m.toolProviders as MessageDto['toolProviders'] }
     : {}),
+  ...(m.timestampPrefix ? { timestampPrefix: true } : {}),
   ...(m.toolCalls && (m.toolCalls as unknown[]).length > 0
     ? { toolCalls: m.toolCalls as MessageDto['toolCalls'] }
     : {}),

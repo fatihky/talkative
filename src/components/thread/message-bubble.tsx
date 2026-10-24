@@ -125,6 +125,20 @@ export function MessageBubble({
                 </span>
               </Tip>
             )}
+            {m.timestampPrefix && (
+              <Tip
+                label="Sent with timestamps — every history turn went to the model prefixed with its [yyyy/mm/dd HH:mm] time."
+                side="bottom"
+              >
+                <span
+                  className="inline-flex cursor-default items-center text-[var(--accent)]"
+                  role="img"
+                  aria-label="Sent with history timestamps"
+                >
+                  <I n="clock" s={12} />
+                </span>
+              </Tip>
+            )}
             {STATUS_LABEL[m.status] && <span>{STATUS_LABEL[m.status]}</span>}
           </div>
 

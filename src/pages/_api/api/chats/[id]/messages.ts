@@ -246,6 +246,8 @@ export const POST = (req: Request, { params }: Ctx) =>
         /* the turn keeps its own tool selection, so the chat reopens with it */
         toolGrants: input.toolGrants,
         toolProviders: input.toolProviders,
+        /* kept on the turn so the transcript shows it, and a regenerate re-sends it the same way */
+        timestampPrefix: input.timestamps === true,
         usage: null,
         latencyMs: null,
         createdAt: new Date(now),

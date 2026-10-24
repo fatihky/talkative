@@ -93,7 +93,10 @@ export const POST = (req: Request, { params }: Ctx) =>
     const withText = path.map((m, i) => ({ ...m, attachments: inlined[i] }));
     const history = [
       ...(await systemTurns(db, chat)),
-      ...historyTurns(withText, await collectRefs(db, userId, withText)),
+      /* the user turn being answered decides whether history goes out timestamped */
+      ...historyTurns(withText, await collectRefs(db, userId, withText), {
+        timestamps: path.at(-1)?.timestampPrefix,
+      }),
       ...cut.turns,
     ];
     const assistantId = crypto.randomUUID();

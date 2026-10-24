@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "timestamp_prefix" boolean DEFAULT false NOT NULL;
