@@ -90,7 +90,8 @@ const followStream = async (msgId: string) => {
   let backoff = 500;
   try {
     while (!ctrl.signal.aborted) {
-      const offset = get().messages.find((m) => m.id === msgId)?.content.length ?? 0;
+      const offset =
+        get().messages.find((m) => m.id === msgId)?.content.length ?? 0;
       try {
         const end = await readTransientStream(
           msgId,
@@ -114,7 +115,10 @@ const followStream = async (msgId: string) => {
       } catch (e) {
         if (ctrl.signal.aborted) return;
         if (e instanceof ApiError && e.status === 404) {
-          finishStream(msgId, { status: 'error', error: 'reply no longer exists' });
+          finishStream(msgId, {
+            status: 'error',
+            error: 'reply no longer exists',
+          });
           return;
         }
       }
@@ -183,7 +187,9 @@ export const privateActions = {
         set({
           messages: [
             ...nextMessages.map((m) =>
-              m.id === userMsg.id ? ({ ...m, status: 'done' } as PrivateMsg) : m,
+              m.id === userMsg.id
+                ? ({ ...m, status: 'done' } as PrivateMsg)
+                : m,
             ),
             assistantMsg,
           ],
@@ -200,19 +206,30 @@ export const privateActions = {
   /** retries the last failed user turn */
   retry() {
     const { messages } = get();
-    const failed = messages.findLast((m) => m.role === 'user' && m.status === 'failed');
+    const failed = messages.findLast(
+      (m) => m.role === 'user' && m.status === 'failed',
+    );
     if (!failed) return;
     /* drop the failed turn and resend its text */
-    set({ messages: messages.filter((m) => m.id !== failed.id), error: undefined, draft: failed.content });
+    set({
+      messages: messages.filter((m) => m.id !== failed.id),
+      error: undefined,
+      draft: failed.content,
+    });
     privateActions.privateSend();
   },
 
   /** stops the live reply; the open stream delivers the final 'stopped' status */
   privateStop() {
-    const msg = get().messages.findLast((m) => m.role === 'assistant' && m.status === 'streaming');
+    const msg = get().messages.findLast(
+      (m) => m.role === 'assistant' && m.status === 'streaming',
+    );
     if (!msg) return;
     stopTransientMessage(msg.id).catch((e: unknown) =>
-      uiActions.toast(`Couldn't stop — ${e instanceof Error ? e.message : 'error'}`, 'error'),
+      uiActions.toast(
+        `Couldn't stop — ${e instanceof Error ? e.message : 'error'}`,
+        'error',
+      ),
     );
   },
 

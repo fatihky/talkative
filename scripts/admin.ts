@@ -7,8 +7,8 @@
      pnpm admin:revoke <email|id>
 */
 
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq, or } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { user } from '../src/db/schema.ts';
 
@@ -47,7 +47,9 @@ try {
     console.error(`no user found matching "${identifier}"`);
     process.exitCode = 1;
   } else {
-    console.log(`${row.email} is now ${row.isAdmin ? 'an admin' : 'no longer an admin'}`);
+    console.log(
+      `${row.email} is now ${row.isAdmin ? 'an admin' : 'no longer an admin'}`,
+    );
   }
 } catch (err) {
   console.error('failed:');

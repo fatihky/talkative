@@ -45,8 +45,8 @@ import {
   usePublishedStore,
   useThreadsStore,
 } from '../stores';
-import { branchPath } from '../stores/threads';
 import { errorText } from '../stores/models';
+import { branchPath } from '../stores/threads';
 import { SegmentedControl } from '../ui/primitives';
 import { CodeBlockView } from './code-block';
 import { Markdown } from './markdown';
@@ -301,13 +301,7 @@ function CopyArtifact({ text }: { text: string }) {
 
 /* sharing for the version on screen: copying a link never publishes, and going
    public always asks first. re-publishing keeps the same public link. */
-function ShareArtifact({
-  chatId,
-  s,
-}: {
-  chatId: string;
-  s: ArtifactVersion;
-}) {
+function ShareArtifact({ chatId, s }: { chatId: string; s: ArtifactVersion }) {
   const { items, status } = usePublishedStore();
   const [busy, setBusy] = useState(false);
 

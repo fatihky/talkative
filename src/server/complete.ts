@@ -24,16 +24,14 @@ import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { decryptSecret } from './secrets';
 
 /* every supported compatibility speaks openai chat completions */
-const COMPLETIONS_PATH: Record<
-  ProviderConnectionRow['compatibility'],
-  string
-> = {
-  openai: '/v1/chat/completions',
-  openrouter: '/api/v1/chat/completions',
-  lmstudio: '/v1/chat/completions',
-  ollama: '/v1/chat/completions',
-  bifrost: '/v1/chat/completions',
-};
+const COMPLETIONS_PATH: Record<ProviderConnectionRow['compatibility'], string> =
+  {
+    openai: '/v1/chat/completions',
+    openrouter: '/api/v1/chat/completions',
+    lmstudio: '/v1/chat/completions',
+    ollama: '/v1/chat/completions',
+    bifrost: '/v1/chat/completions',
+  };
 
 export type CompleteMessage = {
   role: 'system' | 'user';

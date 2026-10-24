@@ -94,7 +94,8 @@ export const supportsSystemOne = (c: Compatibility): boolean =>
 export const decisionPath = (
   c: Compatibility,
   kind: DecisionKind,
-): string | null => (kind === 'systemone' ? SYSTEMONE_PATH[c] : DECISIONS_PATH[c]);
+): string | null =>
+  kind === 'systemone' ? SYSTEMONE_PATH[c] : DECISIONS_PATH[c];
 
 const MAX_QUESTIONS = 10;
 const MAX_INPUT = 100_000;
@@ -165,7 +166,9 @@ const parseChoices = (v: unknown, field: string): DecisionChoice[] => {
     const c = obj(raw, `${field}[${j}]`);
     const value = str(c.value, `${field}[${j}].value`, 100);
     if (seen.has(value))
-      throw new ValidationError(`${field}[${j}].value "${value}" is a duplicate`);
+      throw new ValidationError(
+        `${field}[${j}].value "${value}" is a duplicate`,
+      );
     seen.add(value);
     const description = optStr(
       c.description,
@@ -250,13 +253,13 @@ export const parseDecisionRun = (body: unknown): DecisionRunInput => {
   if (typeof b.input !== 'string' || !b.input.trim())
     throw new ValidationError('input must be a non-empty string');
   if (b.input.length > MAX_INPUT)
-    throw new ValidationError(`input is too long (max ${MAX_INPUT} characters)`);
+    throw new ValidationError(
+      `input is too long (max ${MAX_INPUT} characters)`,
+    );
   if (!Array.isArray(b.questions))
     throw new ValidationError('questions must be an array');
   if (b.questions.length === 0 || b.questions.length > MAX_QUESTIONS)
-    throw new ValidationError(
-      `questions must hold 1–${MAX_QUESTIONS} entries`,
-    );
+    throw new ValidationError(`questions must hold 1–${MAX_QUESTIONS} entries`);
   const questions = b.questions.map(parseQuestion);
   const seen = new Set<string>();
   for (const q of questions) {
@@ -521,7 +524,9 @@ const rawAnswer = (
         x !== null &&
         (x as Record<string, unknown>).name === q.name,
     ) ?? list[i];
-  return typeof a === 'object' && a !== null ? (a as Record<string, unknown>) : null;
+  return typeof a === 'object' && a !== null
+    ? (a as Record<string, unknown>)
+    : null;
 };
 
 /* openai/lm studio/bifrost report openai-style usage; openrouter's alpha answers
@@ -615,7 +620,8 @@ export const runDecision = async (
       ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
     },
     body: JSON.stringify(payload),
-    signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? DECISION_TIMEOUT_MS),
+    signal:
+      opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? DECISION_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = (await res.text().catch(() => '')).slice(0, 300);

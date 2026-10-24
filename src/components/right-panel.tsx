@@ -127,7 +127,9 @@ export function RightPanel() {
   const panel = (
     <aside
       ref={escRef}
-      aria-label={shown === 'artifact' ? 'Artifact panel' : 'Chat context panel'}
+      aria-label={
+        shown === 'artifact' ? 'Artifact panel' : 'Chat context panel'
+      }
       tabIndex={-1}
       className={`relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-sidebar ${asideAnim}`}
       style={{ width: panelWidth }}
@@ -275,7 +277,11 @@ function PanelTabs() {
   const tab = useLayoutStore((s) => s.rightPanelTab);
   const preview = useScopedPreview();
   return (
-    <div role="tablist" aria-label="Panel view" className="artifact-tabs flex-1">
+    <div
+      role="tablist"
+      aria-label="Panel view"
+      className="artifact-tabs flex-1"
+    >
       {TABS.map((t) => {
         const disabled = t.value === 'preview' && !preview;
         /* a scoped-out preview falls back to the artifact tab */
@@ -289,7 +295,9 @@ function PanelTabs() {
             aria-selected={active}
             disabled={disabled}
             onClick={() => actions.setRightPanelTab(t.value)}
-            className={active ? 'on' : disabled ? 'cursor-not-allowed opacity-50' : ''}
+            className={
+              active ? 'on' : disabled ? 'cursor-not-allowed opacity-50' : ''
+            }
           >
             {t.label}
           </button>

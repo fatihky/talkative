@@ -97,7 +97,10 @@ const save = (id: string) => {
       set((s) => ({ saveStatus: { ...s.saveStatus, [id]: 'saved' } }));
       const t = savedTimers.get(id);
       if (t) clearTimeout(t);
-      savedTimers.set(id, setTimeout(() => clearSaved(id), SAVED_FADE_MS));
+      savedTimers.set(
+        id,
+        setTimeout(() => clearSaved(id), SAVED_FADE_MS),
+      );
     })
     .catch((e: unknown) =>
       uiActions.toast(`Saving note failed — ${errorText(e)}`, 'error'),

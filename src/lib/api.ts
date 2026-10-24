@@ -146,7 +146,11 @@ export type CatalogResponse = {
 export async function fetchModels(
   dev: DevFlags,
   opts: { refresh?: boolean } = {},
-): Promise<{ items: Model[]; syncedAt: number; errors: Record<string, string> }> {
+): Promise<{
+  items: Model[];
+  syncedAt: number;
+  errors: Record<string, string>;
+}> {
   if (dev.slowNetwork) await delay(1500);
   if (dev.failCatalog)
     throw new ApiError(
@@ -401,9 +405,7 @@ export const usersApi = {
 };
 
 export const fetchRegistrationStatus = () =>
-  request<{ enabled: boolean; hasUsers: boolean }>(
-    '/api/registration-status',
-  );
+  request<{ enabled: boolean; hasUsers: boolean }>('/api/registration-status');
 
 export async function fetchFolders(dev: DevFlags): Promise<Folder[]> {
   if (dev.simulateOffline) throw new ApiError(0, 'offline');
@@ -475,7 +477,10 @@ export const sendTransientMessage = (
 ): Promise<TransientSendResult> => {
   if (dev.simulateOffline) throw new ApiError(0, 'Offline');
   if (dev.failSend || payload.history.at(-1)?.content.includes('[fail]')) {
-    throw new ApiError(500, 'POST /api/transient/messages → 500 upstream provider error (simulated)');
+    throw new ApiError(
+      500,
+      'POST /api/transient/messages → 500 upstream provider error (simulated)',
+    );
   }
   return request<TransientSendResult>('/api/transient/messages', {
     method: 'POST',
@@ -495,7 +500,12 @@ export async function readTransientStream(
   },
   signal: AbortSignal,
 ): Promise<StreamEnd | null> {
-  return readStream(`/api/transient/messages/${messageId}/stream`, offset, on, signal);
+  return readStream(
+    `/api/transient/messages/${messageId}/stream`,
+    offset,
+    on,
+    signal,
+  );
 }
 
 /** cancels a live private-chat reply */
@@ -503,7 +513,6 @@ export const stopTransientMessage = (messageId: string) =>
   request<{ stopped: boolean }>(`/api/transient/messages/${messageId}/stop`, {
     method: 'POST',
   });
-
 
 /** stores the turn and starts generation server-side; the reply is read with `readStream` */
 export async function sendMessage(

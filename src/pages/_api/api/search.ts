@@ -67,12 +67,7 @@ export const GET = (req: Request) =>
         })
         .from(messages)
         .innerJoin(chats, eq(chats.id, messages.chatId))
-        .where(
-          and(
-            eq(chats.userId, userId),
-            ilike(messages.content, like),
-          ),
-        )
+        .where(and(eq(chats.userId, userId), ilike(messages.content, like)))
         .orderBy(desc(messages.createdAt))
         .limit(MSG_LIMIT * MSG_PER_CHAT),
     ]);

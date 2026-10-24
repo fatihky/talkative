@@ -20,9 +20,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { errorText } from '../stores/models';
-import { settingsApi } from '../lib/api';
 import type { SiteSettingsResponse } from '../lib/api';
+import { settingsApi } from '../lib/api';
+import { errorText } from '../stores/models';
 import type { EnvKeyAccess } from '../types';
 import { Switch } from '../ui/primitives';
 

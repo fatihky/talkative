@@ -200,7 +200,10 @@ export function ChatList({
 
     for (const g of GROUPS) {
       const arr = unfiled.filter(
-        (c) => !pinnedOf(c) && recencyGroup(c.createdAt ?? c.updatedAt) === g && matches(c),
+        (c) =>
+          !pinnedOf(c) &&
+          recencyGroup(c.createdAt ?? c.updatedAt) === g &&
+          matches(c),
       );
       if (arr.length === 0) continue;
       const col = collapsed[g] === true;
@@ -307,99 +310,101 @@ export function ChatList({
       <TouchDragProvider canDrop={canDrop} onDrop={file}>
         <ListZone>
           {flat.length === 0 && items.length > 0 && (
-        <div className="px-3 py-6 text-center text-[12px] muted">
-          No chats match “{filter}”.
-        </div>
-      )}
-      <div style={{ height: total, position: 'relative' }}>
-        {visible.map((f, k) => {
-          const idx = startRaw + k;
-          const top = offsets[idx] ?? 0;
-          if (f.type === 'empty')
-            return (
-              <ChatListEmptyState
-                key="empty"
-                style={{ position: 'absolute', top, left: 0, right: 0 }}
-              />
-            );
-          if (f.type === 'header')
-            return (
-              <button
-                key={f.group}
-                type="button"
-                style={{
-                  position: 'absolute',
-                  top,
-                  left: 0,
-                  right: 0,
-                  height: HEADER_H,
-                }}
-                className="flex items-center gap-1 px-3 hover:bg-[var(--sunken)]"
-                aria-expanded={!f.collapsed}
-                onClick={() =>
-                  setCollapsed((c) => ({ ...c, [f.group]: !f.collapsed }))
-                }
-              >
-                <I
-                  n={f.collapsed ? 'chevron-right' : 'chevron-down'}
-                  s={11}
-                  className="muted"
-                />
-                <span className="sec-label num">
-                  {f.group} ({f.count})
-                </span>
-              </button>
-            );
-          if (f.type === 'folder')
-            return (
-              <div
-                key={`f-${f.folder.id}`}
-                style={{
-                  position: 'absolute',
-                  top,
-                  left: 0,
-                  right: 0,
-                  height: FOLDER_H,
-                }}
-              >
-                <FolderRow
-                  folder={f.folder}
-                  depth={f.depth}
-                  count={f.count}
-                  open={f.open}
-                  dropping={dropTarget === f.folder.id}
-                  onDrag={onDrag}
-                  onDropHover={hover(f.folder.id)}
-                  onDropHere={drop(f.folder.id)}
-                />
-              </div>
-            );
-          return (
-            // biome-ignore lint/a11y/noStaticElementInteractions: drop target only; the row inside carries the interactions
-            <div
-              key={f.chat.id}
-              style={{
-                position: 'absolute',
-                top,
-                left: 0,
-                right: 0,
-                height: ROW_H,
-              }}
-              /* dropping onto a filed chat files into the same folder */
-              onDragOver={hover(f.depth > 0 ? (f.chat.folderId ?? null) : null)}
-              onDrop={drop(f.depth > 0 ? (f.chat.folderId ?? null) : null)}
-            >
-              <ChatRow
-                chat={f.chat}
-                depth={f.depth}
-                active={f.chat.id === activeId}
-                renaming={renamingId === f.chat.id}
-                setRenaming={(v) => setRenamingId(v ? f.chat.id : null)}
-                onDrag={onDrag}
-              />
+            <div className="px-3 py-6 text-center text-[12px] muted">
+              No chats match “{filter}”.
             </div>
-          );
-        })}
+          )}
+          <div style={{ height: total, position: 'relative' }}>
+            {visible.map((f, k) => {
+              const idx = startRaw + k;
+              const top = offsets[idx] ?? 0;
+              if (f.type === 'empty')
+                return (
+                  <ChatListEmptyState
+                    key="empty"
+                    style={{ position: 'absolute', top, left: 0, right: 0 }}
+                  />
+                );
+              if (f.type === 'header')
+                return (
+                  <button
+                    key={f.group}
+                    type="button"
+                    style={{
+                      position: 'absolute',
+                      top,
+                      left: 0,
+                      right: 0,
+                      height: HEADER_H,
+                    }}
+                    className="flex items-center gap-1 px-3 hover:bg-[var(--sunken)]"
+                    aria-expanded={!f.collapsed}
+                    onClick={() =>
+                      setCollapsed((c) => ({ ...c, [f.group]: !f.collapsed }))
+                    }
+                  >
+                    <I
+                      n={f.collapsed ? 'chevron-right' : 'chevron-down'}
+                      s={11}
+                      className="muted"
+                    />
+                    <span className="sec-label num">
+                      {f.group} ({f.count})
+                    </span>
+                  </button>
+                );
+              if (f.type === 'folder')
+                return (
+                  <div
+                    key={`f-${f.folder.id}`}
+                    style={{
+                      position: 'absolute',
+                      top,
+                      left: 0,
+                      right: 0,
+                      height: FOLDER_H,
+                    }}
+                  >
+                    <FolderRow
+                      folder={f.folder}
+                      depth={f.depth}
+                      count={f.count}
+                      open={f.open}
+                      dropping={dropTarget === f.folder.id}
+                      onDrag={onDrag}
+                      onDropHover={hover(f.folder.id)}
+                      onDropHere={drop(f.folder.id)}
+                    />
+                  </div>
+                );
+              return (
+                // biome-ignore lint/a11y/noStaticElementInteractions: drop target only; the row inside carries the interactions
+                <div
+                  key={f.chat.id}
+                  style={{
+                    position: 'absolute',
+                    top,
+                    left: 0,
+                    right: 0,
+                    height: ROW_H,
+                  }}
+                  /* dropping onto a filed chat files into the same folder */
+                  onDragOver={hover(
+                    f.depth > 0 ? (f.chat.folderId ?? null) : null,
+                  )}
+                  onDrop={drop(f.depth > 0 ? (f.chat.folderId ?? null) : null)}
+                >
+                  <ChatRow
+                    chat={f.chat}
+                    depth={f.depth}
+                    active={f.chat.id === activeId}
+                    renaming={renamingId === f.chat.id}
+                    setRenaming={(v) => setRenamingId(v ? f.chat.id : null)}
+                    onDrag={onDrag}
+                  />
+                </div>
+              );
+            })}
           </div>
         </ListZone>
       </TouchDragProvider>

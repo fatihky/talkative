@@ -126,7 +126,8 @@
 
   --font-display: var(--font-sans, ui-sans-serif);
   --font-body: var(--font-sans, ui-sans-serif);
-  --font-mono: ui-monospace, 'JetBrains Mono', 'IBM Plex Mono', Menlo, monospace;
+  --font-mono:
+    ui-monospace, "JetBrains Mono", "IBM Plex Mono", Menlo, monospace;
 
   --radius: 8px;
   --radius-lg: 12px;
@@ -399,7 +400,7 @@ select:focus-visible {
   }
   .pulse-dot::before,
   .pulse-dot::after {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     border-radius: 50%;
@@ -765,7 +766,7 @@ select:focus-visible {
 }
 .pill .pulse::before,
 .pill .pulse::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
@@ -1138,7 +1139,7 @@ select:focus-visible {
   transition: background 0.15s ease;
 }
 .tool-menu-item .switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;

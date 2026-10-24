@@ -150,8 +150,7 @@ export const saveCredential = async (
     if (existing) return toCredentialDto(existing);
     throw new ValidationError('no stored key to keep');
   }
-  const stored =
-    input.apiKey === null ? null : encryptSecret(input.apiKey);
+  const stored = input.apiKey === null ? null : encryptSecret(input.apiKey);
   const [row] = await db
     .insert(toolCredentials)
     .values({ userId, provider: input.provider, apiKey: stored })

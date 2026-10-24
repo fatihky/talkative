@@ -47,16 +47,16 @@ export const GET = () =>
     const rows = await db
       .select()
       .from(artifacts)
-      .where(
-        and(eq(artifacts.userId, userId), eq(artifacts.published, true)),
-      )
+      .where(and(eq(artifacts.userId, userId), eq(artifacts.published, true)))
       .orderBy(desc(artifacts.createdAt));
     const titles = await chatTitles(
       db,
       rows.map((r) => r.chatId),
     );
     return Response.json(
-      rows.map((r) => toArtifactDto(r, r.chatId ? titles.get(r.chatId) : undefined)),
+      rows.map((r) =>
+        toArtifactDto(r, r.chatId ? titles.get(r.chatId) : undefined),
+      ),
     );
   });
 

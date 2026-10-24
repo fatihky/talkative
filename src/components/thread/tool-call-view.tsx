@@ -38,8 +38,9 @@ const argsPreview = (name: string, raw: string) => {
     const queryKeys = ['query', 'q', 'search', 'prompt', 'term', 'text'];
     const firstString = entries.find(([, x]) => typeof x === 'string');
     const query =
-      entries.find(([k, x]) => queryKeys.includes(k) && typeof x === 'string')
-        ?.[1] ?? firstString?.[1];
+      entries.find(
+        ([k, x]) => queryKeys.includes(k) && typeof x === 'string',
+      )?.[1] ?? firstString?.[1];
     if (typeof query === 'string' && query.trim())
       return `"${query.replace(/^"|"$/g, '')}"`;
     return entries.map(([k, x]) => `${k}: ${JSON.stringify(x)}`).join(', ');
@@ -79,8 +80,7 @@ const parseSearchHits = (raw: string | undefined): Hit[] => {
           const o = r as Record<string, unknown>;
           const title = o.title ?? o.name;
           const url = o.url ?? o.link;
-          const snippet =
-            o.snippet ?? o.content ?? o.description ?? o.raw_text;
+          const snippet = o.snippet ?? o.content ?? o.description ?? o.raw_text;
           if (typeof title !== 'string' || typeof url !== 'string') return null;
           return {
             title,
@@ -197,7 +197,11 @@ export function ToolCallView({
       {open && (
         <div className="tool-card-body">
           {c.name === 'web_search' ? (
-            <SearchResults raw={c.raw} result={c.result} err={c.status === 'error'} />
+            <SearchResults
+              raw={c.raw}
+              result={c.result}
+              err={c.status === 'error'}
+            />
           ) : (
             <>
               <div className="sec-label">arguments</div>
@@ -278,7 +282,11 @@ function SearchResults({
       {showRaw && (
         <details className="group">
           <summary className="sec-label flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden">
-            <I n="chevron-right" s={9} className="transition-transform group-open:rotate-90" />
+            <I
+              n="chevron-right"
+              s={9}
+              className="transition-transform group-open:rotate-90"
+            />
             inspect raw results
           </summary>
           <pre className="num scroll-thin mt-1 max-h-60 overflow-auto whitespace-pre-wrap break-words text-[11px]">

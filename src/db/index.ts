@@ -38,4 +38,3 @@ export type Db = ReturnType<typeof getDb>;
 
 /* better-auth's drizzle adapter expects a ready-made instance */
 export const db = getDb();
-

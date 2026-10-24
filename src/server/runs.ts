@@ -103,12 +103,12 @@ export type RunEvent =
   | ({
       type: 'done';
     } & RunFinal & {
-      usage?: MessageUsage | undefined;
-      usageDetails?: MessageUsageDetails | undefined;
-      routing?: MessageRouting | undefined;
-      refusal?: string | undefined;
-      annotations?: UrlCitation[] | undefined;
-    });
+        usage?: MessageUsage | undefined;
+        usageDetails?: MessageUsageDetails | undefined;
+        routing?: MessageRouting | undefined;
+        refusal?: string | undefined;
+        annotations?: UrlCitation[] | undefined;
+      });
 
 type Run = {
   messageId: string;
@@ -164,7 +164,10 @@ export const localStamp = (ts: number): string => {
 };
 
 /* prepends a "[yyyy/mm/dd HH:mm]" stamp to a turn's text content */
-export const prefixTurn = <T extends Turn>(t: T, stamp: string | undefined): T => {
+export const prefixTurn = <T extends Turn>(
+  t: T,
+  stamp: string | undefined,
+): T => {
   if (!stamp || t.role === 'tool') return t;
   if (typeof t.content === 'string')
     return { ...t, content: `${stamp} ${t.content}` } as T;
@@ -277,15 +280,14 @@ export const userContent = (
       const c = a.chatId ? refs.chats.get(a.chatId) : undefined;
       if (!c) return [];
       const body = c.turns
-        .map(
-          (t) =>
-            `<role=${t.role}>\n${t.content}\n</role>`,
-        )
+        .map((t) => `<role=${t.role}>\n${t.content}\n</role>`)
         .join('\n');
       return [`<chat title=${JSON.stringify(c.title)}>\n${body}\n</chat>`];
     }
     if (a.kind === 'url')
-      return [`<attachment name=${JSON.stringify(a.name)}>\n${urlBody(a)}\n</attachment>`];
+      return [
+        `<attachment name=${JSON.stringify(a.name)}>\n${urlBody(a)}\n</attachment>`,
+      ];
     if (a.kind === 'file' && a.text !== undefined)
       return [
         `<attachment name=${JSON.stringify(a.name)} mime=${JSON.stringify(a.mime ?? '')}>\n${a.text}\n</attachment>`,
@@ -345,9 +347,7 @@ export const historyTurns = (
         (t) => t.role === 'user' || (t.role === 'assistant' && t.content),
       );
       if (first === -1) return turns;
-      return turns.map((t, i) =>
-        i === first ? prefixTurn(t, stamp) : t,
-      );
+      return turns.map((t, i) => (i === first ? prefixTurn(t, stamp) : t));
     });
 
 /** where a retried reply picks up: the step to redo, with the reply as it stood before it */
@@ -983,7 +983,7 @@ async function* chatCompletions(
     let routing: MessageRouting | undefined;
     /* a refusal replaces the answer; web-search citations arrive whole in the final chunk */
     let refusal = '';
-    let annotations: UrlCitation[] = [];
+    const annotations: UrlCitation[] = [];
     const result = () => {
       const calls = partial
         .filter((c) => c.name)
@@ -1088,7 +1088,8 @@ async function* chatCompletions(
           const cached =
             json.usage.prompt_cache_hit_tokens ??
             json.usage.cache_read_input_tokens;
-          const reasoning = json.usage.completion_tokens_details?.reasoning_tokens;
+          const reasoning =
+            json.usage.completion_tokens_details?.reasoning_tokens;
           const cost = reportedCost(json.usage.cost);
           usage = {
             promptTokens: json.usage.prompt_tokens ?? 0,
@@ -1195,9 +1196,7 @@ async function* chatCompletions(
           const next: MessageRouting = {
             ...(md.strategy ? { strategy: md.strategy } : {}),
             ...(json.model ? { modelRequested: json.model } : {}),
-            ...(selected?.provider
-              ? { routeProvider: selected.provider }
-              : {}),
+            ...(selected?.provider ? { routeProvider: selected.provider } : {}),
           };
           if (Object.keys(next).length > 0) routing = { ...routing, ...next };
         }

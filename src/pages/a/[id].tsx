@@ -29,9 +29,7 @@ import {
   toArtifactDto,
 } from '../../server/artifacts';
 
-export default async function PublicArtifactPage({
-  id,
-}: PageProps<'/a/[id]'>) {
+export default async function PublicArtifactPage({ id }: PageProps<'/a/[id]'>) {
   const artifactId = parseArtifactId(id);
   const db = getDb();
   const [row] = artifactId

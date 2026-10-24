@@ -105,9 +105,11 @@ const segments = (
   const steps = new Set([...thoughts, ...calls].map((x) => x.step));
   for (const step of [...steps].sort((a, b) => a - b)) {
     const thought = thoughts.find((t) => t.step === step);
-    if (thought) anchors.push({ at: thought.at, seg: { kind: 'thought', thought } });
+    if (thought)
+      anchors.push({ at: thought.at, seg: { kind: 'thought', thought } });
     const group = calls.filter((c) => c.step === step);
-    if (group[0]) anchors.push({ at: group[0].at, seg: { kind: 'tools', calls: group } });
+    if (group[0])
+      anchors.push({ at: group[0].at, seg: { kind: 'tools', calls: group } });
   }
   const out: Segment[] = [];
   let pos = 0;
@@ -117,14 +119,13 @@ const segments = (
     out.push(seg);
     pos = at;
   }
-  if (pos < content.length) out.push({ kind: 'text', text: content.slice(pos) });
+  if (pos < content.length)
+    out.push({ kind: 'text', text: content.slice(pos) });
   return out;
 };
 
 const renderAttachments = (attachments: Attachment[]) =>
-  attachments
-    .map((a) => `- ${a.name}${a.url ? ` (${a.url})` : ''}`)
-    .join('\n');
+  attachments.map((a) => `- ${a.name}${a.url ? ` (${a.url})` : ''}`).join('\n');
 
 /* brief one-line note per call; the arguments are what matter in the transcript */
 const renderTools = (calls: ToolCall[]) =>
@@ -158,11 +159,9 @@ const renderMessage = (m: ExportableMessage): string => {
             ? ` (${(seg.thought.ms / 1000).toFixed(1)}s)`
             : '';
         out.push(
-          [
-            `<thinking${dur}>`,
-            seg.thought.text.trim(),
-            '</thinking>',
-          ].join('\n'),
+          [`<thinking${dur}>`, seg.thought.text.trim(), '</thinking>'].join(
+            '\n',
+          ),
         );
       } else {
         out.push(renderTools(seg.calls));
@@ -184,7 +183,10 @@ const renderMessage = (m: ExportableMessage): string => {
     out.push('Sources:');
     out.push(
       m.annotations
-        .map((a: UrlCitation) => `- ${a.title || a.url}${a.title ? ` — ${a.url}` : ''}`)
+        .map(
+          (a: UrlCitation) =>
+            `- ${a.title || a.url}${a.title ? ` — ${a.url}` : ''}`,
+        )
         .join('\n'),
     );
   }

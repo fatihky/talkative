@@ -8,6 +8,7 @@
  *   addFromFiles as the one upload path behind both the attach button
  *   and the stage's file drops.
  */
-export { Stage } from './stage';
-export { QuickActions, addFromFiles } from './quick-actions';
+
 export { HomeBannerStack } from './banner-stack';
+export { addFromFiles, QuickActions } from './quick-actions';
+export { Stage } from './stage';

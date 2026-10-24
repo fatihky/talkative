@@ -117,7 +117,9 @@ export function ToolsClient() {
                     type="number"
                     min={1}
                     max={10}
-                    value={concurrency[t.id] ?? DEFAULT_CONCURRENCIES[t.id] ?? 5}
+                    value={
+                      concurrency[t.id] ?? DEFAULT_CONCURRENCIES[t.id] ?? 5
+                    }
                     onChange={(e) => {
                       const n = Math.min(
                         10,

@@ -43,15 +43,15 @@ import { TOOLS } from '../../lib/tools';
 import type { ProviderId, ToolCall, ToolId, ToolStatus } from '../../types';
 import { decryptSecret } from '../secrets';
 import {
-  envKeyValue,
   envKeysShared,
+  envKeyValue,
   providerKeyDefs,
 } from '../tool-credentials';
 import { loadToolPreferences } from '../tool-preferences';
-import { withConcurrency } from './concurrency';
 import { artifact } from './artifact';
 import { askUser } from './ask-user';
 import { chatSearch } from './chat-search';
+import { withConcurrency } from './concurrency';
 import { getCurrentTimestamp } from './get-current-timestamp';
 import {
   githubDiscussionSearch,
@@ -134,7 +134,10 @@ export const loadToolAuth = async (
   admin: boolean,
 ): Promise<ToolAuth> => {
   const rows = await getDb()
-    .select({ provider: toolCredentials.provider, apiKey: toolCredentials.apiKey })
+    .select({
+      provider: toolCredentials.provider,
+      apiKey: toolCredentials.apiKey,
+    })
     .from(toolCredentials)
     .where(eq(toolCredentials.userId, userId));
   const own = new Map(rows.map((r) => [r.provider, r.apiKey]));
@@ -243,13 +246,10 @@ export const resolveTools = async (
       continue;
     const provider = pickProvider(tool, providers[tool.id], auth);
     const backend = tool.backends().find((b) => b.id === provider);
-    const apiKey = backend?.key
-      ? auth.usableKeys.get(backend.key)
-      : undefined;
+    const apiKey = backend?.key ? auth.usableKeys.get(backend.key) : undefined;
     const count = counts[tool.id];
     const shared = backend?.key ? auth.sharedKeys.has(backend.key) : false;
-    const throttled =
-      tool.id === 'web_search' || tool.id === 'http_fetch';
+    const throttled = tool.id === 'web_search' || tool.id === 'http_fetch';
     const concurrency = prefs.concurrency[tool.id];
     out.push({
       tool,

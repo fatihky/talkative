@@ -52,8 +52,8 @@ export {
 } from './draft';
 export { type Estimate, useEstimate } from './estimate';
 export { folderPath, isWithin, useFoldersStore } from './folders';
-export { useLayoutStore } from './layout';
 export type { PanelTab, PreviewSnippet } from './layout';
+export { useLayoutStore } from './layout';
 export { useMemoriesStore } from './memories';
 export { useModelsStore } from './models';
 export { useNetworkStore } from './network';
@@ -62,8 +62,8 @@ export { usePrefsStore } from './prefs';
 export { type ProviderCatalog, useProvidersStore } from './providers';
 export { usePublishedStore } from './published';
 export { type Msg, type Thread, useThreadsStore } from './threads';
-export { type PrivateMsg, usePrivateStore } from './transient';
 export { useToolsStore } from './tools';
+export { type PrivateMsg, usePrivateStore } from './transient';
 export { type ModelBarPopover, useUIStore } from './ui';
 
 /** every action across stores, for call sites that don't care which store owns it */

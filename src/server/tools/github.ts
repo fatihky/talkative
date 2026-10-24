@@ -412,7 +412,8 @@ export const githubDiscussionSearch: ServerTool = {
     );
     /* discussions aren't in the rest search api; graphql only */
     const tk = apiKey;
-    if (!tk) throw new Error('a GitHub token is required for discussion search');
+    if (!tk)
+      throw new Error('a GitHub token is required for discussion search');
     const query = `
       query($q: String!, $first: Int!) {
         search(query: $q, type: DISCUSSION, first: $first) {

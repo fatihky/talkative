@@ -34,28 +34,28 @@ curl http://localhost:1234/api/v1/models \
 
 ### LMStudioModel
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `type` | `"llm" \| "embedding" \| "decision"` | Model kind. |
-| `publisher` | `string` | Publisher name. |
-| `key` | `string` | Unique identifier. |
-| `display_name` | `string` | Human-readable name. |
-| `architecture` | `string \| null` | e.g. `"llama"`, `"mistral"`. Absent for embedding models. |
-| `quantization` | `object \| null` | `{ name: string \| null, bits_per_weight: number \| null }`. |
-| `size_bytes` | `number` | Model size in bytes. |
-| `params_string` | `string \| null` | e.g. `"7B"`, `"13B"`. |
-| `loaded_instances` | `array` | `[{ id, config: { context_length, eval_batch_size, parallel, flash_attention, num_experts, offload_kv_cache_to_gpu } }]`. |
-| `max_context_length` | `number \| null` | Max context in tokens; may be null for decision models. |
-| `format` | `"gguf" \| "mlx" \| null` | Model file format. |
-| `capabilities` | `object` | Absent for embedding/decision models. |
-| `capabilities.vision` | `boolean` | Vision/image input support. |
-| `capabilities.trained_for_tool_use` | `boolean` | Trained for tool/function calling. |
-| `capabilities.reasoning` | `object` | `{ allowed_options: ("off"\|"on"\|"low"\|"medium"\|"high")[], default }`. |
-| `decision_type` | `string` | Decision model type; only present for decision models when available. |
-| `has_vision_adapter` | `boolean` | Whether the decision model has a vision adapter; only present for decision models. |
-| `description` | `string \| null` | Model description; absent for embedding and decision models. |
-| `variants` | `string[]` | Quantization variant names (multi-variant models). |
-| `selected_variant` | `string` | Currently selected variant. |
+| Field                               | Type                                 | Notes                                                                                                                     |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `type`                              | `"llm" \| "embedding" \| "decision"` | Model kind.                                                                                                               |
+| `publisher`                         | `string`                             | Publisher name.                                                                                                           |
+| `key`                               | `string`                             | Unique identifier.                                                                                                        |
+| `display_name`                      | `string`                             | Human-readable name.                                                                                                      |
+| `architecture`                      | `string \| null`                     | e.g. `"llama"`, `"mistral"`. Absent for embedding models.                                                                 |
+| `quantization`                      | `object \| null`                     | `{ name: string \| null, bits_per_weight: number \| null }`.                                                              |
+| `size_bytes`                        | `number`                             | Model size in bytes.                                                                                                      |
+| `params_string`                     | `string \| null`                     | e.g. `"7B"`, `"13B"`.                                                                                                     |
+| `loaded_instances`                  | `array`                              | `[{ id, config: { context_length, eval_batch_size, parallel, flash_attention, num_experts, offload_kv_cache_to_gpu } }]`. |
+| `max_context_length`                | `number \| null`                     | Max context in tokens; may be null for decision models.                                                                   |
+| `format`                            | `"gguf" \| "mlx" \| null`            | Model file format.                                                                                                        |
+| `capabilities`                      | `object`                             | Absent for embedding/decision models.                                                                                     |
+| `capabilities.vision`               | `boolean`                            | Vision/image input support.                                                                                               |
+| `capabilities.trained_for_tool_use` | `boolean`                            | Trained for tool/function calling.                                                                                        |
+| `capabilities.reasoning`            | `object`                             | `{ allowed_options: ("off"\|"on"\|"low"\|"medium"\|"high")[], default }`.                                                 |
+| `decision_type`                     | `string`                             | Decision model type; only present for decision models when available.                                                     |
+| `has_vision_adapter`                | `boolean`                            | Whether the decision model has a vision adapter; only present for decision models.                                        |
+| `description`                       | `string \| null`                     | Model description; absent for embedding and decision models.                                                              |
+| `variants`                          | `string[]`                           | Quantization variant names (multi-variant models).                                                                        |
+| `selected_variant`                  | `string`                             | Currently selected variant.                                                                                               |
 
 ## Chat completions
 
@@ -100,25 +100,25 @@ curl http://localhost:1234/api/v1/models/load \
 
 ### Request
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `model` | `string` | Required. Unique identifier (LLM, embedding, or decision). |
-| `context_length` | `number` | Max tokens the model considers. |
-| `eval_batch_size` | `number` | Input tokens batched per eval step; llama.cpp engine only. |
-| `flash_attention` | `boolean` | Enable Flash Attention; llama.cpp engine only. |
-| `num_experts` | `number` | Experts used for MoE models; llama.cpp engine only. |
+| Field                     | Type      | Notes                                                                  |
+| ------------------------- | --------- | ---------------------------------------------------------------------- |
+| `model`                   | `string`  | Required. Unique identifier (LLM, embedding, or decision).             |
+| `context_length`          | `number`  | Max tokens the model considers.                                        |
+| `eval_batch_size`         | `number`  | Input tokens batched per eval step; llama.cpp engine only.             |
+| `flash_attention`         | `boolean` | Enable Flash Attention; llama.cpp engine only.                         |
+| `num_experts`             | `number`  | Experts used for MoE models; llama.cpp engine only.                    |
 | `offload_kv_cache_to_gpu` | `boolean` | Keep KV cache in GPU memory instead of CPU/RAM; llama.cpp engine only. |
-| `echo_load_config` | `boolean` | Echo the final config as `load_config` in the response. |
+| `echo_load_config`        | `boolean` | Echo the final config as `load_config` in the response.                |
 
 ### Response
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `type` | `"llm" \| "embedding" \| "decision"` | Type of the loaded model. |
-| `instance_id` | `string` | Identifier for the loaded instance. |
-| `load_time_seconds` | `number` | Time to load in seconds. |
-| `status` | `"loaded"` | Load status. |
-| `load_config` | `object` | Present when `echo_load_config` is set; the final applied config. |
+| Field               | Type                                 | Notes                                                             |
+| ------------------- | ------------------------------------ | ----------------------------------------------------------------- |
+| `type`              | `"llm" \| "embedding" \| "decision"` | Type of the loaded model.                                         |
+| `instance_id`       | `string`                             | Identifier for the loaded instance.                               |
+| `load_time_seconds` | `number`                             | Time to load in seconds.                                          |
+| `status`            | `"loaded"`                           | Load status.                                                      |
+| `load_config`       | `object`                             | Present when `echo_load_config` is set; the final applied config. |
 
 ## Decisions
 

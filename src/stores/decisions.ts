@@ -43,9 +43,13 @@ import {
   decisionProblems,
   newQuestion,
 } from '../lib/decisions';
-import { debouncedSet, LS, uuid } from '../lib/storage';
 import { isDecisionCapable } from '../lib/models';
-import type { DecisionQuestion, DecisionQuestionType, DecisionRun } from '../types';
+import { debouncedSet, LS, uuid } from '../lib/storage';
+import type {
+  DecisionQuestion,
+  DecisionQuestionType,
+  DecisionRun,
+} from '../types';
 import { errorText, useModelsStore } from './models';
 import { useNetworkStore } from './network';
 import { uiActions } from './ui';
@@ -157,9 +161,7 @@ export const decisionsActions = {
   async loadDecisions() {
     set({ status: 'loading', error: undefined });
     try {
-      setDecisionItems(
-        await fetchDecisions(useNetworkStore.getState().dev),
-      );
+      setDecisionItems(await fetchDecisions(useNetworkStore.getState().dev));
       set({ status: 'ready' });
     } catch (e) {
       set({ status: 'error', error: errorText(e) });
@@ -176,7 +178,9 @@ export const decisionsActions = {
     this.openDraft(example);
   },
 
-  openDraft(seed: Partial<Pick<DecisionDraft, 'title' | 'input' | 'questions'>>) {
+  openDraft(
+    seed: Partial<Pick<DecisionDraft, 'title' | 'input' | 'questions'>>,
+  ) {
     const draft: DecisionDraft = {
       id: uuid(),
       modelId: defaultModelId(),
@@ -199,11 +203,7 @@ export const decisionsActions = {
     const run = get().items.find((r) => r.id === id);
     const cached = LS.get<DecisionDraft | null>('decisions.draft', null);
     const draft =
-      cached && cached.id === id
-        ? cached
-        : run
-          ? toDraft(run)
-          : null;
+      cached && cached.id === id ? cached : run ? toDraft(run) : null;
     set({ draft, runError: draft && run ? run.error : undefined });
   },
 
@@ -236,7 +236,8 @@ export const decisionsActions = {
   /** writes the draft cache at once; only a run that never reached the server needs it */
   flushDecisionDraft() {
     const d = get().draft;
-    if (d && !get().items.some((r) => r.id === d.id)) LS.set('decisions.draft', d);
+    if (d && !get().items.some((r) => r.id === d.id))
+      LS.set('decisions.draft', d);
   },
 
   addDecisionQuestion(type: DecisionQuestionType) {
@@ -256,7 +257,10 @@ export const decisionsActions = {
             choices:
               q.choices && q.choices.length > 0
                 ? q.choices
-                : ([{ value: '' }, { value: '' }] as DecisionQuestion['choices']),
+                : ([
+                    { value: '' },
+                    { value: '' },
+                  ] as DecisionQuestion['choices']),
             levels: undefined,
           }
         : type === 'score'
@@ -264,7 +268,10 @@ export const decisionsActions = {
               levels:
                 q.levels && q.levels.length > 0
                   ? q.levels
-                  : ([{ label: '' }, { label: '' }] as DecisionQuestion['levels']),
+                  : ([
+                      { label: '' },
+                      { label: '' },
+                    ] as DecisionQuestion['levels']),
               choices: undefined,
             }
           : { choices: undefined, levels: undefined }),
@@ -296,7 +303,10 @@ export const decisionsActions = {
     const problems = decisionProblems(draft);
     if (problems.length > 0) {
       set({ runError: problems[0] });
-      uiActions.toast(problems[0] ?? 'This decision isn’t ready to run', 'warn');
+      uiActions.toast(
+        problems[0] ?? 'This decision isn’t ready to run',
+        'warn',
+      );
       return;
     }
     set({ running: true, runError: undefined });

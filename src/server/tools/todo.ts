@@ -158,7 +158,7 @@ export const todo: ServerTool = {
       }
       case 'clear': {
         await db.update(todos).set({ done: false }).where(mine);
-        return 'reset this chat\'s todos to pending';
+        return "reset this chat's todos to pending";
       }
       default:
         throw new Error(

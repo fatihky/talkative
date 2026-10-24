@@ -141,10 +141,7 @@ export function ArtifactViewer({ artifact }: { artifact: PublicArtifact }) {
       />
 
       {fullscreen && previewable && open && (
-        <FullscreenArtifact
-          s={snapshot}
-          onClose={() => setFullscreen(false)}
-        />
+        <FullscreenArtifact s={snapshot} onClose={() => setFullscreen(false)} />
       )}
     </div>
   );

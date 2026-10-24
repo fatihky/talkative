@@ -48,7 +48,11 @@ import {
   toDecisionDto,
 } from '../../../server/decisions';
 import { parseModelId } from '../../../server/model-id';
-import { findConnection, handle, ValidationError } from '../../../server/providers';
+import {
+  findConnection,
+  handle,
+  ValidationError,
+} from '../../../server/providers';
 import type { DecisionKind } from '../../../types';
 
 /* GET /api/decisions — the caller's runs, newest first */
@@ -70,9 +74,7 @@ export const POST = (req: Request) =>
     if (!conn.enabled) throw new ValidationError(`${conn.name} is disabled`);
 
     const db = getDb();
-    const existing = input.id
-      ? await findDecision(db, userId, input.id)
-      : null;
+    const existing = input.id ? await findDecision(db, userId, input.id) : null;
     /* an id the caller doesn't own may still be somebody else's primary key */
     if (input.id && !existing && (await decisionIdTaken(db, input.id)))
       throw new ValidationError('decision id already exists');
@@ -96,7 +98,9 @@ export const POST = (req: Request) =>
 
     /* a re-run keeps its title (it may have been renamed); a new one is derived */
     const title =
-      input.title ?? existing?.title ?? deriveTitle(input.input, input.questions);
+      input.title ??
+      existing?.title ??
+      deriveTitle(input.input, input.questions);
     const attempt = {
       kind,
       modelId: input.modelId,
@@ -117,9 +121,7 @@ export const POST = (req: Request) =>
           usage: null,
           latencyMs: null,
         })
-        .where(
-          and(eq(decisions.id, existing.id), eq(decisions.userId, userId)),
-        )
+        .where(and(eq(decisions.id, existing.id), eq(decisions.userId, userId)))
         .returning();
       if (!updated) throw new Error('update failed');
       row = updated;

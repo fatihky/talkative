@@ -56,7 +56,10 @@ export const PATCH = (req: Request, { params }: Ctx) =>
       ? await chatTitles(db, [updated.chatId])
       : new Map<string, string>();
     return Response.json(
-      toArtifactDto(updated, updated.chatId ? titles.get(updated.chatId) : undefined),
+      toArtifactDto(
+        updated,
+        updated.chatId ? titles.get(updated.chatId) : undefined,
+      ),
     );
   });
 

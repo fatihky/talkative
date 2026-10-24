@@ -55,7 +55,14 @@ export function CommandPalette({
   const listRef = useRef<HTMLDivElement | null>(null);
   /* server-side message hits for the current query; nulls out while loading */
   const [hits, setHits] = useState<
-    { id: string; chatId: string; chatTitle: string; role: string; snippet: string }[] | null
+    | {
+        id: string;
+        chatId: string;
+        chatTitle: string;
+        role: string;
+        snippet: string;
+      }[]
+    | null
   >(null);
 
   useEffect(() => {

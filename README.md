@@ -79,43 +79,43 @@ for the full list. Run `talkative migrate` again after every upgrade.
 
 From a checkout, `pnpm build` and then `node bin/talkative.mjs` does the same.
 
-| Command | What it does |
-| --- | --- |
-| `talkative [start]` | Start the server. |
-| `talkative migrate` | Create the database if it's missing and apply pending migrations. |
-| `talkative admin grant\|revoke <email\|id>` | Grant or revoke admin rights. |
-| `talkative keys:rekey [--dry-run \| --decrypt]` | See [Provider API key encryption](#provider-api-key-encryption). |
-| `talkative uploads:gc [--days N] [--dry-run]` | Remove orphaned uploads. |
+| Command                                         | What it does                                                      |
+| ----------------------------------------------- | ----------------------------------------------------------------- |
+| `talkative [start]`                             | Start the server.                                                 |
+| `talkative migrate`                             | Create the database if it's missing and apply pending migrations. |
+| `talkative admin grant\|revoke <email\|id>`     | Grant or revoke admin rights.                                     |
+| `talkative keys:rekey [--dry-run \| --decrypt]` | See [Provider API key encryption](#provider-api-key-encryption).  |
+| `talkative uploads:gc [--days N] [--dry-run]`   | Remove orphaned uploads.                                          |
 
-| Flag | Env var | Default | What it does |
-| --- | --- | --- | --- |
-| `-p`, `--port` | `PORT` | `3000` | Port to listen on. |
-| `--host` | `HOST` | `127.0.0.1` | Host to bind to; use `0.0.0.0` to listen on all interfaces. |
-| `-h`, `--help` | — | — | Show usage and exit. |
-| `-v`, `--version` | — | — | Print the version and exit. |
+| Flag              | Env var | Default     | What it does                                                |
+| ----------------- | ------- | ----------- | ----------------------------------------------------------- |
+| `-p`, `--port`    | `PORT`  | `3000`      | Port to listen on.                                          |
+| `--host`          | `HOST`  | `127.0.0.1` | Host to bind to; use `0.0.0.0` to listen on all interfaces. |
+| `-h`, `--help`    | —       | —           | Show usage and exit.                                        |
+| `-v`, `--version` | —       | —           | Print the version and exit.                                 |
 
 ## Environment variables
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `DATABASE_URL` | yes | PostgreSQL connection string. |
-| `BETTER_AUTH_SECRET` | yes | Secret used by Better Auth. |
-| `BETTER_AUTH_URL` | yes | Public base URL of the app (scheme + host), used by Better Auth as its base URL and as a trusted origin. No default; you must set it. On Coolify-based deployments this can be set to `$SERVICE_URL_APP`. |
-| `BETTER_AUTH_TRUSTED_ORIGINS` | no | Comma-separated list of additional origins to trust. |
-| `BETTER_AUTH_IP_HEADERS` | no | Comma-separated headers Better Auth reads the client IP from, in order (used for rate limiting). Defaults to `x-forwarded-for`. Use `cf-connecting-ip` behind Cloudflare (only if the origin isn't reachable directly) or `x-real-ip` behind nginx. |
-| `BETTER_AUTH_TRUSTED_PROXIES` | no | Comma-separated IPs/CIDRs of your reverse proxies. Required when `x-forwarded-for` carries more than one hop (e.g. Cloudflare → Traefik → app); the chain is walked right to left and the first untrusted hop is the client. Unset, a multi-value header is ignored and all clients share one rate-limit bucket. List only the proxies' own addresses, not a broad private range. |
-| `REDIS_URL` | no | Redis connection string for catalog caching. Defaults to `redis://localhost:6379`; the app runs without Redis. |
-| `CATALOG_REFRESH_MS` | no | How often (ms) provider model catalogs are refetched in the background to keep the cache warm. Defaults to `300000` (5 minutes); `0` disables the sweep. |
-| `UPLOADS_DIR` | no | Directory for uploaded images. Defaults to a local `uploads/` directory for Node-based deployments; Docker-based deployments should point it at the mounted `uploads-data` volume. |
-| `PROVIDER_KEY_ENC_KEYS` | no | Versioned keyring: comma-separated `version:base64-32-byte-key` pairs (e.g. `v1:<key>,v2:<key>`). Unset means provider keys are stored in plaintext. |
-| `PROVIDER_KEY_ENC_ACTIVE` | no | Version **label** used for new writes (e.g. `v1`), not a key. Unset defaults to the last entry in `PROVIDER_KEY_ENC_KEYS`. |
-| `TAVILY_API_KEY` | no | Enables the Tavily `web_search` backend and `http_fetch`. |
-| `SERPER_API_KEY` | no | Enables the serper.dev `web_search` backend. |
-| `SERPAPI_API_KEY` | no | Enables the SerpAPI `web_search` backend. |
-| `SEARXNG_URL` | no | Enables the SearXNG `web_search` backend. |
-| `EXA_API_KEY` | no | Enables the Exa `web_search` backend. |
-| `SCRAPEDO_API_KEY` | no | Enables the Scrape.do `web_search` / `http_fetch` backends. |
-| `GITHUB_PAT` | no | GitHub token for the GitHub search tools. Optional, but recommended for higher rate limits (required for discussion search). |
+| Variable                      | Required | Description                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                | yes      | PostgreSQL connection string.                                                                                                                                                                                                                                                                                                                                                     |
+| `BETTER_AUTH_SECRET`          | yes      | Secret used by Better Auth.                                                                                                                                                                                                                                                                                                                                                       |
+| `BETTER_AUTH_URL`             | yes      | Public base URL of the app (scheme + host), used by Better Auth as its base URL and as a trusted origin. No default; you must set it. On Coolify-based deployments this can be set to `$SERVICE_URL_APP`.                                                                                                                                                                         |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | no       | Comma-separated list of additional origins to trust.                                                                                                                                                                                                                                                                                                                              |
+| `BETTER_AUTH_IP_HEADERS`      | no       | Comma-separated headers Better Auth reads the client IP from, in order (used for rate limiting). Defaults to `x-forwarded-for`. Use `cf-connecting-ip` behind Cloudflare (only if the origin isn't reachable directly) or `x-real-ip` behind nginx.                                                                                                                               |
+| `BETTER_AUTH_TRUSTED_PROXIES` | no       | Comma-separated IPs/CIDRs of your reverse proxies. Required when `x-forwarded-for` carries more than one hop (e.g. Cloudflare → Traefik → app); the chain is walked right to left and the first untrusted hop is the client. Unset, a multi-value header is ignored and all clients share one rate-limit bucket. List only the proxies' own addresses, not a broad private range. |
+| `REDIS_URL`                   | no       | Redis connection string for catalog caching. Defaults to `redis://localhost:6379`; the app runs without Redis.                                                                                                                                                                                                                                                                    |
+| `CATALOG_REFRESH_MS`          | no       | How often (ms) provider model catalogs are refetched in the background to keep the cache warm. Defaults to `300000` (5 minutes); `0` disables the sweep.                                                                                                                                                                                                                          |
+| `UPLOADS_DIR`                 | no       | Directory for uploaded images. Defaults to a local `uploads/` directory for Node-based deployments; Docker-based deployments should point it at the mounted `uploads-data` volume.                                                                                                                                                                                                |
+| `PROVIDER_KEY_ENC_KEYS`       | no       | Versioned keyring: comma-separated `version:base64-32-byte-key` pairs (e.g. `v1:<key>,v2:<key>`). Unset means provider keys are stored in plaintext.                                                                                                                                                                                                                              |
+| `PROVIDER_KEY_ENC_ACTIVE`     | no       | Version **label** used for new writes (e.g. `v1`), not a key. Unset defaults to the last entry in `PROVIDER_KEY_ENC_KEYS`.                                                                                                                                                                                                                                                        |
+| `TAVILY_API_KEY`              | no       | Enables the Tavily `web_search` backend and `http_fetch`.                                                                                                                                                                                                                                                                                                                         |
+| `SERPER_API_KEY`              | no       | Enables the serper.dev `web_search` backend.                                                                                                                                                                                                                                                                                                                                      |
+| `SERPAPI_API_KEY`             | no       | Enables the SerpAPI `web_search` backend.                                                                                                                                                                                                                                                                                                                                         |
+| `SEARXNG_URL`                 | no       | Enables the SearXNG `web_search` backend.                                                                                                                                                                                                                                                                                                                                         |
+| `EXA_API_KEY`                 | no       | Enables the Exa `web_search` backend.                                                                                                                                                                                                                                                                                                                                             |
+| `SCRAPEDO_API_KEY`            | no       | Enables the Scrape.do `web_search` / `http_fetch` backends.                                                                                                                                                                                                                                                                                                                       |
+| `GITHUB_PAT`                  | no       | GitHub token for the GitHub search tools. Optional, but recommended for higher rate limits (required for discussion search).                                                                                                                                                                                                                                                      |
 
 The tool keys above are shared with users according to the admin-only "environment key access" setting: `all`, `admins` (default) or `none`. Users can also add their own keys under **Settings → Tool keys**; those are stored encrypted.
 
@@ -201,18 +201,18 @@ select left(api_key, 8) v, count(*)
 
 ## Scripts
 
-| Script | Description |
-| --- | --- |
-| `pnpm dev` | Start the dev server. |
-| `pnpm build` | Build for production. |
-| `pnpm start` | Run the production build. |
-| `pnpm typegen` | Generate Waku router types. |
-| `pnpm db:generate` | Generate Drizzle migrations from the schema. |
-| `pnpm db:migrate` | Apply migrations. |
-| `pnpm db:studio` | Open Drizzle Studio. |
-| `pnpm admin:grant <email\|id>` / `pnpm admin:revoke <email\|id>` | Grant or revoke admin rights. |
-| `pnpm keys:rekey` | Re-seal (or `--decrypt`) provider API keys. See [Provider API key encryption](#provider-api-key-encryption). |
-| `pnpm uploads:gc` | Remove orphaned uploads (`--days N`, `--dry-run`). |
+| Script                                                           | Description                                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                                                       | Start the dev server.                                                                                        |
+| `pnpm build`                                                     | Build for production.                                                                                        |
+| `pnpm start`                                                     | Run the production build.                                                                                    |
+| `pnpm typegen`                                                   | Generate Waku router types.                                                                                  |
+| `pnpm db:generate`                                               | Generate Drizzle migrations from the schema.                                                                 |
+| `pnpm db:migrate`                                                | Apply migrations.                                                                                            |
+| `pnpm db:studio`                                                 | Open Drizzle Studio.                                                                                         |
+| `pnpm admin:grant <email\|id>` / `pnpm admin:revoke <email\|id>` | Grant or revoke admin rights.                                                                                |
+| `pnpm keys:rekey`                                                | Re-seal (or `--decrypt`) provider API keys. See [Provider API key encryption](#provider-api-key-encryption). |
+| `pnpm uploads:gc`                                                | Remove orphaned uploads (`--days N`, `--dry-run`).                                                           |
 
 ## Project structure
 

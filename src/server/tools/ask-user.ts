@@ -119,9 +119,7 @@ export const normalizeAskUserRequest = (
     const localAllowOther =
       typeof q.allow_other === 'boolean' ? q.allow_other : globalAllowOther;
     const localMultiSelect =
-      typeof q.multi_select === 'boolean'
-        ? q.multi_select
-        : globalMultiSelect;
+      typeof q.multi_select === 'boolean' ? q.multi_select : globalMultiSelect;
 
     let options: QuestionOption[] = [];
     if (Array.isArray(q.options)) {

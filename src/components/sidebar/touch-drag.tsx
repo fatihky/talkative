@@ -22,8 +22,8 @@
 'use client';
 
 import {
-  type ReactNode,
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -177,14 +177,15 @@ export function TouchDragProvider({
       last = now;
       if (el) {
         const edge = edgeAt(point.y);
-        const room = edge < 0 ? el.scrollTop > 0 : el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+        const room =
+          edge < 0
+            ? el.scrollTop > 0
+            : el.scrollTop + el.clientHeight < el.scrollHeight - 1;
         if (edge !== 0 && room) {
           el.scrollTop += edge * MAX_SPEED * dt;
           /* the list moved under a steady finger: re-read what is under it */
           setLive((l) =>
-            l
-              ? { ...l, scroll: edge, target: targetOf(point.x, point.y) }
-              : l,
+            l ? { ...l, scroll: edge, target: targetOf(point.x, point.y) } : l,
           );
         }
       }

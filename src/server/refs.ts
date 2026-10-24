@@ -19,8 +19,8 @@ import type { Db } from '../db';
 import type { MessageRow } from '../db/schema';
 import { chats, memories, messages } from '../db/schema';
 import { isUuid } from './chats';
-import type { ChatTexts, MemoryTexts, Refs } from './runs';
 import { attachedNotes } from './notes';
+import type { ChatTexts, MemoryTexts, Refs } from './runs';
 
 const refIds = (
   msgs: Pick<MessageRow, 'attachments'>[],
@@ -29,10 +29,19 @@ const refIds = (
   ...new Set(
     msgs.flatMap((m) =>
       ((m.attachments as unknown[]) ?? []).flatMap((a) => {
-        const at = a as { kind?: string; noteId?: string; memoryId?: string; chatId?: string };
+        const at = a as {
+          kind?: string;
+          noteId?: string;
+          memoryId?: string;
+          chatId?: string;
+        };
         if (at.kind !== kind) return [];
         const id =
-          kind === 'note' ? at.noteId : kind === 'memory' ? at.memoryId : at.chatId;
+          kind === 'note'
+            ? at.noteId
+            : kind === 'memory'
+              ? at.memoryId
+              : at.chatId;
         return id && isUuid(id) ? [id] : [];
       }),
     ),
@@ -66,7 +75,10 @@ export const attachedChats = async (
     .select()
     .from(chats)
     .where(and(inArray(chats.id, ids), eq(chats.userId, userId)));
-  const out = new Map<string, { title: string; turns: { role: 'user' | 'assistant'; content: string }[] }>();
+  const out = new Map<
+    string,
+    { title: string; turns: { role: 'user' | 'assistant'; content: string }[] }
+  >();
   if (found.length === 0) return out;
   /* transcripts follow the chat's current leaf, so each id resolves once */
   for (const c of found) {

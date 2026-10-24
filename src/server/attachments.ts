@@ -34,12 +34,7 @@
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import type { Db } from '../db';
 import { getDb } from '../db';
-import {
-  attachments,
-  type AttachmentRow,
-  chats,
-  messages,
-} from '../db/schema';
+import { type AttachmentRow, attachments, chats, messages } from '../db/schema';
 import type { Attachment } from '../types';
 import { isUuid } from './chats';
 import type { InlineAttachment } from './runs';
@@ -151,7 +146,9 @@ export const pruneAttachments = async (
     if (gone.length === 0) return 0;
     await db
       .delete(attachments)
-      .where(and(inArray(attachments.id, gone), eq(attachments.userId, userId)));
+      .where(
+        and(inArray(attachments.id, gone), eq(attachments.userId, userId)),
+      );
     await Promise.all(gone.map((id) => deleteUpload(userId, id)));
     return gone.length;
   } catch (e) {
@@ -188,7 +185,8 @@ export const withAttachmentText = async (
           const row = a.id ? byId.get(a.id) : undefined;
           if (!row) return a;
           if (isImageMime(row.mime)) {
-            const data = row.data ?? (a.id ? await readUpload(userId, a.id) : null);
+            const data =
+              row.data ?? (a.id ? await readUpload(userId, a.id) : null);
             return data
               ? {
                   ...a,
@@ -198,7 +196,10 @@ export const withAttachmentText = async (
           }
           if (!isTextMime(row.mime)) return a;
           if (!row.data) return a;
-          return { ...a, text: Buffer.from(row.data).toString('utf8').slice(0, TEXT_MAX) };
+          return {
+            ...a,
+            text: Buffer.from(row.data).toString('utf8').slice(0, TEXT_MAX),
+          };
         }),
       ),
     ),

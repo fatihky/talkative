@@ -80,7 +80,8 @@ const parseKeyring = (): Keyring => {
   const versions = [...keys.keys()];
   if (!versions.length) return { keys, active: null };
   /* newest key is listed last, so leaving ACTIVE unset encrypts with that */
-  const active = process.env[ACTIVE_ENV]?.trim() || versions[versions.length - 1];
+  const active =
+    process.env[ACTIVE_ENV]?.trim() || versions[versions.length - 1];
   if (!active || !keys.has(active))
     throw new Error(
       `[secrets] ${ACTIVE_ENV}="${active}" is not in ${KEYS_ENV} (known: ${versions.join(', ')})`,

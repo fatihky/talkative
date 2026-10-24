@@ -241,7 +241,8 @@ function ModelList({
       arr.push(m);
       byProvider.set(m.provider, arr);
     }
-    for (const [provider, models] of byProvider) groups.push({ provider, models });
+    for (const [provider, models] of byProvider)
+      groups.push({ provider, models });
   }
 
   let i = -1;

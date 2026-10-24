@@ -15,7 +15,7 @@
  */
 import './lib/crypto-polyfill';
 
-import { StrictMode, createElement } from 'react';
+import { createElement, StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { unstable_defaultRootOptions as defaultRootOptions } from 'waku/client';
 import { Router } from 'waku/router/client';

@@ -30,7 +30,11 @@ import { eq, inArray } from 'drizzle-orm';
 import type { ApiContext } from 'waku/router';
 import { getDb } from '../../../../db';
 import { chats, messages } from '../../../../db/schema';
-import { countLeaves, newestLeaf, removalSet } from '../../../../lib/message-tree';
+import {
+  countLeaves,
+  newestLeaf,
+  removalSet,
+} from '../../../../lib/message-tree';
 import {
   pruneAttachments,
   storedAttachmentIds,
@@ -75,9 +79,12 @@ export const DELETE = (_req: Request, { params }: Ctx) =>
     const removed = all.filter((m) => ids.has(m.id));
     const rest = all.filter((m) => !ids.has(m.id));
     if (removed.length > 0) {
-      await db
-        .delete(messages)
-        .where(inArray(messages.id, removed.map((m) => m.id)));
+      await db.delete(messages).where(
+        inArray(
+          messages.id,
+          removed.map((m) => m.id),
+        ),
+      );
       /* uploads no surviving turn references any more go with the branch */
       await pruneAttachments(userId, storedAttachmentIds(removed));
     }

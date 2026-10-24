@@ -279,7 +279,9 @@ export function DecisionEditor() {
   const params = useParams_UNSTABLE({ from: '/decisions/[slug]' });
   const id = params?.slug ?? '';
   const draft = useDecisionsStore((s) => s.draft);
-  const run = useDecisionsStore((s) => s.items.find((r) => r.id === id) ?? null);
+  const run = useDecisionsStore(
+    (s) => s.items.find((r) => r.id === id) ?? null,
+  );
   const status = useDecisionsStore((s) => s.status);
   const loadError = useDecisionsStore((s) => s.error);
   const running = useDecisionsStore((s) => s.running);
@@ -388,7 +390,9 @@ export function DecisionEditor() {
                 <span>{$fmt(run.usage.costUsd)}</span>
               )}
               {run.latencyMs !== undefined && <span>{run.latencyMs} ms</span>}
-              <span className="break-all">{modelName(models, run.modelId)}</span>
+              <span className="break-all">
+                {modelName(models, run.modelId)}
+              </span>
               <span title={fullTimestamp(run.updatedAt)}>
                 {timeAgo(run.updatedAt)}
               </span>
@@ -585,8 +589,9 @@ function QuestionCard({
   answer: DecisionAnswer | undefined;
   stale: boolean;
 }) {
-  const update = (patch: Parameters<typeof actions.updateDecisionQuestion>[1]) =>
-    actions.updateDecisionQuestion(index, patch);
+  const update = (
+    patch: Parameters<typeof actions.updateDecisionQuestion>[1],
+  ) => actions.updateDecisionQuestion(index, patch);
   const choices = q.choices ?? [];
   const levels = q.levels ?? [];
 
@@ -619,7 +624,10 @@ function QuestionCard({
               }))}
               disabled={false}
               onChange={(v) =>
-                actions.setDecisionQuestionType(index, v as DecisionQuestionType)
+                actions.setDecisionQuestionType(
+                  index,
+                  v as DecisionQuestionType,
+                )
               }
             />
             <Tip
@@ -671,7 +679,9 @@ function QuestionCard({
                     aria-label={`What counts as ${k}`}
                     placeholder={`What counts as ${k} (optional)`}
                     onChange={(e) =>
-                      update({ criteria: { ...q.criteria, [k]: e.target.value } })
+                      update({
+                        criteria: { ...q.criteria, [k]: e.target.value },
+                      })
                     }
                     className={inputCls}
                   />
@@ -692,7 +702,9 @@ function QuestionCard({
               max={MAX_DECISION_CHOICES}
               onKey={(i, value) =>
                 update({
-                  choices: choices.map((x, j) => (j === i ? { ...x, value } : x)),
+                  choices: choices.map((x, j) =>
+                    j === i ? { ...x, value } : x,
+                  ),
                 })
               }
               onDesc={(i, description) =>
@@ -730,7 +742,9 @@ function QuestionCard({
                   ),
                 })
               }
-              onRemove={(i) => update({ levels: levels.filter((_, j) => j !== i) })}
+              onRemove={(i) =>
+                update({ levels: levels.filter((_, j) => j !== i) })
+              }
               onAdd={() => update({ levels: [...levels, { label: '' }] })}
             />
           )}
@@ -847,7 +861,9 @@ function AnswerBlock({
     >
       <div className="flex items-center gap-2">
         {named ? (
-          <span className="num min-w-0 truncate text-[12px] muted">{a.name}</span>
+          <span className="num min-w-0 truncate text-[12px] muted">
+            {a.name}
+          </span>
         ) : (
           <span className="sec-label">Answer</span>
         )}

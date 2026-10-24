@@ -27,11 +27,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams_UNSTABLE } from 'waku/router/client';
 import { useRouter } from 'waku';
+import { useParams_UNSTABLE } from 'waku/router/client';
 import { I } from '../../lib/icons';
 import { Menu, Tip } from '../../lib/popover';
-import { actions, useChatsStore, useFoldersStore, useThreadsStore } from '../../stores';
+import {
+  actions,
+  useChatsStore,
+  useFoldersStore,
+  useThreadsStore,
+} from '../../stores';
 import { applyThreadModel, branchPath } from '../../stores/threads';
 import { chatActionsMenu } from '../chat-actions';
 import { MoveMenu } from '../sidebar/move-menu';

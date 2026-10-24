@@ -98,7 +98,10 @@ let syncConn: (() => void) | null = null;
 const refreshProviders = (dev: DevFlags) =>
   fetchProviderHealth(dev)
     .then((h) =>
-      useNetworkStore.setState({ providers: h.providers, latencyMs: h.latencyMs }),
+      useNetworkStore.setState({
+        providers: h.providers,
+        latencyMs: h.latencyMs,
+      }),
     )
     .catch(() => {});
 

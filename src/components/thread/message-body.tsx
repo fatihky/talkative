@@ -98,12 +98,7 @@ export function MessageBody({
   return segments(content, calls, thoughts).map((seg) =>
     seg.kind === 'text' ? (
       <div className="msg-text" key={seg.key}>
-        <Markdown
-          text={seg.text}
-          live={live}
-          msgId={msgId}
-          chatId={chatId}
-        />
+        <Markdown text={seg.text} live={live} msgId={msgId} chatId={chatId} />
       </div>
     ) : seg.kind === 'thought' ? (
       <ThoughtView

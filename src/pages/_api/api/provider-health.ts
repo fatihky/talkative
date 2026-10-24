@@ -20,8 +20,9 @@
  * - Nothing is written or invalidated here, but a probe that reaches
  *   upstream still refreshes that connection's cached catalog.
  */
-import { handle } from '../../../server/providers';
+
 import { providerHealth } from '../../../server/provider-health';
+import { handle } from '../../../server/providers';
 
 /* GET /api/provider-health — status of each configured provider connection */
 export const GET = () =>

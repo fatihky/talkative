@@ -17,9 +17,10 @@
  *   failure logs the error plus err.cause and sets exitCode=1; the pool is
  *   always closed in `finally`.
  */
+
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
 
 try {
   process.loadEnvFile();

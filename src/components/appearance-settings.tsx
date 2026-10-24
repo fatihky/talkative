@@ -45,7 +45,9 @@ export function AppearanceSettings() {
           <input
             type="checkbox"
             checked={prefs.enterToSend}
-            onChange={(e) => actions.setPrefs({ enterToSend: e.target.checked })}
+            onChange={(e) =>
+              actions.setPrefs({ enterToSend: e.target.checked })
+            }
             className="size-3.5 accent-[var(--accent)]"
           />
         </label>

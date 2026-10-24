@@ -62,19 +62,15 @@
  *   reusing getCatalog so a down provider only produces its logged
  *   stale/error path rather than failing the whole sweep.
  */
+
+import { asc } from 'drizzle-orm';
+import { getDb } from '../db';
 import type { ProviderConnectionRow } from '../db/schema';
-import type {
-  Compatibility,
-  Model,
-  ModelKind,
-  ThinkingLevel,
-} from '../types';
+import { providerConnections } from '../db/schema';
+import type { Compatibility, Model, ModelKind, ThinkingLevel } from '../types';
+import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { getRedis } from './redis';
 import { decryptSecret } from './secrets';
-import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
-import { providerConnections } from '../db/schema';
-import { getDb } from '../db';
-import { asc } from 'drizzle-orm';
 
 /* model lists live in redis only; connections themselves live in postgres */
 const KEY = (connectionId: number) => `talkative:models:${connectionId}`;
@@ -117,9 +113,7 @@ const getJson = async (url: string, conn: Conn) => {
       'user-agent': USER_AGENT,
       /* attribution headers list the app in openrouter's rankings */
       ...(conn.compatibility === 'openrouter' ? OPENROUTER_ATTRIBUTION : {}),
-      ...(conn.apiKey
-        ? { authorization: `Bearer ${conn.apiKey}` }
-        : {}),
+      ...(conn.apiKey ? { authorization: `Bearer ${conn.apiKey}` } : {}),
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
@@ -369,7 +363,10 @@ type LMStudioModel = {
   key: string;
   display_name?: string | null;
   architecture?: string | null;
-  quantization?: { name?: string | null; bits_per_weight?: number | null } | null;
+  quantization?: {
+    name?: string | null;
+    bits_per_weight?: number | null;
+  } | null;
   size_bytes?: number;
   params_string?: string | null;
   loaded_instances?: { config?: { context_length?: number } }[];
@@ -378,7 +375,10 @@ type LMStudioModel = {
   capabilities?: {
     vision?: boolean;
     trained_for_tool_use?: boolean;
-    reasoning?: { allowed_options?: LMStudioOption[]; default?: LMStudioOption };
+    reasoning?: {
+      allowed_options?: LMStudioOption[];
+      default?: LMStudioOption;
+    };
   };
   variants?: string[];
   selected_variant?: string;
@@ -399,10 +399,7 @@ const toLevel = (o: LMStudioOption): ThinkingLevel =>
   o === 'on' ? 'medium' : o;
 
 const fetchLMStudio = async (conn: Conn): Promise<Model[]> => {
-  const json = (await getJson(
-    `${conn.baseUrl}/api/v1/models`,
-    conn,
-  )) as {
+  const json = (await getJson(`${conn.baseUrl}/api/v1/models`, conn)) as {
     models?: LMStudioModel[];
   };
   return (json.models ?? []).map((m) => {
@@ -496,9 +493,7 @@ const fetchOllama = async (conn: Conn): Promise<Model[]> => {
         shortName: m.name,
         /* `decision` marks a System One model (nimble, jev, tev, clef, …): it
            answers /v1/systemone natively; anything else is a chat llm */
-        kind: caps?.has('decision')
-          ? ('systemone' as const)
-          : ('llm' as const),
+        kind: caps?.has('decision') ? ('systemone' as const) : ('llm' as const),
         capabilities: {
           ...NO_CAPS,
           thinking,
@@ -595,7 +590,8 @@ export const getCatalog = async (
        unreachable upstream — log it loudly so it isn't mistaken for a dead server */
     if (error.startsWith('[secrets]'))
       console.error(`[catalog] connection ${conn.id} (${conn.name}): ${error}`);
-    else console.warn(`[catalog] connection ${conn.id} (${conn.name}): ${error}`);
+    else
+      console.warn(`[catalog] connection ${conn.id} (${conn.name}): ${error}`);
     if (cached)
       return {
         items: cached.items.map((m) => ({ ...m, status: 'stale' as const })),

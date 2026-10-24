@@ -24,7 +24,7 @@
 'use client';
 
 import { type FormEvent, useEffect, useState } from 'react';
-import { toolCredentialsApi, type ToolCredentialsResponse } from '../lib/api';
+import { type ToolCredentialsResponse, toolCredentialsApi } from '../lib/api';
 import { errorText } from '../stores/models';
 import type { ToolCredential } from '../types';
 import { IconButton } from '../ui/primitives';

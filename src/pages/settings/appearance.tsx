@@ -1,7 +1,8 @@
 /* AppearancePage (/settings/appearance) — auth-gated theme and composer
    preferences, stored per user. */
-import { AuthGuard } from '../../components/auth-guard';
+
 import { AppearanceSettings } from '../../components/appearance-settings';
+import { AuthGuard } from '../../components/auth-guard';
 import { SettingsSubPage } from '../../components/settings-client';
 
 export default async function AppearancePage() {

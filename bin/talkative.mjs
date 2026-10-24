@@ -1,24 +1,29 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { spawn } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const dist = join(root, "dist");
-const { version } = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const dist = join(root, 'dist');
+const { version } = JSON.parse(
+  readFileSync(join(root, 'package.json'), 'utf8'),
+);
 
 /* the user's directory, not the package's: .env and uploads/ live where
    talkative is run from, so a global install keeps nothing inside node_modules */
 const cwd = process.cwd();
 try {
   // values already in the environment win
-  process.loadEnvFile(join(cwd, ".env"));
+  process.loadEnvFile(join(cwd, '.env'));
 } catch {
   // no .env file; env vars come from the environment
 }
-process.env.UPLOADS_DIR = resolve(cwd, process.env.UPLOADS_DIR?.trim() || "uploads");
+process.env.UPLOADS_DIR = resolve(
+  cwd,
+  process.env.UPLOADS_DIR?.trim() || 'uploads',
+);
 
 const usage = `talkative v${version}
 
@@ -57,47 +62,51 @@ const fail = (message) => {
 
 const run = (script, args, options) => {
   if (!existsSync(script)) {
-    fail("production build not found. Run `pnpm build` first or reinstall the package.");
+    fail(
+      'production build not found. Run `pnpm build` first or reinstall the package.',
+    );
   }
   const child = spawn(process.execPath, [script, ...args], {
-    stdio: "inherit",
+    stdio: 'inherit',
     ...options,
   });
-  child.on("error", (err) => fail(`failed to start: ${err.message}`));
-  child.on("exit", (code, signal) => {
+  child.on('error', (err) => fail(`failed to start: ${err.message}`));
+  child.on('exit', (code, signal) => {
     if (signal) process.kill(process.pid, signal);
     else process.exit(code ?? 1);
   });
-  for (const sig of ["SIGINT", "SIGTERM"]) {
+  for (const sig of ['SIGINT', 'SIGTERM']) {
     process.on(sig, () => child.kill(sig));
   }
 };
 
 const args = process.argv.slice(2);
-if (args.includes("--help") || args.includes("-h")) {
+if (args.includes('--help') || args.includes('-h')) {
   console.log(usage);
   process.exit(0);
 }
-if (args.includes("--version") || args.includes("-v")) {
+if (args.includes('--version') || args.includes('-v')) {
   console.log(version);
   process.exit(0);
 }
 
-const [command = "start", ...rest] = args[0]?.startsWith("-") ? ["start", ...args] : args;
-const cli = (name) => join(dist, "cli", `${name}.js`);
+const [command = 'start', ...rest] = args[0]?.startsWith('-')
+  ? ['start', ...args]
+  : args;
+const cli = (name) => join(dist, 'cli', `${name}.js`);
 
 switch (command) {
-  case "start": {
-    let port = process.env.PORT || "3000";
-    let host = process.env.HOST || "127.0.0.1";
+  case 'start': {
+    let port = process.env.PORT || '3000';
+    let host = process.env.HOST || '127.0.0.1';
     for (let i = 0; i < rest.length; i++) {
       const arg = rest[i];
       const value = rest[i + 1];
-      if (arg === "-p" || arg === "--port") {
+      if (arg === '-p' || arg === '--port') {
         if (!value) fail(`${arg} needs a value`);
         port = value;
         i++;
-      } else if (arg === "--host") {
+      } else if (arg === '--host') {
         if (!value) fail(`${arg} needs a value`);
         host = value;
         i++;
@@ -108,26 +117,31 @@ switch (command) {
     if (!/^\d+$/.test(port)) fail(`invalid port: ${port}`);
     /* the built server resolves dist/public against its cwd, so it runs from
        the package root; everything user-relative was resolved above */
-    run(join(dist, "serve-node.js"), [], {
+    run(join(dist, 'serve-node.js'), [], {
       cwd: root,
-      env: { ...process.env, NODE_ENV: process.env.NODE_ENV || "production", PORT: port, HOST: host },
+      env: {
+        ...process.env,
+        NODE_ENV: process.env.NODE_ENV || 'production',
+        PORT: port,
+        HOST: host,
+      },
     });
     console.log(`talkative v${version} starting on http://${host}:${port}/`);
     break;
   }
-  case "migrate":
-    run(cli("migrate"), rest, {
-      env: { ...process.env, MIGRATIONS_DIR: join(root, "drizzle") },
+  case 'migrate':
+    run(cli('migrate'), rest, {
+      env: { ...process.env, MIGRATIONS_DIR: join(root, 'drizzle') },
     });
     break;
-  case "admin":
-    run(cli("admin"), rest);
+  case 'admin':
+    run(cli('admin'), rest);
     break;
-  case "keys:rekey":
-    run(cli("rekey"), rest);
+  case 'keys:rekey':
+    run(cli('rekey'), rest);
     break;
-  case "uploads:gc":
-    run(cli("uploads-gc"), rest);
+  case 'uploads:gc':
+    run(cli('uploads-gc'), rest);
     break;
   default:
     fail(`unknown command: ${command} (see talkative --help)`);

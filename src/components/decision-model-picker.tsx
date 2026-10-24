@@ -20,7 +20,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ctxFmt } from '../lib/format';
 import { I } from '../lib/icons';
-import { isChattable, isDecisionModel, isSystemOneModel, modelSearchText } from '../lib/models';
+import {
+  isChattable,
+  isDecisionModel,
+  isSystemOneModel,
+  modelSearchText,
+} from '../lib/models';
 import { Popover, Tip } from '../lib/popover';
 import { actions, useDecisionsStore, useModelsStore } from '../stores';
 import type { Model } from '../types';
@@ -74,10 +79,9 @@ export function DecisionModelPicker() {
       setIdx(
         Math.max(
           0,
-          (
-            groups.flatMap((g) => g.models).length
-              ? groups.flatMap((g) => g.models).map((m) => m.id)
-              : []
+          (groups.flatMap((g) => g.models).length
+            ? groups.flatMap((g) => g.models).map((m) => m.id)
+            : []
           ).indexOf(selectedId),
         ),
       );
@@ -120,10 +124,7 @@ export function DecisionModelPicker() {
   return (
     <>
       {selected ? (
-        <Tip
-          label={`${selected.id} · ${selected.provider}`}
-          side="top"
-        >
+        <Tip label={`${selected.id} · ${selected.provider}`} side="top">
           {trigger}
         </Tip>
       ) : (
@@ -199,7 +200,9 @@ export function DecisionModelPicker() {
                       m={m}
                       active={shown[idx]?.id === m.id}
                       selected={m.id === selectedId}
-                      onHover={() => setIdx(shown.findIndex((s) => s.id === m.id))}
+                      onHover={() =>
+                        setIdx(shown.findIndex((s) => s.id === m.id))
+                      }
                     />
                   ))}
                 </div>
@@ -278,7 +281,9 @@ function DecisionModelOption({
           </span>
         )}
       </div>
-      {selected && <I n="check" s={13} className="shrink-0 text-[var(--accent)]" />}
+      {selected && (
+        <I n="check" s={13} className="shrink-0 text-[var(--accent)]" />
+      )}
     </div>
   );
 }

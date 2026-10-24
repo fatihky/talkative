@@ -40,7 +40,7 @@ import type { Draft, Folder, Model } from '../types';
 import { useChatsStore } from './chats';
 import { getSelectedModel, useDraftStore, useSelectedModel } from './draft';
 import { useFoldersStore } from './folders';
-import { type Thread, branchPath, useThreadsStore } from './threads';
+import { branchPath, type Thread, useThreadsStore } from './threads';
 import { usePrivateStore } from './transient';
 import { useUIStore } from './ui';
 
@@ -201,10 +201,7 @@ export function useEstimate<T>(pick: (e: Estimate) => T): T {
       pick(
         estimate(
           {
-            text:
-              privateText ??
-              threadText ??
-              d.text,
+            text: privateText ?? threadText ?? d.text,
             attachments: context === 'private' ? [] : d.attachments,
           },
           model,

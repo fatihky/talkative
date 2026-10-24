@@ -29,22 +29,22 @@ curl http://localhost:11434/api/tags
 
 ### ModelSummary
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `name` | `string` | Model name. |
-| `model` | `string` | Model name. |
-| `remote_model` | `string` | Upstream model name, if remote. |
-| `remote_host` | `string` | Upstream Ollama host URL, if remote. |
-| `modified_at` | `string` | Last modified, ISO 8601. |
-| `size` | `integer` | Total size on disk in bytes. |
-| `digest` | `string` | SHA256 digest of the model contents. |
-| `details` | `object` | Format and family info. |
-| `details.format` | `string` | Model file format, e.g. `gguf`. |
-| `details.family` | `string` | Primary family, e.g. `llama`. |
-| `details.families` | `string[]` | All families the model belongs to. |
-| `details.parameter_size` | `string` | Approximate parameter count, e.g. `7B`, `13B`. |
-| `details.quantization_level` | `string` | Quantization level, e.g. `Q4_0`. |
-| `capabilities` | `string[]` | Recognized capabilities of the model, e.g. `completion`, `embedding`, `vision`, `tools`, `thinking`, `decision`. |
+| Field                        | Type       | Notes                                                                                                            |
+| ---------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| `name`                       | `string`   | Model name.                                                                                                      |
+| `model`                      | `string`   | Model name.                                                                                                      |
+| `remote_model`               | `string`   | Upstream model name, if remote.                                                                                  |
+| `remote_host`                | `string`   | Upstream Ollama host URL, if remote.                                                                             |
+| `modified_at`                | `string`   | Last modified, ISO 8601.                                                                                         |
+| `size`                       | `integer`  | Total size on disk in bytes.                                                                                     |
+| `digest`                     | `string`   | SHA256 digest of the model contents.                                                                             |
+| `details`                    | `object`   | Format and family info.                                                                                          |
+| `details.format`             | `string`   | Model file format, e.g. `gguf`.                                                                                  |
+| `details.family`             | `string`   | Primary family, e.g. `llama`.                                                                                    |
+| `details.families`           | `string[]` | All families the model belongs to.                                                                               |
+| `details.parameter_size`     | `string`   | Approximate parameter count, e.g. `7B`, `13B`.                                                                   |
+| `details.quantization_level` | `string`   | Quantization level, e.g. `Q4_0`.                                                                                 |
+| `capabilities`               | `string[]` | Recognized capabilities of the model, e.g. `completion`, `embedding`, `vision`, `tools`, `thinking`, `decision`. |
 
 `capabilities` is how Ollama advertises what a model can do. The `decision`
 capability marks a System One model (see below); a model without it answers

@@ -48,8 +48,8 @@ export function Topbar() {
     const first = parts[0]?.[0] ?? userEmail[0] ?? '';
     const second =
       parts.length > 1
-        ? parts[parts.length - 1]?.[0] ?? ''
-        : userName[1] ?? userEmail[1] ?? '';
+        ? (parts[parts.length - 1]?.[0] ?? '')
+        : (userName[1] ?? userEmail[1] ?? '');
     return (first + second).toUpperCase();
   }, [userName, userEmail]);
 

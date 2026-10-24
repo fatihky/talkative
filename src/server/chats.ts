@@ -202,7 +202,10 @@ export const parseGenerateInput = (body: unknown): GenerateInput => {
   return {
     modelId,
     ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
-    toolGrants: record(b.toolGrants, (x): x is boolean => typeof x === 'boolean'),
+    toolGrants: record(
+      b.toolGrants,
+      (x): x is boolean => typeof x === 'boolean',
+    ),
     toolProviders: record(
       b.toolProviders,
       (x): x is string => typeof x === 'string',

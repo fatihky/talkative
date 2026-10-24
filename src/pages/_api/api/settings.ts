@@ -23,6 +23,8 @@
  *   on the environment-provided keys (see tool-credentials and tools).
  *   No key value is read or returned here.
  */
+
+import { handle } from '../../../server/providers';
 import {
   getSiteSettings,
   isAdmin,
@@ -30,7 +32,6 @@ import {
   parseSettingsPatch,
   patchSiteSettings,
 } from '../../../server/settings';
-import { handle } from '../../../server/providers';
 
 /* GET /api/settings — full site settings, admins only */
 export const GET = () =>

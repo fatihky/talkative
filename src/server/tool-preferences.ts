@@ -33,7 +33,12 @@ export const loadToolPreferences = async (
     .select()
     .from(toolPreferences)
     .where(eq(toolPreferences.userId, userId));
-  const out: ToolPreferences = { grants: {}, providers: {}, counts: {}, concurrency: {} };
+  const out: ToolPreferences = {
+    grants: {},
+    providers: {},
+    counts: {},
+    concurrency: {},
+  };
   for (const r of rows) {
     out.grants[r.toolId] = r.enabled;
     if (r.provider) out.providers[r.toolId] = r.provider;
@@ -45,7 +50,12 @@ export const loadToolPreferences = async (
 
 export const parseToolPreferences = (body: unknown): ToolPreferences => {
   const b = (body ?? {}) as Record<string, unknown>;
-  const out: ToolPreferences = { grants: {}, providers: {}, counts: {}, concurrency: {} };
+  const out: ToolPreferences = {
+    grants: {},
+    providers: {},
+    counts: {},
+    concurrency: {},
+  };
   const grants = (b.grants ?? {}) as Record<string, unknown>;
   const providers = (b.providers ?? {}) as Record<string, unknown>;
   const counts = (b.counts ?? {}) as Record<string, unknown>;

@@ -38,7 +38,6 @@ pnpm exec drizzle-kit generate --name add_message_refusal_and_annotations
 ```
 
 Rules:
-
 - Use a short, lowercase, snake_case description of the schema change
   (e.g. `add_message_refusal_and_annotations`, `add_folders_notes_tool_prefs`).
 - Prefer `add_` / `drop_` / `alter_` prefixes so the change is obvious from the filename.

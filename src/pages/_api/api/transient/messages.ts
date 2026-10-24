@@ -22,8 +22,8 @@
 import type { ApiContext } from 'waku/router';
 import { parseGenerateInput } from '../../../../server/chats';
 import { handle, ValidationError } from '../../../../server/providers';
-import { startRun } from '../../../../server/runs';
 import type { Turn } from '../../../../server/runs';
+import { startRun } from '../../../../server/runs';
 
 type Ctx = ApiContext<'/api/transient/messages'>;
 

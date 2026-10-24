@@ -32,7 +32,7 @@ import {
 } from '../../stores';
 import type { ChatSummary } from '../../types';
 import { chatActionsMenu } from '../chat-actions';
-import { type Drag, DRAG_MIME, indent } from './drag';
+import { DRAG_MIME, type Drag, indent } from './drag';
 import { MoveMenu } from './move-menu';
 import { Draggable } from './touch-drag';
 
@@ -71,95 +71,95 @@ export function ChatRow({
           : 'border-l-transparent hover:bg-[var(--sunken)]'
       }`}
     >
-    <div
-      className="flex size-full items-center gap-2"
-      style={{ paddingLeft: indent(depth) }}
-      role="listitem"
-      draggable={!renaming}
-      onDragStart={(e) => {
-        e.dataTransfer.setData(DRAG_MIME, chat.id);
-        e.dataTransfer.effectAllowed = 'move';
-        onDrag({ kind: 'chat', id: chat.id });
-      }}
-      onDragEnd={() => onDrag(null)}
-    >
-      {renaming ? (
-        <input
-          ref={(el) => el?.focus()}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => {
-            actions.renameChat(chat.id, title.trim() || chat.title);
-            setRenaming(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            if (e.key === 'Escape') setRenaming(false);
-          }}
-          className="h-6 min-w-0 flex-1 rounded-[4px] border border-[var(--accent)] bg-[var(--raised)] px-1 text-[13px] outline-none"
-          aria-label="Rename chat"
-        />
-      ) : (
-      <Link
-        to={`/c/${chat.id}`}
-        onClick={() => actions.setMobileNav(false)}
-        onDoubleClick={() => {
-          setTitle(chat.title);
-          setRenaming(true);
+      <div
+        className="flex size-full items-center gap-2"
+        style={{ paddingLeft: indent(depth) }}
+        role="listitem"
+        draggable={!renaming}
+        onDragStart={(e) => {
+          e.dataTransfer.setData(DRAG_MIME, chat.id);
+          e.dataTransfer.effectAllowed = 'move';
+          onDrag({ kind: 'chat', id: chat.id });
         }}
-        className="block min-w-0 flex-1 text-left no-underline"
-        aria-label={`Open chat ${chat.title}`}
+        onDragEnd={() => onDrag(null)}
       >
-        <span className="flex items-center gap-1.5 truncate text-[13px] font-[500] leading-tight">
-          {(generating || classifying) && (
-            <span className="block size-3 shrink-0 animate-spin rounded-full border-2 border-[var(--text)] border-t-transparent" />
-          )}
-          {chat.pinnedAt && (
-            <I n="pin" s={11} className="shrink-0 text-[var(--text-3)]" />
-          )}
-          <span className="truncate">{chat.title}</span>
-          {chat.systemPrompt && (
-            <Tip label="This chat has its own system prompt" side="top">
-              <span className="shrink-0 text-[var(--text-3)]">
-                <I n="sliders" s={10} />
-              </span>
-            </Tip>
-          )}
-        </span>
-      </Link>
-      )}
-      <button
-        ref={menuAnchor}
-        type="button"
-        aria-label={`Actions for ${chat.title}`}
-        aria-expanded={menu !== null}
-        onClick={() => setMenu('actions')}
-        className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
-      >
-        <I n="dots" s={14} />
-      </button>
-      <Menu
-        open={menu === 'actions'}
-        anchor={menuAnchor}
-        onClose={() => setMenu((m) => (m === 'actions' ? null : m))}
-        items={chatActionsMenu({
-          chat,
-          hasFolders,
-          /* on phones a drag is the quicker way in, so say so */
-          moveHint: mobile,
-          onRename: () => setRenaming(true),
-          /* the actions menu's onClose only clears 'actions', so the picker stays up */
-          onMove: () => setMenu('move'),
-        })}
-      />
-      <MoveMenu
-        open={menu === 'move'}
-        anchor={menuAnchor}
-        onClose={() => setMenu(null)}
-        current={chat.folderId ?? null}
-        onPick={(folderId) => actions.moveChat(chat.id, folderId)}
-      />
-    </div>
+        {renaming ? (
+          <input
+            ref={(el) => el?.focus()}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => {
+              actions.renameChat(chat.id, title.trim() || chat.title);
+              setRenaming(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+              if (e.key === 'Escape') setRenaming(false);
+            }}
+            className="h-6 min-w-0 flex-1 rounded-[4px] border border-[var(--accent)] bg-[var(--raised)] px-1 text-[13px] outline-none"
+            aria-label="Rename chat"
+          />
+        ) : (
+          <Link
+            to={`/c/${chat.id}`}
+            onClick={() => actions.setMobileNav(false)}
+            onDoubleClick={() => {
+              setTitle(chat.title);
+              setRenaming(true);
+            }}
+            className="block min-w-0 flex-1 text-left no-underline"
+            aria-label={`Open chat ${chat.title}`}
+          >
+            <span className="flex items-center gap-1.5 truncate text-[13px] font-[500] leading-tight">
+              {(generating || classifying) && (
+                <span className="block size-3 shrink-0 animate-spin rounded-full border-2 border-[var(--text)] border-t-transparent" />
+              )}
+              {chat.pinnedAt && (
+                <I n="pin" s={11} className="shrink-0 text-[var(--text-3)]" />
+              )}
+              <span className="truncate">{chat.title}</span>
+              {chat.systemPrompt && (
+                <Tip label="This chat has its own system prompt" side="top">
+                  <span className="shrink-0 text-[var(--text-3)]">
+                    <I n="sliders" s={10} />
+                  </span>
+                </Tip>
+              )}
+            </span>
+          </Link>
+        )}
+        <button
+          ref={menuAnchor}
+          type="button"
+          aria-label={`Actions for ${chat.title}`}
+          aria-expanded={menu !== null}
+          onClick={() => setMenu('actions')}
+          className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
+        >
+          <I n="dots" s={14} />
+        </button>
+        <Menu
+          open={menu === 'actions'}
+          anchor={menuAnchor}
+          onClose={() => setMenu((m) => (m === 'actions' ? null : m))}
+          items={chatActionsMenu({
+            chat,
+            hasFolders,
+            /* on phones a drag is the quicker way in, so say so */
+            moveHint: mobile,
+            onRename: () => setRenaming(true),
+            /* the actions menu's onClose only clears 'actions', so the picker stays up */
+            onMove: () => setMenu('move'),
+          })}
+        />
+        <MoveMenu
+          open={menu === 'move'}
+          anchor={menuAnchor}
+          onClose={() => setMenu(null)}
+          current={chat.folderId ?? null}
+          onPick={(folderId) => actions.moveChat(chat.id, folderId)}
+        />
+      </div>
     </Draggable>
   );
 }

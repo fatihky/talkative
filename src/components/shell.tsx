@@ -196,7 +196,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   /* a note or a decision run is an editor, not a chat: no composer */
   const noComposer =
-    /^\/notes\/[^/]+/.test(router.path) || /^\/decisions\/[^/]+/.test(router.path);
+    /^\/notes\/[^/]+/.test(router.path) ||
+    /^\/decisions\/[^/]+/.test(router.path);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
@@ -224,7 +225,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {isMobile && drawer.mounted && (
         <div
           className={`fixed inset-0 z-50 ${
-            drawer.exiting ? 'anim-scrim-out pointer-events-none' : 'anim-scrim-in'
+            drawer.exiting
+              ? 'anim-scrim-out pointer-events-none'
+              : 'anim-scrim-in'
           }`}
           style={{ background: 'var(--scrim)' }}
           onPointerDown={(e) => {
@@ -233,7 +236,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           <div
             className={`absolute left-0 top-0 h-full ${
-              drawer.exiting ? 'anim-out-left pointer-events-none' : 'anim-in-left'
+              drawer.exiting
+                ? 'anim-out-left pointer-events-none'
+                : 'anim-in-left'
             }`}
           >
             {/* the close bar matches the drawer's stored sidebar width, so

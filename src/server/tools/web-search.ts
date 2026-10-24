@@ -248,8 +248,7 @@ export const webSearch: ServerTool = {
     },
     required: ['query'],
   },
-  backends: () =>
-    Object.keys(BACKENDS).map((id) => ({ id, key: id })),
+  backends: () => Object.keys(BACKENDS).map((id) => ({ id, key: id })),
   async run(args, { signal, provider, apiKey, count }) {
     const query = typeof args.query === 'string' ? args.query.trim() : '';
     if (!query) throw new Error('query is required');

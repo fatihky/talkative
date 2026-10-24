@@ -44,11 +44,11 @@ curl https://api.openai.com/v1/decisions \
 
 ### Request
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `model` | `string` | Required. The model that evaluates the request. |
-| `input` | `string \| DecisionInputMessage[]` | Required. Shared evidence for every question. |
-| `questions` | `DecisionQuestion[]` | Required. Each carries a unique `name`. |
+| Field       | Type                               | Notes                                           |
+| ----------- | ---------------------------------- | ----------------------------------------------- |
+| `model`     | `string`                           | Required. The model that evaluates the request. |
+| `input`     | `string \| DecisionInputMessage[]` | Required. Shared evidence for every question.   |
+| `questions` | `DecisionQuestion[]`               | Required. Each carries a unique `name`.         |
 
 `DecisionInputMessage` is `{ role: "user", content: string \| parts[] }`, where a
 part is `{type: "input_text", text}` or `{type: "input_image", image_url}`.
@@ -57,13 +57,13 @@ inputs are not supported by this endpoint.
 
 ### Question
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `type` | `"predicate" \| "choice" \| "score"` | Required. |
-| `name` | `string` | Identifier echoed back on the answer. |
-| `instructions` | `string` | The question, plus what to look for. |
-| `choices` | `{value, description?}[]` | `choice` only: the selectable values. |
-| `levels` | `{label, description?}[]` | `score` only: ordered lowest → highest; indices start at 0. |
+| Field          | Type                                 | Notes                                                       |
+| -------------- | ------------------------------------ | ----------------------------------------------------------- |
+| `type`         | `"predicate" \| "choice" \| "score"` | Required.                                                   |
+| `name`         | `string`                             | Identifier echoed back on the answer.                       |
+| `instructions` | `string`                             | The question, plus what to look for.                        |
+| `choices`      | `{value, description?}[]`            | `choice` only: the selectable values.                       |
+| `levels`       | `{label, description?}[]`            | `score` only: ordered lowest → highest; indices start at 0. |
 
 `predicate` has no extra fields: it estimates the probability that the condition
 in `instructions` holds. Put independent questions in one request; a question
@@ -100,15 +100,15 @@ that depends on an earlier answer needs a second request.
 }
 ```
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `answers[].type` | `string` | The question's type, or `"refusal"` when the model declined. |
-| `answers[].name` | `string` | The question's name. |
-| `answers[].probability` | `number` | `predicate`: estimate in [0,1] that the condition is true. |
-| `answers[].choice` | `string` | `choice`: one of the supplied values. |
-| `answers[].score` | `number` | `score`: probability-weighted average of the level indices, so it can fall between levels. |
-| `answers[].probabilities` | `array` | `choice`/`score`: the distribution over values or levels. |
-| `answers[].confidence` | `number` | `choice`/`score`: model confidence in the answer. |
+| Field                     | Type     | Notes                                                                                      |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `answers[].type`          | `string` | The question's type, or `"refusal"` when the model declined.                               |
+| `answers[].name`          | `string` | The question's name.                                                                       |
+| `answers[].probability`   | `number` | `predicate`: estimate in [0,1] that the condition is true.                                 |
+| `answers[].choice`        | `string` | `choice`: one of the supplied values.                                                      |
+| `answers[].score`         | `number` | `score`: probability-weighted average of the level indices, so it can fall between levels. |
+| `answers[].probabilities` | `array`  | `choice`/`score`: the distribution over values or levels.                                  |
+| `answers[].confidence`    | `number` | `choice`/`score`: model confidence in the answer.                                          |
 
 Pricing is input-only ($0.10 per 1M tokens for `gpt-6-luna`): no cache-read,
 cache-write or output-token charges, though long-context input pricing

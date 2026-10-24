@@ -128,7 +128,8 @@ export const updateUser = async (
       .from(user)
       .where(and(eq(user.email, patch.email), ne(user.id, id)))
       .limit(1);
-    if (clash) throw new ValidationError('a user with that email already exists');
+    if (clash)
+      throw new ValidationError('a user with that email already exists');
   }
   const [row] = await db
     .update(user)

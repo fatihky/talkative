@@ -31,9 +31,9 @@ const inputCls =
 
 export function UserManagement() {
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'hidden'>(
-    'loading',
-  );
+  const [status, setStatus] = useState<
+    'loading' | 'ready' | 'error' | 'hidden'
+  >('loading');
   const [error, setError] = useState<string | undefined>();
   /* null = closed, 'new' = add form, otherwise the user being edited */
   const [editing, setEditing] = useState<'new' | AdminUser | null>(null);

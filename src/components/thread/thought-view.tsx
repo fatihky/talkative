@@ -20,7 +20,11 @@ export function ThoughtView({ t, live }: { t: Thought; live: boolean }) {
   return (
     <details className="tool-card group my-0">
       <summary className="flex h-9 cursor-pointer list-none items-center gap-2 px-3 [&::-webkit-details-marker]:hidden">
-        <I n="brain" s={13} className={`shrink-0 muted ${live ? 'animate-pulse' : ''}`} />
+        <I
+          n="brain"
+          s={13}
+          className={`shrink-0 muted ${live ? 'animate-pulse' : ''}`}
+        />
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium">
           {live
             ? 'Thinking…'

@@ -167,11 +167,12 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
     setAnswers((prev) => {
       const out = { ...prev };
       /* replace whatever was stored (typed text clears picks) with the toggled set */
-      if (next.length) out[q.id] = q.options
-        .map((o) => o.label)
-        .filter((l) => next.includes(l))
-        .slice(0, MAX_PICKS)
-        .join(', ');
+      if (next.length)
+        out[q.id] = q.options
+          .map((o) => o.label)
+          .filter((l) => next.includes(l))
+          .slice(0, MAX_PICKS)
+          .join(', ');
       else delete out[q.id];
       return out;
     });
@@ -263,7 +264,9 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
           <I n="help" s={13} />
           <span>PAUSED TO ASK</span>
           {questions.length > 1 && (
-            <span className="num">· {currentStep + 1}/{questions.length}</span>
+            <span className="num">
+              · {currentStep + 1}/{questions.length}
+            </span>
           )}
         </div>
         {!timedOut ? (
@@ -306,7 +309,8 @@ export function QuestionCard({ msgId, c }: { msgId: string; c: ToolCall }) {
                 : answers[q.id] === o.label;
               /* a multi_select question stops taking picks at MAX_PICKS */
               const full =
-                q.multi_select && !selected &&
+                q.multi_select &&
+                !selected &&
                 pickedLabels(q).length >= MAX_PICKS;
               return (
                 <button

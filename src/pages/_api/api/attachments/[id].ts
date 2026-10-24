@@ -35,15 +35,9 @@ import { and, eq } from 'drizzle-orm';
 import type { ApiContext } from 'waku/router';
 import { getDb } from '../../../../db';
 import { attachments } from '../../../../db/schema';
-import {
-  findAttachment,
-  isImageMime,
-} from '../../../../server/attachments';
+import { findAttachment, isImageMime } from '../../../../server/attachments';
 import { isUuid } from '../../../../server/chats';
-import {
-  handle,
-  ValidationError,
-} from '../../../../server/providers';
+import { handle, ValidationError } from '../../../../server/providers';
 import { readUpload } from '../../../../server/uploads';
 
 type Ctx = ApiContext<'/api/attachments/[id]'>;

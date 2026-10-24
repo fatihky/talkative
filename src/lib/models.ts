@@ -21,7 +21,8 @@ export const isChattable = (m: Model): boolean => kindOf(m) === 'llm';
 
 export const isDecisionModel = (m: Model): boolean => kindOf(m) === 'decision';
 
-export const isSystemOneModel = (m: Model): boolean => kindOf(m) === 'systemone';
+export const isSystemOneModel = (m: Model): boolean =>
+  kindOf(m) === 'systemone';
 
 /* a model a decision run can be evaluated with: a decision or systemone model */
 export const isDecisionCapable = (m: Model): boolean =>

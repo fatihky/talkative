@@ -50,9 +50,7 @@ export function chatActionsMenu({
     ...(promptReady
       ? [
           {
-            label: chat.systemPrompt
-              ? 'Edit system prompt…'
-              : 'System prompt…',
+            label: chat.systemPrompt ? 'Edit system prompt…' : 'System prompt…',
             onSelect: () =>
               actions.editSystemPrompt({ kind: 'chat', id: chat.id }),
           },

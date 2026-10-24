@@ -58,8 +58,12 @@
 'use client';
 
 import { create } from 'zustand';
-import { toolPreferencesApi } from '../lib/api';
-import { renameAttachment, uploadAttachment } from '../lib/api';
+import {
+  renameAttachment,
+  toolPreferencesApi,
+  uploadAttachment,
+} from '../lib/api';
+import { isChattable } from '../lib/models';
 import { debouncedSet, LS, uuid } from '../lib/storage';
 import {
   DEFAULT_CONCURRENCIES,
@@ -68,7 +72,6 @@ import {
   DEFAULT_PROVIDERS,
   TOOLS,
 } from '../lib/tools';
-import { isChattable } from '../lib/models';
 import type {
   Attachment,
   Draft,
@@ -344,7 +347,8 @@ const commitTools = (
     concurrency: d.defaultTools.concurrency,
   };
   /* once the thread has sent its first message, changes stay thread-wide */
-  const thread = context === 'new' ? undefined : useThreadsStore.getState().threads[context];
+  const thread =
+    context === 'new' ? undefined : useThreadsStore.getState().threads[context];
   const sentFirstMessage = (thread?.messages.length ?? 0) > 0;
   if (context !== 'new' && sentFirstMessage) {
     chatTools.set(context, sel);
@@ -457,8 +461,10 @@ export const draftActions = {
        metadata and the paste still rides with the send (see attachFiles) */
     const last = get().attachments.at(-1);
     if (!last || text === '') return;
-    void uploadAttachment(last, new File([text], last.name, { type: 'text/plain' }))
-      .catch(() => {});
+    void uploadAttachment(
+      last,
+      new File([text], last.name, { type: 'text/plain' }),
+    ).catch(() => {});
   },
 
   addAttachments(items: Attachment[]) {
@@ -552,7 +558,9 @@ export const draftActions = {
     useUIStore.setState({ noToolsNote: false });
   },
   setToolProvider(tool: ToolId, provider: ProviderId) {
-    commitTools({ toolProviders: { ...get().toolProviders, [tool]: provider } });
+    commitTools({
+      toolProviders: { ...get().toolProviders, [tool]: provider },
+    });
   },
   setToolCount(tool: ToolId, count: number) {
     const sel: ToolPreferences = {

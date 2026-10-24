@@ -7,8 +7,8 @@
      pnpm keys:rekey --decrypt    open every sealed row back to plaintext
  */
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { and, eq, gt, isNotNull, or } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { providerConnections, toolCredentials } from '../src/db/schema.ts';
 import {

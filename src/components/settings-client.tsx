@@ -19,7 +19,12 @@
  */
 'use client';
 
-import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useState,
+} from 'react';
 import { Link } from 'waku';
 import { settingsApi } from '../lib/api';
 import { I } from '../lib/icons';

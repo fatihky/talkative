@@ -35,18 +35,18 @@ text-output models only — image generators, embedding models and **decision
 models** (such as Jev) are _excluded_ and must be requested by their modality
 (or `all`) to appear.
 
-| Value           | Description                                                          |
-| --------------- | -------------------------------------------------------------------- |
-| `text`          | Text output (the default).                                           |
-| `image`         | Image generators.                                                    |
-| `video`         | Video generators.                                                    |
-| `audio`         | Audio output.                                                        |
-| `speech`        | Text-to-speech.                                                      |
-| `transcription` | Speech-to-text.                                                      |
-| `embeddings`    | Embedding models.                                                    |
-| `rerank`        | Reranking models.                                                    |
-| `decisions`     | Decision models (e.g. Jev) that return typed judgments, not text.    |
-| `all`           | Every model regardless of modality.                                  |
+| Value           | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| `text`          | Text output (the default).                                        |
+| `image`         | Image generators.                                                 |
+| `video`         | Video generators.                                                 |
+| `audio`         | Audio output.                                                     |
+| `speech`        | Text-to-speech.                                                   |
+| `transcription` | Speech-to-text.                                                   |
+| `embeddings`    | Embedding models.                                                 |
+| `rerank`        | Reranking models.                                                 |
+| `decisions`     | Decision models (e.g. Jev) that return typed judgments, not text. |
+| `all`           | Every model regardless of modality.                               |
 
 A comma-separated list narrows to those modalities. Decision models are not in
 the default text-only list, so fetch them explicitly:
@@ -83,36 +83,36 @@ Pagination is opt-in; `links.next` is a ready-to-use URL, `null` on the last pag
 
 ### OpenRouterModel
 
-| Field                                | Type         | Notes                                                               |
-| ------------------------------------ | ------------ | ------------------------------------------------------------------- |
-| `id`                                 | `string`     | e.g. `"google/gemini-2.5-pro-preview"`.                             |
-| `canonical_slug`                     | `string`     | Permanent slug that never changes.                                  |
-| `name`                               | `string`     | Human-readable display name.                                        |
-| `created`                            | `number`     | Unix timestamp the model was added.                                 |
-| `description`                        | `string`     | Capabilities description.                                           |
-| `context_length`                     | `number`     | Max context window in tokens.                                       |
-| `architecture.modality`              | `string`     | e.g. `"text->text"`.                                                |
-| `architecture.tokenizer`             | `string`     | Tokenizer family (e.g. `"GPT"`, `"Claude"`, `"Gemini"`).            |
-| `architecture.instruct_type`         | `string`     | Instruction format (e.g. `"chatml"`); `null` when N/A.              |
-| `architecture.input_modalities`      | `string[]`   | e.g. `["file", "image", "text"]`.                                   |
-| `architecture.output_modalities`     | `string[]`   | e.g. `["text"]`; decision models report `["decisions"]`.            |
-| `pricing`                            | `object`     | USD per token/request as strings (`"0"` = free).                    |
-| `pricing.prompt`                     | `string`     | Cost per input token.                                               |
-| `pricing.completion`                 | `string`     | Cost per output token.                                              |
-| `pricing.internal_reasoning`         | `string`     | Cost for internal reasoning tokens.                                 |
-| `pricing.input_cache_read`           | `string`     | Cost per cached input token read.                                   |
-| `pricing.input_cache_write`          | `string`     | Cost per cached input token write.                                  |
-| `pricing.request` / `pricing.image` / `pricing.web_search` | `string` | Per-request, per-image, and per-web-search costs.                   |
-| `pricing.overrides`                  | `array`      | Conditional pricing overrides (long-context, time-of-day windows).  |
-| `top_provider.is_moderated`          | `boolean`    | Whether content moderation is applied.                              |
-| `top_provider.context_length`        | `number`     | Provider-specific context limit.                                    |
-| `top_provider.max_completion_tokens` | `number`     | Ceiling for `max_tokens` (shared with input in the context window). |
-| `per_request_limits`                 | `object`     | `{ prompt_tokens, completion_tokens }`; `null` if no limits.        |
-| `supported_parameters`               | `string[]`   | `tools`, `reasoning`, `response_format`, `structured_outputs`, etc. |
-| `default_parameters`                 | `object`     | Default `temperature`/`top_p`/…; `null` if none.                    |
-| `reasoning`                          | `object`     | `mandatory`, `default_enabled`, `supported_efforts`, `default_effort`, `supports_max_tokens`. |
-| `expiration_date`                    | `string`     | ISO date the model may be removed by; `null` if not deprecated.     |
-| `benchmarks`                         | `object`     | Third-party rankings; omitted when no data.                         |
+| Field                                                      | Type       | Notes                                                                                         |
+| ---------------------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------- |
+| `id`                                                       | `string`   | e.g. `"google/gemini-2.5-pro-preview"`.                                                       |
+| `canonical_slug`                                           | `string`   | Permanent slug that never changes.                                                            |
+| `name`                                                     | `string`   | Human-readable display name.                                                                  |
+| `created`                                                  | `number`   | Unix timestamp the model was added.                                                           |
+| `description`                                              | `string`   | Capabilities description.                                                                     |
+| `context_length`                                           | `number`   | Max context window in tokens.                                                                 |
+| `architecture.modality`                                    | `string`   | e.g. `"text->text"`.                                                                          |
+| `architecture.tokenizer`                                   | `string`   | Tokenizer family (e.g. `"GPT"`, `"Claude"`, `"Gemini"`).                                      |
+| `architecture.instruct_type`                               | `string`   | Instruction format (e.g. `"chatml"`); `null` when N/A.                                        |
+| `architecture.input_modalities`                            | `string[]` | e.g. `["file", "image", "text"]`.                                                             |
+| `architecture.output_modalities`                           | `string[]` | e.g. `["text"]`; decision models report `["decisions"]`.                                      |
+| `pricing`                                                  | `object`   | USD per token/request as strings (`"0"` = free).                                              |
+| `pricing.prompt`                                           | `string`   | Cost per input token.                                                                         |
+| `pricing.completion`                                       | `string`   | Cost per output token.                                                                        |
+| `pricing.internal_reasoning`                               | `string`   | Cost for internal reasoning tokens.                                                           |
+| `pricing.input_cache_read`                                 | `string`   | Cost per cached input token read.                                                             |
+| `pricing.input_cache_write`                                | `string`   | Cost per cached input token write.                                                            |
+| `pricing.request` / `pricing.image` / `pricing.web_search` | `string`   | Per-request, per-image, and per-web-search costs.                                             |
+| `pricing.overrides`                                        | `array`    | Conditional pricing overrides (long-context, time-of-day windows).                            |
+| `top_provider.is_moderated`                                | `boolean`  | Whether content moderation is applied.                                                        |
+| `top_provider.context_length`                              | `number`   | Provider-specific context limit.                                                              |
+| `top_provider.max_completion_tokens`                       | `number`   | Ceiling for `max_tokens` (shared with input in the context window).                           |
+| `per_request_limits`                                       | `object`   | `{ prompt_tokens, completion_tokens }`; `null` if no limits.                                  |
+| `supported_parameters`                                     | `string[]` | `tools`, `reasoning`, `response_format`, `structured_outputs`, etc.                           |
+| `default_parameters`                                       | `object`   | Default `temperature`/`top_p`/…; `null` if none.                                              |
+| `reasoning`                                                | `object`   | `mandatory`, `default_enabled`, `supported_efforts`, `default_effort`, `supports_max_tokens`. |
+| `expiration_date`                                          | `string`   | ISO date the model may be removed by; `null` if not deprecated.                               |
+| `benchmarks`                                               | `object`   | Third-party rankings; omitted when no data.                                                   |
 
 ### Single model lookup
 
@@ -160,40 +160,40 @@ curl https://openrouter.ai/api/v1/chat/completions \
 
 ### Request
 
-| Field                                           | Type                 | Notes                                                           |
-| ----------------------------------------------- | -------------------- | --------------------------------------------------------------- |
-| `model`                                         | `string`             | Model id, `provider/model` format.                              |
-| `messages`                                      | `array`              | Required. `system`/`developer`/`user`/`assistant`/`tool` roles. |
-| `models`                                        | `string[]`           | Alternative multi-model routing.                                |
-| `provider`                                      | `object`             | Provider routing preferences.                                   |
+| Field                                           | Type                 | Notes                                                                                                                                                                                                                       |
+| ----------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model`                                         | `string`             | Model id, `provider/model` format.                                                                                                                                                                                          |
+| `messages`                                      | `array`              | Required. `system`/`developer`/`user`/`assistant`/`tool` roles.                                                                                                                                                             |
+| `models`                                        | `string[]`           | Alternative multi-model routing.                                                                                                                                                                                            |
+| `provider`                                      | `object`             | Provider routing preferences.                                                                                                                                                                                               |
 | `plugins`                                       | `array`              | `router`, `auto-router`, `auto-beta-router`, `pareto-router`, `fusion`, `switchyard-router`, `jev-router`, `moderation`, `web`, `web-fetch`, `file-parser`, `response-healing`, `context-compression`, `alignment` plugins. |
-| `stream`                                        | `boolean`            | Default `false`.                                                |
-| `max_tokens` / `max_completion_tokens`          | `integer`            | `max_tokens` deprecated; some providers enforce a minimum of 16. |
-| `temperature`                                   | `number`             | 0–2.                                                            |
-| `top_p`                                         | `number`             | 0–1.                                                            |
-| `top_k`                                         | `integer`            | Top-K sampling; not all providers.                              |
-| `frequency_penalty` / `presence_penalty`        | `number`             | -2.0–2.0.                                                       |
-| `repetition_penalty`                            | `number`             | 1.0 = no penalty; not all providers.                            |
-| `min_p` / `top_a`                               | `number`             | Provider-specific tail sampling.                                |
-| `stop`                                          | `string \| string[]` | Up to 4 sequences.                                              |
-| `seed`                                          | `integer`            | Deterministic output.                                           |
-| `logit_bias` / `logprobs` / `top_logprobs`      | —                    | Token logit adjustments and log-probs.                          |
-| `tools` / `tool_choice` / `parallel_tool_calls` | —                    | Function calling.                                               |
-| `response_format`                               | `object`             | `json_object` / `json_schema` / grammar / `python` / `text`.    |
-| `reasoning` / `reasoning_effort`                | —                    | Reasoning-model controls; `reasoning.summary` (`auto`/`concise`/`detailed`) too. |
-| `modalities`                                    | `string[]`           | Output modalities: `text`, `image`, `audio`.                    |
-| `cache_control`                                 | `object`             | Automatic prompt caching (e.g. `{"type": "ephemeral"}`).       |
-| `deferred_tools`                                | `object`             | Versioned router-level deferred-tool protocol.                  |
-| `image_config`                                  | `object`             | Provider-specific image options.                                |
-| `prompt_cache_key` / `prompt_cache_options`     | —                    | Prompt-cache control.                                           |
-| `metadata`                                      | `object`             | Max 16 string pairs (64-char keys, 512-char values).            |
-| `service_tier`                                  | `string`             | `auto`/`default`/`fast`/`flex`/`priority`/`scale`/`ultrafast`.  |
-| `stop_server_tools_when`                        | `object`             | Stop condition for server tools.                                |
-| `stream_options`                                | `object`             | `include_usage` etc.                                            |
-| `trace`                                         | `object`             | `trace_id`, span/generation names, custom keys.                 |
-| `debug`                                         | `object`             | `echo_upstream_body` (streaming only).                          |
-| `user`                                          | `string`             | Per-end-user identifier; never forwarded raw.                   |
-| `session_id`                                    | `string`             | Sticky routing key; max 256 chars.                              |
+| `stream`                                        | `boolean`            | Default `false`.                                                                                                                                                                                                            |
+| `max_tokens` / `max_completion_tokens`          | `integer`            | `max_tokens` deprecated; some providers enforce a minimum of 16.                                                                                                                                                            |
+| `temperature`                                   | `number`             | 0–2.                                                                                                                                                                                                                        |
+| `top_p`                                         | `number`             | 0–1.                                                                                                                                                                                                                        |
+| `top_k`                                         | `integer`            | Top-K sampling; not all providers.                                                                                                                                                                                          |
+| `frequency_penalty` / `presence_penalty`        | `number`             | -2.0–2.0.                                                                                                                                                                                                                   |
+| `repetition_penalty`                            | `number`             | 1.0 = no penalty; not all providers.                                                                                                                                                                                        |
+| `min_p` / `top_a`                               | `number`             | Provider-specific tail sampling.                                                                                                                                                                                            |
+| `stop`                                          | `string \| string[]` | Up to 4 sequences.                                                                                                                                                                                                          |
+| `seed`                                          | `integer`            | Deterministic output.                                                                                                                                                                                                       |
+| `logit_bias` / `logprobs` / `top_logprobs`      | —                    | Token logit adjustments and log-probs.                                                                                                                                                                                      |
+| `tools` / `tool_choice` / `parallel_tool_calls` | —                    | Function calling.                                                                                                                                                                                                           |
+| `response_format`                               | `object`             | `json_object` / `json_schema` / grammar / `python` / `text`.                                                                                                                                                                |
+| `reasoning` / `reasoning_effort`                | —                    | Reasoning-model controls; `reasoning.summary` (`auto`/`concise`/`detailed`) too.                                                                                                                                            |
+| `modalities`                                    | `string[]`           | Output modalities: `text`, `image`, `audio`.                                                                                                                                                                                |
+| `cache_control`                                 | `object`             | Automatic prompt caching (e.g. `{"type": "ephemeral"}`).                                                                                                                                                                    |
+| `deferred_tools`                                | `object`             | Versioned router-level deferred-tool protocol.                                                                                                                                                                              |
+| `image_config`                                  | `object`             | Provider-specific image options.                                                                                                                                                                                            |
+| `prompt_cache_key` / `prompt_cache_options`     | —                    | Prompt-cache control.                                                                                                                                                                                                       |
+| `metadata`                                      | `object`             | Max 16 string pairs (64-char keys, 512-char values).                                                                                                                                                                        |
+| `service_tier`                                  | `string`             | `auto`/`default`/`fast`/`flex`/`priority`/`scale`/`ultrafast`.                                                                                                                                                              |
+| `stop_server_tools_when`                        | `object`             | Stop condition for server tools.                                                                                                                                                                                            |
+| `stream_options`                                | `object`             | `include_usage` etc.                                                                                                                                                                                                        |
+| `trace`                                         | `object`             | `trace_id`, span/generation names, custom keys.                                                                                                                                                                             |
+| `debug`                                         | `object`             | `echo_upstream_body` (streaming only).                                                                                                                                                                                      |
+| `user`                                          | `string`             | Per-end-user identifier; never forwarded raw.                                                                                                                                                                               |
+| `session_id`                                    | `string`             | Sticky routing key; max 256 chars.                                                                                                                                                                                          |
 
 ### Response (non-streaming)
 

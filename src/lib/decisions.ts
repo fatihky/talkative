@@ -99,10 +99,7 @@ export const newQuestion = (
       name,
       type,
       instructions: '',
-      choices: [
-        { value: '' },
-        { value: '' },
-      ],
+      choices: [{ value: '' }, { value: '' }],
     };
   if (type === 'score')
     return {
@@ -317,7 +314,8 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
       {
         name: 'meets_requirements',
         type: 'predicate',
-        instructions: 'Does the candidate meet the stated requirements on paper?',
+        instructions:
+          'Does the candidate meet the stated requirements on paper?',
         criteria: {
           true: 'Has the required skills and experience.',
           false: 'Missing a stated must-have.',
@@ -357,7 +355,8 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
       {
         name: 'is_clickbait',
         type: 'predicate',
-        instructions: 'Is the headline clickbait, withholding the key fact to draw clicks?',
+        instructions:
+          'Is the headline clickbait, withholding the key fact to draw clicks?',
       },
       {
         name: 'section',
@@ -385,7 +384,8 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
         instructions: 'Is this a reproducible defect in the product?',
         criteria: {
           true: 'A user-visible behaviour that should not happen, with steps to trigger it.',
-          false: 'Expected behaviour, a question, or a request for something new.',
+          false:
+            'Expected behaviour, a question, or a request for something new.',
         },
       },
       {
@@ -393,9 +393,15 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
         type: 'choice',
         instructions: 'Which component should own the investigation?',
         choices: [
-          { value: 'frontend', description: 'UI, dialogs, browser-side downloads.' },
+          {
+            value: 'frontend',
+            description: 'UI, dialogs, browser-side downloads.',
+          },
           { value: 'backend', description: 'APIs, jobs, data.' },
-          { value: 'integration', description: 'Auth, billing, third-party hooks.' },
+          {
+            value: 'integration',
+            description: 'Auth, billing, third-party hooks.',
+          },
           { value: 'unknown', description: 'Not enough signal to say.' },
         ],
       },
@@ -406,8 +412,14 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
         levels: [
           { label: 'Trivial' },
           { label: 'Minor', description: 'Annoying but workaroundable.' },
-          { label: 'Major', description: 'A key flow is broken for some users.' },
-          { label: 'Critical', description: 'Data loss or a blocked core flow.' },
+          {
+            label: 'Major',
+            description: 'A key flow is broken for some users.',
+          },
+          {
+            label: 'Critical',
+            description: 'Data loss or a blocked core flow.',
+          },
         ],
       },
     ],
@@ -430,7 +442,10 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
         choices: [
           { value: 'assign', description: 'Name owners for the open items.' },
           { value: 'schedule', description: 'Book the next check-in.' },
-          { value: 'decide', description: 'A decision was deferred and needs closing.' },
+          {
+            value: 'decide',
+            description: 'A decision was deferred and needs closing.',
+          },
           { value: 'none', description: 'Everything is already settled.' },
         ],
       },
@@ -468,9 +483,15 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
         instructions: 'Who should follow up?',
         choices: [
           { value: 'sales_rep' },
-          { value: 'sales_engineer', description: 'Needs a technical walkthrough.' },
+          {
+            value: 'sales_engineer',
+            description: 'Needs a technical walkthrough.',
+          },
           { value: 'support', description: 'It is really a help request.' },
-          { value: 'nurture', description: 'Not ready; send to the drip campaign.' },
+          {
+            value: 'nurture',
+            description: 'Not ready; send to the drip campaign.',
+          },
         ],
       },
       {
@@ -517,7 +538,10 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
           { label: 'Confused' },
           { label: 'Partial', description: 'Right idea, gaps in reasoning.' },
           { label: 'Clear' },
-          { label: 'Exemplary', description: 'Correct, complete and well argued.' },
+          {
+            label: 'Exemplary',
+            description: 'Correct, complete and well argued.',
+          },
         ],
       },
     ],
@@ -591,7 +615,10 @@ export const DECISION_EXAMPLES: DecisionExample[] = [
           { label: 'Nice to have' },
           { label: 'Helpful' },
           { label: 'Saves real work' },
-          { label: 'Unblocks them', description: 'They cannot proceed without it.' },
+          {
+            label: 'Unblocks them',
+            description: 'They cannot proceed without it.',
+          },
         ],
       },
     ],

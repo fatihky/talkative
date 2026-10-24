@@ -55,7 +55,9 @@ export function PasswordSettings() {
       setConfirm('');
       actions.toast('Password updated');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update password');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update password',
+      );
     } finally {
       setBusy(false);
     }

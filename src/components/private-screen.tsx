@@ -139,7 +139,9 @@ function PrivateBubble({ m }: { m: PrivateMsg }) {
           <span className="muted">…</span>
         )}
         {m.error && (
-          <div className="num mt-1.5 text-[11px] text-(--danger)">{m.error}</div>
+          <div className="num mt-1.5 text-[11px] text-(--danger)">
+            {m.error}
+          </div>
         )}
       </div>
     </article>

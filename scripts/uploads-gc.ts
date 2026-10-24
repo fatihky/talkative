@@ -8,13 +8,17 @@
      pnpm uploads:gc --dry-run       report what would go, touch nothing
  */
 import 'dotenv/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq, gt, sql } from 'drizzle-orm';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import { eq, gt, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { attachments, messages } from '../src/db/schema.ts';
-import { deleteUpload, listUploads, uploadsDir } from '../src/server/uploads.ts';
+import {
+  deleteUpload,
+  listUploads,
+  uploadsDir,
+} from '../src/server/uploads.ts';
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -64,7 +68,9 @@ try {
     const rows = await db
       .select({
         id: messages.id,
-        refs: sql<string[]>`array(select elem->>'id' from jsonb_array_elements(${messages.attachments}) as elem where elem->>'kind' in ('file', 'image'))`,
+        refs: sql<
+          string[]
+        >`array(select elem->>'id' from jsonb_array_elements(${messages.attachments}) as elem where elem->>'kind' in ('file', 'image'))`,
       })
       .from(messages)
       .where(gt(messages.id, lastMessage))

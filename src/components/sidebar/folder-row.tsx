@@ -23,7 +23,7 @@ import { I } from '../../lib/icons';
 import { Menu } from '../../lib/popover';
 import { actions, useFoldersStore } from '../../stores';
 import type { Folder } from '../../types';
-import { type Drag, DRAG_MIME, indent } from './drag';
+import { DRAG_MIME, type Drag, indent } from './drag';
 import { MoveMenu } from './move-menu';
 import { Draggable } from './touch-drag';
 

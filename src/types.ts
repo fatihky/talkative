@@ -423,32 +423,38 @@ export type MessageUsage = {
 /* every extra upstream token/cost datapoint we could capture, kept per message */
 export type MessageUsageDetails = {
   /* prompt token split reported as `prompt_tokens_details` */
-  promptDetails?: {
-    audioTokens?: number | undefined;
-    imageTokens?: number | undefined;
-    cachedReadTokens?: number | undefined;
-    cachedWriteTokens?: number | undefined;
-  } | undefined;
+  promptDetails?:
+    | {
+        audioTokens?: number | undefined;
+        imageTokens?: number | undefined;
+        cachedReadTokens?: number | undefined;
+        cachedWriteTokens?: number | undefined;
+      }
+    | undefined;
   /* completion token split reported as `completion_tokens_details` */
-  completionDetails?: {
-    audioTokens?: number | undefined;
-    reasoningTokens?: number | undefined;
-    acceptedPredictionTokens?: number | undefined;
-    rejectedPredictionTokens?: number | undefined;
-    citationTokens?: number | undefined;
-    imageTokens?: number | undefined;
-    searchQueries?: number | undefined;
-  } | undefined;
+  completionDetails?:
+    | {
+        audioTokens?: number | undefined;
+        reasoningTokens?: number | undefined;
+        acceptedPredictionTokens?: number | undefined;
+        rejectedPredictionTokens?: number | undefined;
+        citationTokens?: number | undefined;
+        imageTokens?: number | undefined;
+        searchQueries?: number | undefined;
+      }
+    | undefined;
   /* the full provider-reported cost breakdown (bifrost `usage.cost`) */
-  cost?: {
-    inputTokens?: number | undefined;
-    outputTokens?: number | undefined;
-    reasoningTokens?: number | undefined;
-    citationTokens?: number | undefined;
-    searchQueries?: number | undefined;
-    request?: number | undefined;
-    total?: number | undefined;
-  } | undefined;
+  cost?:
+    | {
+        inputTokens?: number | undefined;
+        outputTokens?: number | undefined;
+        reasoningTokens?: number | undefined;
+        citationTokens?: number | undefined;
+        searchQueries?: number | undefined;
+        request?: number | undefined;
+        total?: number | undefined;
+      }
+    | undefined;
 };
 
 /* upstream routing/identity fields surfaced per assistant message where available */

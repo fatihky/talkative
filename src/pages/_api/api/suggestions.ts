@@ -16,5 +16,4 @@ import { handle } from '../../../server/providers';
 import { buildSuggestions } from '../../../server/suggestions';
 
 /* GET /api/suggestions — pinned + static suggestions for the home screen */
-export const GET = () =>
-  handle(async () => Response.json(buildSuggestions()));
+export const GET = () => handle(async () => Response.json(buildSuggestions()));

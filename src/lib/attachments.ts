@@ -19,9 +19,10 @@
  * - scope 'chat' is recorded on the attachment (the tray badges it as chat
  *   context); the default 'message' writes no scope field at all.
  */
+
+import type { Attachment } from '../types';
 import { uploadAttachment } from './api';
 import { uuid } from './storage';
-import type { Attachment } from '../types';
 
 /* build a file/image attachment and upload its bytes; resolves once stored */
 export async function attachFiles(

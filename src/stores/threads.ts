@@ -70,9 +70,9 @@ import {
 } from '../lib/api';
 import { callSnapshot } from '../lib/artifacts';
 import {
-  type ExportableMessage,
   chatToText,
   downloadText,
+  type ExportableMessage,
   exportFilename,
   pathToLeaf,
 } from '../lib/export-chat';
@@ -536,7 +536,10 @@ export const threadsActions = {
     /* only the visible branch is exported; append any messages not yet in the leaf's path */
     const path = pathToLeaf(t.messages, t.leafId);
     const inPath = new Set(path.map((m) => m.id));
-    const all: Msg[] = [...path, ...t.messages.filter((m) => !inPath.has(m.id))];
+    const all: Msg[] = [
+      ...path,
+      ...t.messages.filter((m) => !inPath.has(m.id)),
+    ];
     if (all.length === 0) {
       uiActions.toast('Nothing to export', 'warn');
       return;

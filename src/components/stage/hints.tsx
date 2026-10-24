@@ -10,7 +10,12 @@
  */
 'use client';
 
-import { actions, useModelsStore, useRecentModelIds, useUIStore } from '../../stores';
+import {
+  actions,
+  useModelsStore,
+  useRecentModelIds,
+  useUIStore,
+} from '../../stores';
 import { Kbd } from '../../ui/primitives';
 
 export function RecentModelsRow() {

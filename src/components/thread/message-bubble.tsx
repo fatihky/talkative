@@ -64,13 +64,14 @@ const statsTooltip = (m: Pick<Msg, 'usage' | 'latencyMs'>): string | null => {
   return lines.join('\n');
 };
 
-const ATTACH_ICON: Partial<Record<Msg['attachments'][number]['kind'], string>> = {
-  note: 'note',
-  image: 'image',
-  url: 'link',
-  memory: 'brain',
-  chat: 'chat',
-};
+const ATTACH_ICON: Partial<Record<Msg['attachments'][number]['kind'], string>> =
+  {
+    note: 'note',
+    image: 'image',
+    url: 'link',
+    memory: 'brain',
+    chat: 'chat',
+  };
 
 export function MessageBubble({
   m,

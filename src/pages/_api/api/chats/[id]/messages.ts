@@ -72,6 +72,10 @@ import { getDb } from '../../../../../db';
 import type { MessageRow } from '../../../../../db/schema';
 import { chats, messages } from '../../../../../db/schema';
 import {
+  stripText,
+  withAttachmentText,
+} from '../../../../../server/attachments';
+import {
   branchPath,
   findChat,
   isUuid,
@@ -80,11 +84,18 @@ import {
   toChatDto,
   toMessageDto,
 } from '../../../../../server/chats';
-import { stripText, withAttachmentText } from '../../../../../server/attachments';
-import { collectRefs } from '../../../../../server/refs';
 import { handle, ValidationError } from '../../../../../server/providers';
-import { hasActiveRun, historyTurns, localStamp, prefixTurn, startRun, userContent, userParts } from '../../../../../server/runs';
+import { collectRefs } from '../../../../../server/refs';
 import type { InlineAttachment } from '../../../../../server/runs';
+import {
+  hasActiveRun,
+  historyTurns,
+  localStamp,
+  prefixTurn,
+  startRun,
+  userContent,
+  userParts,
+} from '../../../../../server/runs';
 import { isAdmin } from '../../../../../server/settings';
 import { systemTurns } from '../../../../../server/system-prompt';
 import { loadToolAuth, resolveTools } from '../../../../../server/tools';
@@ -198,8 +209,7 @@ export const POST = (req: Request, { params }: Ctx) =>
     /* +1ms keeps user-before-assistant ordering stable under createdAt sort */
     const now = stamp?.at ?? Date.now();
     /* the newest user turn isn't produced by historyTurns, so stamp it here */
-    const prefix =
-      input.timestamps ? localStamp(now) : undefined;
+    const prefix = input.timestamps ? localStamp(now) : undefined;
 
     const history = [
       ...(await systemTurns(db, chat)),
@@ -208,7 +218,10 @@ export const POST = (req: Request, { params }: Ctx) =>
         {
           role: 'user' as const,
           content: lastHasImage
-            ? userParts({ attachments: lastAttachment, content: input.content }, refs)
+            ? userParts(
+                { attachments: lastAttachment, content: input.content },
+                refs,
+              )
             : userContent(
                 { attachments: lastAttachment, content: input.content },
                 refs,

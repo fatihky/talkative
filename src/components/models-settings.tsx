@@ -53,7 +53,8 @@ export function ModelsSettings() {
   });
   /* distinct providers in catalog order, for the filter chips */
   const providers: string[] = [];
-  for (const m of models) if (!providers.includes(m.provider)) providers.push(m.provider);
+  for (const m of models)
+    if (!providers.includes(m.provider)) providers.push(m.provider);
   /* models group by provider, keeping the alphabetical order applied on sync */
   const modelGroups: { provider: string; items: typeof shownModels }[] = [];
   for (const m of shownModels) {
@@ -93,9 +94,7 @@ export function ModelsSettings() {
               type="button"
               className={`model-chip fltr ${providerFilter === p ? 'on' : ''}`}
               aria-pressed={providerFilter === p}
-              onClick={() =>
-                setProviderFilter(providerFilter === p ? '' : p)
-              }
+              onClick={() => setProviderFilter(providerFilter === p ? '' : p)}
             >
               {p}
             </button>
@@ -138,13 +137,16 @@ export function ModelsSettings() {
                     </span>
                   )}
                   {m.status === 'error' && (
-                    <span className="shrink-0 text-[var(--danger)]">no key</span>
+                    <span className="shrink-0 text-[var(--danger)]">
+                      no key
+                    </span>
                   )}
                   {m.status === 'stale' && (
                     <span className="shrink-0 text-[var(--warn)]">stale</span>
                   )}
                   <span className="flex-1 truncate muted">
-                    thinking:{m.thinkingLevels === undefined
+                    thinking:
+                    {m.thinkingLevels === undefined
                       ? 'unknown'
                       : m.thinkingLevels.length === 0
                         ? 'no'
@@ -155,9 +157,9 @@ export function ModelsSettings() {
                     {m.thinkingLevels?.length
                       ? ` · levels:${m.thinkingLevels.join('/')}`
                       : ''}{' '}
-                    · vision:{m.capabilities.vision ? 'yes' : 'no'} ·
-                    tools:{m.capabilities.tools ? 'yes' : 'no'} ·
-                    decisions:{m.capabilities.decisions ? 'yes' : 'no'}
+                    · vision:{m.capabilities.vision ? 'yes' : 'no'} · tools:
+                    {m.capabilities.tools ? 'yes' : 'no'} · decisions:
+                    {m.capabilities.decisions ? 'yes' : 'no'}
                   </span>
                   {(m.meta?.architecture ||
                     m.meta?.quantization ||

@@ -32,6 +32,7 @@ import type { ApiContext } from 'waku/router';
 import { getDb } from '../../../../../db';
 import type { MessageRow } from '../../../../../db/schema';
 import { chats, messages } from '../../../../../db/schema';
+import { withAttachmentText } from '../../../../../server/attachments';
 import {
   branchPath,
   findChat,
@@ -42,10 +43,13 @@ import {
   toChatDto,
   toMessageDto,
 } from '../../../../../server/chats';
-import { withAttachmentText } from '../../../../../server/attachments';
-import { collectRefs } from '../../../../../server/refs';
 import { handle, ValidationError } from '../../../../../server/providers';
-import { hasActiveRun, historyTurns, startRun } from '../../../../../server/runs';
+import { collectRefs } from '../../../../../server/refs';
+import {
+  hasActiveRun,
+  historyTurns,
+  startRun,
+} from '../../../../../server/runs';
 import { isAdmin } from '../../../../../server/settings';
 import { systemTurns } from '../../../../../server/system-prompt';
 import { loadToolAuth, resolveTools } from '../../../../../server/tools';

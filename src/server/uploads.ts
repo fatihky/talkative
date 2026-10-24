@@ -24,8 +24,8 @@
  */
 import {
   mkdir,
-  readFile,
   readdir,
+  readFile,
   rmdir,
   unlink,
   writeFile,
