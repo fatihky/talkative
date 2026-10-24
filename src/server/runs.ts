@@ -47,7 +47,9 @@
  *   usage on the last chunk, refusals, url citations on the complete
  *   message, and routing extras (bifrost extra_fields, openrouter's
  *   opt-in metadata header).
- * - an upstream quiet for 2 min (IDLE_MS) aborts the fetch and
+ * - an upstream silent for 10 min before its first chunk
+ *   (FIRST_CHUNK_MS, covers local prompt prefill) or quiet for 5 min
+ *   between chunks (IDLE_MS) aborts the fetch and
  *   surfaces as "<provider> stopped responding", distinct from a
  *   user stop; a reasoning block is closed with its elapsed time by
  *   any other event or by the end of the run.
@@ -85,8 +87,11 @@ import { type ActiveTool, invokeTool, toolSpec } from './tools';
 const FLUSH_MS = 1000;
 /* finished runs linger briefly so late subscribers are served from memory */
 const KEEP_MS = 60_000;
-/* an upstream that goes quiet this long is treated as dead */
-const IDLE_MS = 120_000;
+/* an upstream that goes quiet this long between chunks is treated as dead */
+const IDLE_MS = 300_000;
+/* until the first chunk arrives the wait is longer: local backends (lm studio)
+   prefill the whole prompt before streaming anything */
+const FIRST_CHUNK_MS = 600_000;
 /* model round-trips per reply; the last one is offered no tools so it has to answer */
 const MAX_STEPS = 8;
 
@@ -936,7 +941,7 @@ async function* chatCompletions(
   }
 > {
   const idle = new AbortController();
-  let idleTimer = setTimeout(() => idle.abort(), IDLE_MS);
+  let idleTimer = setTimeout(() => idle.abort(), FIRST_CHUNK_MS);
   const bump = () => {
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => idle.abort(), IDLE_MS);

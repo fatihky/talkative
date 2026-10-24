@@ -18,6 +18,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Give a streaming reply up to 10 minutes to send its first chunk (so a local backend like LM Studio can finish prefilling a long prompt) and raise the between-chunk idle timeout from 2 to 5 minutes before reporting "<provider> stopped responding".
 - Count the effective system prompt (folder chain plus the chat's own, or the pending folder and prompt on home) in the composer's context meter, and break its hover tooltip down into folder and chat tokens.
 - Remove the 20,000-character cap on chat and folder system prompts: `parseSystemPrompt`, the two prompt editors, and the home-draft prompt box no longer truncate or reject long prompts.
 - Let the right panel be resized on the overlay sheet too (768px and up): it now carries the same drag handle, double-click reset and keyboard resize as the docked layout, sharing one stored width, while a full-screen phone sheet stays fixed.
