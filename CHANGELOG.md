@@ -13,6 +13,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
      ### Added / ### Changed / ### Fixed / ### Removed / ### Security
      One line per change, imperative mood. Cut a versioned heading only on release. -->
 
+### Added
+
+- Show the hover action row (copy, provider stats, delete) under private chat message bubbles.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added

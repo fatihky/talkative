@@ -234,7 +234,7 @@ export const privateActions = {
   },
 
   /** removes a single turn (and no descendants — the private chat is flat) */
-  remove(id: string) {
+  privateRemove(id: string) {
     if (get().streaming) return;
     set({ messages: get().messages.filter((m) => m.id !== id) });
   },

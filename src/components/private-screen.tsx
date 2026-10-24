@@ -10,13 +10,18 @@
  *   bottom, unpinned by an upward scroll mid-stream.
  * - a "private" badge in the header marks the chat as unsaved; the theme
  *   switch to the private accent is handled by the shell via data-private.
+ * - each bubble gets the thread's hover action row: copy, a usage tooltip on
+ *   done replies, and delete (blocked while a reply streams).
  */
 'use client';
 
 import { useEffect, useRef } from 'react';
 import { I } from '../lib/icons';
+import { Tip } from '../lib/popover';
 import { actions, type PrivateMsg, usePrivateStore } from '../stores';
 import { Markdown } from './markdown';
+import { CopyButton } from './thread/copy-button';
+import { statsTooltip } from './thread/message-bubble';
 
 export function PrivateScreen() {
   const messages = usePrivateStore((s) => s.messages);
@@ -76,7 +81,7 @@ export function PrivateScreen() {
         )}
 
         {messages.map((m) => (
-          <PrivateBubble key={m.id} m={m} />
+          <PrivateBubble key={m.id} m={m} busy={streaming} />
         ))}
 
         {streaming && (
@@ -107,8 +112,13 @@ export function PrivateScreen() {
   );
 }
 
-function PrivateBubble({ m }: { m: PrivateMsg }) {
+function PrivateBubble({ m, busy }: { m: PrivateMsg; busy: boolean }) {
   const isUser = m.role === 'user';
+  const canDelete = m.status !== 'streaming' && m.status !== 'sending';
+  const remove = () => {
+    if (!window.confirm('Delete this message?')) return;
+    actions.privateRemove(m.id);
+  };
   const statusSuffix =
     m.status === 'sending'
       ? ' · sending'
@@ -121,7 +131,7 @@ function PrivateBubble({ m }: { m: PrivateMsg }) {
             : '';
   return (
     <article
-      className={`group/msg flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
+      className={`private-msg group/msg flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
     >
       <div className="sec-label">
         {isUser && 'you'}
@@ -144,6 +154,33 @@ function PrivateBubble({ m }: { m: PrivateMsg }) {
           <div className="num mt-1.5 text-[11px] text-(--danger)">
             {m.error}
           </div>
+        )}
+      </div>
+      <div className="msg-actions">
+        {m.content && <CopyButton text={m.content} />}
+        {!isUser && m.status === 'done' && m.usage && (
+          <Tip label={statsTooltip(m)} side="top">
+            <button
+              type="button"
+              className="icon-only"
+              aria-label="Provider stats"
+            >
+              <I n="info" s={12} />
+            </button>
+          </Tip>
+        )}
+        {canDelete && (
+          <Tip label="Delete" side="top">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={remove}
+              aria-label="Delete message"
+              className="icon-only"
+            >
+              <I n="trash" s={12} />
+            </button>
+          </Tip>
         )}
       </div>
     </article>

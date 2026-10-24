@@ -560,7 +560,9 @@ select:focus-visible {
   margin-top: 6px;
 }
 .msg:hover .msg-actions,
-.msg:focus-within .msg-actions {
+.msg:focus-within .msg-actions,
+.private-msg:hover .msg-actions,
+.private-msg:focus-within .msg-actions {
   opacity: 1;
 }
 /* touch devices have no hover; keep actions visible there */
