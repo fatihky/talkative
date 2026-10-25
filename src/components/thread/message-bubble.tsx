@@ -48,7 +48,9 @@ const STATUS_LABEL: Partial<Record<Msg['status'], string>> = {
 };
 
 /* build a detailed tooltip label from usage + latency */
-export const statsTooltip = (m: Pick<Msg, 'usage' | 'latencyMs'>): string | null => {
+export const statsTooltip = (
+  m: Pick<Msg, 'usage' | 'latencyMs'>,
+): string | null => {
   if (!m.usage) return null;
   const u = m.usage;
   const lines: string[] = [];

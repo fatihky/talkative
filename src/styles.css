@@ -492,6 +492,7 @@ select:focus-visible {
   height: 14px;
 }
 .msg-body {
+  @apply flex-1; /* when this isn't there, the textarea we use to edit users' messages stays way too small */
   max-width: min(64ch, 86%);
   min-width: 0;
 }
