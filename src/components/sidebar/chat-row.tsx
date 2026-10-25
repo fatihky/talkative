@@ -133,7 +133,7 @@ export function ChatRow({
           type="button"
           aria-label={`Actions for ${chat.title}`}
           aria-expanded={menu !== null}
-          onClick={() => setMenu('actions')}
+          onClick={() => setMenu((m) => (m === 'actions' ? null : 'actions'))}
           className="ctl-icon absolute right-1 top-1/2 hidden size-6 -translate-y-1/2 border-transparent bg-transparent text-[var(--text-3)] group-hover:flex hover:bg-[var(--border)] max-md:flex"
         >
           <I n="dots" s={14} />
