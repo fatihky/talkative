@@ -28,10 +28,12 @@
  *   key, when the user has the preference set.
  */
 import type { ServerTool } from './index';
+import { callWithRetry } from './rate-limit';
 
 type Hit = { title: string; url: string; snippet: string };
 type Backend = {
   search: (
+    provider: string,
     q: string,
     n: number,
     key: string,
@@ -41,16 +43,24 @@ type Backend = {
 
 const TIMEOUT_MS = 15_000;
 
+/*
+ * the request is retried with backoff when the backend answers 429; the
+ * cooldown scope is per backend so a shared key throttles across users while
+ * an own key throttles per user (the caller passes the resolved provider id).
+ */
 const call = async (
+  provider: string,
   url: string,
   init: RequestInit,
   signal: AbortSignal,
   timeout = TIMEOUT_MS,
 ): Promise<{ json: unknown; raw: string }> => {
-  const res = await fetch(url, {
-    ...init,
-    signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]),
-  });
+  const res = await callWithRetry(`web_search:${provider}`, signal, (s) =>
+    fetch(url, {
+      ...init,
+      signal: AbortSignal.any([s, AbortSignal.timeout(timeout)]),
+    }),
+  );
   if (!res.ok) {
     const body = (await res.text().catch(() => '')).slice(0, 200);
     throw new Error(`search → ${res.status}${body ? `: ${body}` : ''}`);
@@ -63,8 +73,9 @@ const call = async (
 /* ids match the provider-key ids in the tool-credentials registry */
 const BACKENDS: Record<string, Backend> = {
   tavily: {
-    async search(q, n, key, signal) {
+    async search(provider, q, n, key, signal) {
       const { json, raw } = await call(
+        provider,
         'https://api.tavily.com/search',
         {
           method: 'POST',
@@ -90,8 +101,9 @@ const BACKENDS: Record<string, Backend> = {
     },
   },
   'serper.dev': {
-    async search(q, n, key, signal) {
+    async search(provider, q, n, key, signal) {
       const { json, raw } = await call(
+        provider,
         'https://google.serper.dev/search',
         {
           method: 'POST',
@@ -114,7 +126,7 @@ const BACKENDS: Record<string, Backend> = {
     },
   },
   serpapi: {
-    async search(q, n, key, signal) {
+    async search(provider, q, n, key, signal) {
       const qs = new URLSearchParams({
         engine: 'google',
         q,
@@ -122,6 +134,7 @@ const BACKENDS: Record<string, Backend> = {
         api_key: key,
       });
       const { json, raw } = await call(
+        provider,
         `https://serpapi.com/search.json?${qs}`,
         {},
         signal,
@@ -142,10 +155,11 @@ const BACKENDS: Record<string, Backend> = {
   /* self-hosted, so the credential value is the instance url rather than a key;
      the instance must list `json` under search.formats in settings.yml */
   searxng: {
-    async search(q, n, base, signal) {
+    async search(provider, q, n, base, signal) {
       const root = base.replace(/\/+$/, '').replace(/\/search$/, '');
       const qs = new URLSearchParams({ q, format: 'json' });
       const { json, raw } = await call(
+        provider,
         `${root}/search?${qs}`,
         { headers: { accept: 'application/json' } },
         signal,
@@ -167,8 +181,9 @@ const BACKENDS: Record<string, Backend> = {
     },
   },
   exa: {
-    async search(q, n, key, signal) {
+    async search(provider, q, n, key, signal) {
       const { json, raw } = await call(
+        provider,
         'https://api.exa.ai/search',
         {
           method: 'POST',
@@ -205,10 +220,11 @@ const BACKENDS: Record<string, Backend> = {
   },
   /* same key as the http_fetch backend */
   'scrape.do': {
-    async search(q, n, key, signal) {
+    async search(provider, q, n, key, signal) {
       /* no result count param; a page holds ~10 organic results, so slice */
       const qs = new URLSearchParams({ token: key, q });
       const { json, raw } = await call(
+        provider,
         `https://api.scrape.do/plugin/google/search?${qs}`,
         {},
         signal,
@@ -258,8 +274,8 @@ export const webSearch: ServerTool = {
     const id = provider && BACKENDS[provider] ? provider : undefined;
     const backend = id ? BACKENDS[id] : undefined;
     const key = apiKey;
-    if (!backend || !key) throw new Error('no search backend is configured');
-    const { hits, raw } = await backend.search(query, n, key, signal);
+    if (!backend || !id || !key) throw new Error('no search backend is configured');
+    const { hits, raw } = await backend.search(id, query, n, key, signal);
     if (!hits.length) return { result: 'no results', raw };
     return {
       result: hits

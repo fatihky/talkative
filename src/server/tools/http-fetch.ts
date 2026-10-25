@@ -35,6 +35,7 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import type { ServerTool } from './index';
+import { callWithRetry } from './rate-limit';
 
 const TIMEOUT_MS = 15_000;
 const MAX_BYTES = 2_000_000;
@@ -176,12 +177,17 @@ const fetchScrapeDo = async (
     output: 'markdown',
     timeout: String(SCRAPEDO_TIMEOUT_MS),
   });
-  const res = await fetch(`https://api.scrape.do/?${qs}`, {
-    signal: AbortSignal.any([
-      signal,
-      AbortSignal.timeout(SCRAPEDO_TIMEOUT_MS + 5_000),
-    ]),
-  });
+  const res = await callWithRetry(
+    `http_fetch:scrape.do`,
+    signal,
+    (s) =>
+      fetch(`https://api.scrape.do/?${qs}`, {
+        signal: AbortSignal.any([
+          s,
+          AbortSignal.timeout(SCRAPEDO_TIMEOUT_MS + 5_000),
+        ]),
+      }),
+  );
   /* its own failures (bad token, out of credits, concurrency) come back as 401/429 */
   if (res.status === 401 || res.status === 429) {
     const body = (await res.text().catch(() => '')).slice(0, 200);
@@ -198,19 +204,24 @@ const fetchTavily = async (
   key: string,
   signal: AbortSignal,
 ): Promise<Fetched> => {
-  const res = await fetch('https://api.tavily.com/extract', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify({
-      urls: [url.href],
-      format: 'markdown',
-      extract_depth: 'basic',
-    }),
-    signal: AbortSignal.any([signal, AbortSignal.timeout(TAVILY_TIMEOUT_MS)]),
-  });
+  const res = await callWithRetry(
+    `http_fetch:tavily`,
+    signal,
+    (s) =>
+      fetch('https://api.tavily.com/extract', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          urls: [url.href],
+          format: 'markdown',
+          extract_depth: 'basic',
+        }),
+        signal: AbortSignal.any([s, AbortSignal.timeout(TAVILY_TIMEOUT_MS)]),
+      }),
+  );
   if (!res.ok) {
     const body = (await res.text().catch(() => '')).slice(0, 200);
     throw new Error(`tavily → ${res.status}${body ? `: ${body}` : ''}`);

@@ -20,6 +20,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Show the hover action row (copy, provider stats, delete) under private chat message bubbles.
+- Retry `web_search` and `http_fetch` upstream calls that answer 429, backing off on the provider's own `Retry-After`/`X-RateLimit-*` hints and sharing a per-provider cooldown across concurrent calls.
 
 ## [0.2.0] - 2026-10-24
 
