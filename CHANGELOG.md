@@ -9,9 +9,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
-<!-- Add entries under the matching group below (create it if missing):
-     ### Added / ### Changed / ### Fixed / ### Removed / ### Security
-     One line per change, imperative mood. Cut a versioned heading only on release. -->
+## [0.2.1] - 2026-10-28
 
 ### Changed
 
