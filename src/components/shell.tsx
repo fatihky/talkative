@@ -9,7 +9,9 @@
  *   scrim drawer and an open drawer closes.
  * - The mobile drawer slides in/out with its scrim (useExitDelay keeps
  *   it mounted while the exit animation runs); the right panel manages
- *   its own enter/exit animations the same way.
+ *   its own enter/exit animations the same way. The scrim is the last
+ *   scrolling boundary on the phone, so a pan over it never scrolls the
+ *   thread behind the drawer.
  * - /settings and public artifact links (/a/*) render standalone with no
  *   sidebar, composer, or panels; note and decision detail routes also drop
  *   the composer (both are editors, not a chat), and so does /search.
@@ -222,10 +224,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <GlobalStatusBar />
 
-      {/* mobile drawer — slides in from the left over a fading scrim */}
+      {/* mobile drawer — slides in from the left over a fading scrim.
+          The scrim is the last scrolling boundary on the phone: a pan that
+          starts on it must end there, not chain through to the thread's
+          scroller underneath when the chat list has nothing left to scroll */}
       {isMobile && drawer.mounted && (
         <div
-          className={`fixed inset-0 z-50 ${
+          className={`fixed inset-0 z-50 overscroll-none touch-none ${
             drawer.exiting
               ? 'anim-scrim-out pointer-events-none'
               : 'anim-scrim-in'
