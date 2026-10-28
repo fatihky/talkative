@@ -13,6 +13,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Show local model sizes (and quantization) in the composer's model selector, replacing the $0/M pricing line for lm studio and ollama models.
 
+### Fixed
+
+- Send the opened provider API key with the `/models` lookup that resolves bifrost reasoning effort, so the request is no longer rejected for a missing virtual key.
+
 ## [0.2.1] - 2026-10-28
 
 ### Changed

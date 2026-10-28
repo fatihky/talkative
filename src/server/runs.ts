@@ -951,9 +951,14 @@ const findCatalogModel = async (
   remoteId: string,
 ): Promise<Model | undefined> => {
   try {
-    return (await FETCHERS[conn.compatibility](conn)).find(
-      (m) => m.remoteId === remoteId,
-    );
+    /* fetchers send the key upstream, so open the sealed row first — same as
+       getCatalog does before handing a connection to a fetcher */
+    return (
+      await FETCHERS[conn.compatibility]({
+        ...conn,
+        apiKey: decryptSecret(conn.apiKey),
+      })
+    ).find((m) => m.remoteId === remoteId);
   } catch (e) {
     console.warn(
       `[catalog] effort lookup failed for ${conn.name}: ${errorText(e)}`,
