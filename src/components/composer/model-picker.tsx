@@ -12,9 +12,13 @@
  * - an explicit pick becomes the app-wide default for new chats
  *   (localStorage), while reopening a chat preselects the model of its
  *   latest reply on screen without touching that default.
- * - options carry provider, size, context window, per-M pricing, and
- *   capability badges (thinking/vision/tools/fast, plus "no key" and
- *   "stale"); names wrap instead of truncating.
+ * - options carry provider, parameter count, context window, per-M
+ *   pricing, and capability badges (thinking/vision/tools/fast, plus
+ *   "no key" and "stale"); names wrap instead of truncating.
+ * - local runtimes (lm studio, ollama) report a file size and
+ *   quantization instead of pricing, so a model with
+ *   `meta.sizeBytes` shows "16.8 GB" there and drops the useless
+ *   $0/$0 per M.
  * - the thinking control is built from the model's reported levels;
  *   switching models adopts the model's default reasoning level or
  *   clamps to the nearest supported one with a dismissible note.
@@ -28,7 +32,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Link } from 'waku';
-import { ctxFmt } from '../../lib/format';
+import { ctxFmt, humanBytes } from '../../lib/format';
 import { I } from '../../lib/icons';
 import { isChattable, modelSearchText } from '../../lib/models';
 import { Popover, Tip } from '../../lib/popover';
@@ -138,7 +142,15 @@ export function ModelPicker() {
     <>
       {!waitingForChat && (
         <Tip
-          label={model ? `${model.id} · ${model.provider}` : 'Model'}
+          label={
+            model
+              ? `${model.id} · ${model.provider}${
+                  model.meta?.sizeBytes !== undefined
+                    ? ` · ${humanBytes(model.meta.sizeBytes)}`
+                    : ''
+                }`
+              : 'Model'
+          }
           side="top"
         >
           {trigger}
@@ -313,8 +325,14 @@ function ModelOption({
         <span className="mm-provider">
           {m.provider}
           {m.params ? ` · ${m.params}` : ''}
+          {m.meta?.quantization ? ` · ${m.meta.quantization}` : ''}
+          {m.meta?.sizeBytes !== undefined
+            ? ` · ${humanBytes(m.meta.sizeBytes)}`
+            : ''}
           {m.context.window != null ? ` · ${ctxFmt(m.context.window)} ctx` : ''}
-          {' · '}${m.pricing.input}/${m.pricing.output} per M
+          {/* local runtimes are free; pricing reads $0/$0 there */}
+          {m.meta?.sizeBytes === undefined &&
+            ` · $${m.pricing.input}/${m.pricing.output} per M`}
         </span>
       </span>
       <span className="mm-caps" aria-hidden="true">

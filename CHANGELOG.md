@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Added
+
+- Show local model sizes (and quantization) in the composer's model selector, replacing the $0/M pricing line for lm studio and ollama models.
+
 ## [0.2.1] - 2026-10-28
 
 ### Changed
