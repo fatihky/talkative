@@ -364,9 +364,19 @@ const applyModel = (id: string, fromBoot: boolean) => {
   const model = findModel(useModelsStore.getState().items, id);
   const want = get().thinkingLevel;
   setDraft({ modelId: id });
-  /* on explicit switches, adopt the model's own default reasoning when it reports one */
+  /* an explicit switch adopts the model's own default reasoning; a model that reports none
+     (or can't be told an effort at all) is left alone rather than shown a level that never
+     goes out — behind an openai-compatible gateway 'low' can be exactly the value rejected */
   if (!fromBoot && model?.defaultThinkingLevel !== undefined) {
     setDraft({ thinkingLevel: model.defaultThinkingLevel });
+    useUIStore.setState({ clampNote: null });
+    draftActions.persistParams();
+    return;
+  }
+  if (
+    model?.thinkingLevels !== undefined &&
+    model.thinkingLevels.length === 0
+  ) {
     useUIStore.setState({ clampNote: null });
     draftActions.persistParams();
     return;

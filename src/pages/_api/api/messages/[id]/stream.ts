@@ -13,7 +13,9 @@
  *   subscribe() are wired inside sseResponse's start callback — same
  *   tick, so no delta can fall between snapshot and subscription.
  *   events: `tool {call}` (clients upsert by id), `thought {thought}`
- *   (replace by step), `thought-delta {step, at, text}`, `delta
+ *   (replace by step), `thought-delta {step, at, text}`, `notice
+ *   {text}` (an adjustment worth telling the user, e.g. a clamped
+ *   reasoning effort; not persisted), `delta
  *   {text}`, then exactly one `done {status, error?, usage…}` which
  *   closes the stream. a run that already finalized (kept KEEP_MS for
  *   late subscribers) replays wholly from memory and closes at once.
@@ -45,7 +47,7 @@ type Ctx = ApiContext<'/api/messages/[id]/stream'>;
  * GET /api/messages/:id/stream?offset=N — sse of an assistant reply from character N on.
  * events: `tool {call}` (every known call first, then each change), `thought {thought}`
  * (every known block first, then each as it closes), `thought-delta {step, at, text}`,
- * `delta {text}`, then one `done {status, error?}`. closing this connection never stops the generation;
+ * `notice {text}`, `delta {text}`, then one `done {status, error?}`. closing this connection never stops the generation;
  * reconnect with offset = text received so far to resume.
  */
 export const GET = (req: Request, { params }: Ctx) =>
@@ -60,6 +62,7 @@ export const GET = (req: Request, { params }: Ctx) =>
       return sseResponse(req, (send, close) => {
         for (const call of run.toolCalls) send('tool', { call });
         for (const thought of run.thoughts) send('thought', { thought });
+        if (run.notice) send('notice', { text: run.notice });
         const tail = run.text.slice(offset);
         if (tail) send('delta', { text: tail });
         if (run.final) {
@@ -84,7 +87,8 @@ export const GET = (req: Request, { params }: Ctx) =>
           else if (e.type === 'thought-delta') {
             const { type: _, ...d } = e;
             send('thought-delta', d);
-          } else {
+          } else if (e.type === 'notice') send('notice', { text: e.text });
+          else {
             const { type: _, ...final } = e;
             send('done', final);
             close();

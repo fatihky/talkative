@@ -528,13 +528,15 @@ const paramsFmt = (v: string | null | undefined): string | undefined => {
   return `${num}${m[2]?.toUpperCase()}`;
 };
 
-const FETCHERS: Record<Compatibility, (conn: Conn) => Promise<Model[]>> = {
-  openai: fetchOpenAI,
-  openrouter: fetchOpenRouter,
-  lmstudio: fetchLMStudio,
-  ollama: fetchOllama,
-  bifrost: fetchBifrost,
-};
+/* each fetcher takes the connection with its key already opened (see getCatalog) */
+export const FETCHERS: Record<Compatibility, (conn: Conn) => Promise<Model[]>> =
+  {
+    openai: fetchOpenAI,
+    openrouter: fetchOpenRouter,
+    lmstudio: fetchLMStudio,
+    ollama: fetchOllama,
+    bifrost: fetchBifrost,
+  };
 
 /* ---------- cache ---------- */
 

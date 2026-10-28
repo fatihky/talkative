@@ -17,6 +17,11 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Stop snapping the sidebar width to fixed presets on resize release; keep it exactly where the pointer is dropped.
 
+### Fixed
+
+- Resolve the reasoning effort against the model's reported levels before sending it upstream (bifrost forwards `reasoning.effort` verbatim, so an unlisted level was a 400), omit the parameter entirely for models with no selectable effort instead of guessing one, never send `none` for "off", and stop the composer displaying a level a model can't take when the model reports none. A clamped level is noted in the transcript.
+- Stop the chat behind the mobile drawer from scrolling when a touch drag starts on the drawer scrim (or on the chat list once it has reached its end).
+
 ### Added
 
 - Show the hover action row (copy, provider stats, delete) under private chat message bubbles.

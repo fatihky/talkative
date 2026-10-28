@@ -5,6 +5,8 @@
     https://docs.getbifrost.ai/api-reference/models/list-available-models.md
   Chat completions:
     https://docs.getbifrost.ai/api-reference/chat-completions/create-a-chat-completion.md
+  Reasoning (effort levels, upstream 400s on unsupported values):
+    https://developers.openai.com/api/docs/guides/reasoning.md
   Decisions:
     https://docs.getbifrost.ai/api-reference/decisions/evaluate-a-decision.md
 
@@ -127,6 +129,15 @@ Notable optional fields:
 | `truncation`                                    | `string`             | Truncation behavior.                                                                                             |
 | `verbosity`                                     | `string`             | `low`/`medium`/`high`.                                                                                           |
 | `user`                                          | `string`             | Per-end-user identifier.                                                                                         |
+
+#### Reasoning effort
+
+Which values `reasoning.effort` accepts depends on the upstream model behind the
+`provider/model` id, and bifrost forwards the value verbatim: a level the model
+does not support comes back as a 400 (`reasoning_effort must be one of …`) rather
+than being mapped. A reasoning model whose `supported_efforts` are absent has no
+selectable effort — send the `reasoning` object at all (including a bare `{}` to
+keep a mandatory model reasoning) rather than guessing a level.
 
 ### Response (non-streaming)
 

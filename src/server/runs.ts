@@ -73,11 +73,13 @@ import type {
   MessageStatus,
   MessageUsage,
   MessageUsageDetails,
+  Model,
   ThinkingLevel,
   Thought,
   ToolCall,
   UrlCitation,
 } from '../types';
+import { FETCHERS } from './catalog';
 import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { parseModelId } from './model-id';
 import { findConnection } from './providers';
@@ -105,6 +107,8 @@ export type RunEvent =
   | { type: 'thought-delta'; step: number; at: number; text: string }
   /* the whole block, sent when it closes; clients replace by step */
   | { type: 'thought'; thought: Thought }
+  /* an adjustment worth telling the user about (e.g. a clamped reasoning effort) */
+  | { type: 'notice'; text: string }
   | ({
       type: 'done';
     } & RunFinal & {
@@ -129,6 +133,8 @@ type Run = {
   refusal?: string;
   /* web-search citations collected across steps */
   annotations: UrlCitation[];
+  /* a transient note about how the request went out; never persisted */
+  notice?: string;
   final: RunFinal | null;
   usage?: MessageUsage;
   usageDetails?: MessageUsageDetails;
@@ -585,6 +591,12 @@ async function execute(
       resume,
       run.abort.signal,
     )) {
+      if (ev.type === 'notice') {
+        run.notice = ev.text;
+        rev++;
+        for (const l of run.listeners) l({ type: 'notice', text: ev.text });
+        continue;
+      }
       if (ev.type === 'reasoning') {
         const prev = run.thoughts.find((t) => t.step === ev.step);
         const at = prev?.at ?? run.text.length;
@@ -688,7 +700,8 @@ type GenEvent =
   | { type: 'text'; text: string }
   | { type: 'reasoning'; step: number; text: string }
   /* `at` is filled in by the run, which knows how much text came before */
-  | { type: 'tool'; call: Omit<ToolCall, 'at'> };
+  | { type: 'tool'; call: Omit<ToolCall, 'at'> }
+  | { type: 'notice'; text: string };
 
 /**
  * the agent loop: stream a completion; if it ends in tool calls, run them, append the
@@ -712,7 +725,14 @@ async function* generate(
   const conn = await findConnection(run.userId, parsed.connectionId);
   if (!conn) throw new Error('provider connection no longer exists');
   if (!conn.enabled) throw new Error(`provider "${conn.name}" is disabled`);
+  const effort = await reasoningRequest(conn, parsed.remoteId, thinkingLevel);
   const specs = tools.map(toolSpec);
+  /* say so when the composer's level isn't the one the model takes; the reply itself isn't affected */
+  if (effort.adjusted)
+    yield {
+      type: 'notice',
+      text: `“${effort.adjusted.from}” isn't a reasoning effort this model takes — replied on “${effort.adjusted.to}” instead.`,
+    };
   const turns = [...history];
   let first = 0;
   if (resume) {
@@ -737,7 +757,7 @@ async function* generate(
       yield* chatCompletions(
         conn,
         parsed.remoteId,
-        thinkingLevel,
+        effort,
         turns,
         offer,
         step,
@@ -897,33 +917,108 @@ const reportedCost = (cost: ReportedCost | undefined): number | undefined => {
   return sum > 0 ? sum : undefined;
 };
 
+/* ---------- reasoning effort ---------- */
+
+/* the app's levels from least to most thinking; a catalog effort sits on it
+   ('xhigh'/'max' are upstream names the app itself never stores) */
+const EFFORT_ORDER: string[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
+
+/* one higher than the model's top level is clamped to it; between two reported
+   levels the lower wins, and below every level the lowest is used */
+const clampEffort = (
+  level: ThinkingLevel,
+  supported: readonly string[],
+): ThinkingLevel => {
+  const at = (l: string) => {
+    const i = EFFORT_ORDER.indexOf(l);
+    return i === -1 ? EFFORT_ORDER.indexOf('medium') : i;
+  };
+  if (supported.includes(level)) return level;
+  const top = supported.reduce((a, b) => (at(b) > at(a) ? b : a));
+  if (at(level) >= at(top)) return top as ThinkingLevel;
+  const below = supported
+    .filter((l) => at(l) <= at(level))
+    .sort((a, b) => at(b) - at(a))[0];
+  return (below ??
+    supported.reduce((a, b) => (at(b) < at(a) ? b : a))) as ThinkingLevel;
+};
+
+/* the model's catalog row, or undefined when the catalog knows nothing about
+   it; fetched rather than read from redis so a cache outage can't block a
+   reply that used to go out without ever consulting the catalog */
+const findCatalogModel = async (
+  conn: ProviderConnectionRow,
+  remoteId: string,
+): Promise<Model | undefined> => {
+  try {
+    return (await FETCHERS[conn.compatibility](conn)).find(
+      (m) => m.remoteId === remoteId,
+    );
+  } catch (e) {
+    console.warn(
+      `[catalog] effort lookup failed for ${conn.name}: ${errorText(e)}`,
+    );
+    return undefined;
+  }
+};
+
+export type ReasoningRequest = {
+  /* the effort the request carries; absent when the model must not be told one */
+  effort?: ThinkingLevel | undefined;
+  /* the composer asked for a level the model doesn't take; the transcript says so */
+  adjusted?: { from: ThinkingLevel; to: ThinkingLevel } | undefined;
+};
+
 /**
- * Maps app ThinkingLevel to the provider's reasoning-effort request
- * parameter. Returns undefined when the model isn't reasoning
- * (level 'off'), otherwise the shape each compatibility expects:
+ * Decides which reasoning effort a request should carry. A level the model
+ * lists is sent as-is, as is one the catalog can't vouch for; past the model's
+ * top level it is clamped and reported. A reasoning model with no selectable
+ * effort (bifrost's mandatory/default-only reasoners) is sent none at all —
+ * bifrost forwards the value verbatim, so a level its upstream doesn't list
+ * comes back as a 400 rather than a clamp. Other compatibilities take any of
+ * off/low/medium/high, so they keep sending the level unchanged.
+ */
+export const reasoningRequest = async (
+  conn: ProviderConnectionRow,
+  remoteId: string,
+  level: ThinkingLevel | undefined,
+): Promise<ReasoningRequest> => {
+  const effort = level ?? 'medium';
+  if (conn.compatibility !== 'bifrost') return { effort };
+  const levels = (await findCatalogModel(conn, remoteId))?.thinkingLevels;
+  /* absent levels mean the capability is unknown, not that there are none */
+  if (!levels || levels.length === 0) return levels ? {} : { effort };
+  const to = clampEffort(effort, levels);
+  return to === effort
+    ? { effort }
+    : { effort: to, adjusted: { from: effort, to } };
+};
+
+/**
+ * Maps a ReasoningRequest to the shape each compatibility expects:
  * - openai/openrouter/ollama/lmstudio: top-level `reasoning_effort`
  *   with values `none`/`low`/`medium`/`high`.
  * - bifrost: a nested `reasoning: { effort }` object whose values run
- *   `none` through `xhigh`; the app's low/medium/high map directly.
- * A missing level defaults to `medium` — both openai and bifrost treat
- * that as their standard reasoning setting.
+ *   `none` through `xhigh`; the app's low/medium/high map directly. With no
+ *   effort to send, an empty object still asks for the model's own default
+ *   (a mandatory reasoner keeps reasoning when the object is omitted).
  */
 const reasoningEffort = (
   conn: ProviderConnectionRow,
-  level: ThinkingLevel | undefined,
-): Record<string, unknown> | undefined => {
-  const effort = level ?? 'medium';
-  if (effort === 'off') return undefined;
-  if (conn.compatibility === 'bifrost') {
-    return { reasoning: { effort } };
-  }
+  { effort }: ReasoningRequest,
+): Record<string, unknown> => {
+  if (effort === undefined)
+    return conn.compatibility === 'bifrost' ? { reasoning: {} } : {};
+  /* 'off' takes the parameter out instead of sending 'none': not every upstream takes 'none' (gpt-6-astra 400s on it) */
+  if (effort === 'off') return {};
+  if (conn.compatibility === 'bifrost') return { reasoning: { effort } };
   return { reasoning_effort: effort };
 };
 
 async function* chatCompletions(
   conn: ProviderConnectionRow,
   model: string,
-  thinkingLevel: ThinkingLevel | undefined,
+  effort: ReasoningRequest,
   history: Turn[],
   tools: ReturnType<typeof toolSpec>[],
   step: number,
@@ -969,7 +1064,7 @@ async function* chatCompletions(
           stream: true,
           stream_options: { include_usage: true },
           ...(tools.length > 0 ? { tools } : {}),
-          ...(reasoningEffort(conn, thinkingLevel) ?? {}),
+          ...(reasoningEffort(conn, effort) ?? {}),
         }),
         signal: AbortSignal.any([stop, idle.signal]),
       },

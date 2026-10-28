@@ -5,16 +5,28 @@
     https://developers.openai.com/api/docs/guides/decisions.md
   Connect voice to Decisions:
     https://developers.openai.com/api/docs/guides/decisions-voice.md
+  Reasoning models (effort levels):
+    https://developers.openai.com/api/docs/guides/reasoning.md
+  Using GPT-6 (per-model effort support):
+    https://developers.openai.com/api/docs/guides/latest-model.md
 
   Add more endpoint links here as we document the APIs this provider supports.
 
   OpenAI is the base dialect: chat completions here are the shape every other
   compatibility mirrors (see src/server/runs.ts and src/server/complete.ts), so
-  this file documents the endpoints that are OpenAI-specific rather than the
-  shared chat-completions parameters.
+  this file documents the endpoints and parameters that are OpenAI-specific
+  rather than the shared chat-completions parameters.
 -->
 
 # OpenAI
+
+## Reasoning effort
+
+`reasoning_effort` (top-level on chat completions, `reasoning.effort` on
+responses) is model-dependent: values can include `none`, `minimal`, `low`,
+`medium`, `high`, `xhigh` and `max`. `none` disables reasoning but is not
+accepted everywhere — e.g. `gpt-6-astra` and `gpt-6.1-sol` return a 400 for it,
+so the request is rejected outright rather than mapped to a neighbour.
 
 ## Decisions
 

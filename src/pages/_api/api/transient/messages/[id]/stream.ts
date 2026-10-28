@@ -32,6 +32,7 @@ export const GET = (req: Request, { params }: Ctx) =>
     return sseResponse(req, (send, close) => {
       for (const call of run.toolCalls) send('tool', { call });
       for (const thought of run.thoughts) send('thought', { thought });
+      if (run.notice) send('notice', { text: run.notice });
       const tail = run.text.slice(offset);
       if (tail) send('delta', { text: tail });
       if (run.final) {
@@ -55,7 +56,8 @@ export const GET = (req: Request, { params }: Ctx) =>
         else if (e.type === 'thought-delta') {
           const { type: _, ...d } = e;
           send('thought-delta', d);
-        } else {
+        } else if (e.type === 'notice') send('notice', { text: e.text });
+        else {
           const { type: _, ...final } = e;
           send('done', final);
           close();
