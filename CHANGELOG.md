@@ -15,6 +15,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Skip System One/decision models when background jobs like chat classification pick a model, so an ollama connection whose first model is a decision model no longer fails with `"<model>" does not support chat`.
 - Show each provider's models on `/settings/providers` as one group instead of splitting them into many small groups that followed the alphabetical order across providers.
 - Keep every provider chip on `/settings/providers` while one is selected, so you can switch providers directly, and offer every connection to Add model while a filter is on.
 - List hidden custom models on `/settings/providers` so they can be unhidden.
