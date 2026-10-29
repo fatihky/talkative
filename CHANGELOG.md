@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-10-29
+
+> 🇹🇷 Cumhuriyetimizin 103. yılı kutlu olsun!
+
 ### Added
 
 - Make the model list on `/settings/providers` editable: correct a model's name, context window, thinking levels/default and other capabilities, set its USD-per-million pricing, hide models from every picker, and add models the provider doesn't list (with their own upstream name and optional base URL) — with Reset returning a model to what the provider reports. Overrides are stored per user in a new `model_overrides` table and applied wherever the catalog is read: the composer, decisions runs, settings, and the server's reasoning-effort lookup.
