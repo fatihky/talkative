@@ -85,6 +85,7 @@ import { parseModelId } from './model-id';
 import { findConnection } from './providers';
 import { decryptSecret } from './secrets';
 import { type ActiveTool, invokeTool, toolSpec } from './tools';
+import { traceStream } from './tracing';
 
 const FLUSH_MS = 1000;
 /* finished runs linger briefly so late subscribers are served from memory */
@@ -754,14 +755,19 @@ async function* generate(
   for (let step = first; ; step++) {
     const offer = step < MAX_STEPS - 1 ? specs : [];
     const { text, calls, usage, usageDetails, routing, refusal, annotations } =
-      yield* chatCompletions(
+      yield* traceStream(
         conn,
         parsed.remoteId,
-        effort,
         turns,
-        offer,
-        step,
-        signal,
+        chatCompletions(
+          conn,
+          parsed.remoteId,
+          effort,
+          turns,
+          offer,
+          step,
+          signal,
+        ),
       );
     if (usage) run.usage = usage;
     if (usageDetails) run.usageDetails = usageDetails;
@@ -977,11 +983,12 @@ export type ReasoningRequest = {
 /**
  * Decides which reasoning effort a request should carry. A level the model
  * lists is sent as-is, as is one the catalog can't vouch for; past the model's
- * top level it is clamped and reported. A reasoning model with no selectable
- * effort (bifrost's mandatory/default-only reasoners) is sent none at all —
- * bifrost forwards the value verbatim, so a level its upstream doesn't list
- * comes back as a 400 rather than a clamp. Other compatibilities take any of
- * off/low/medium/high, so they keep sending the level unchanged.
+ * top level it is clamped and reported. A model that reports no selectable
+ * effort (`thinking: unknown`, or a mandatory/default-only reasoner) is sent
+ * none at all — bifrost forwards the value verbatim, so a level its upstream
+ * doesn't list comes back as a 400 rather than a clamp (other compatibilities
+ * would only make the level up). A model with no catalog row keeps the level
+ * unchanged: absent levels mean unknown, not none.
  */
 export const reasoningRequest = async (
   conn: ProviderConnectionRow,
@@ -989,10 +996,13 @@ export const reasoningRequest = async (
   level: ThinkingLevel | undefined,
 ): Promise<ReasoningRequest> => {
   const effort = level ?? 'medium';
-  if (conn.compatibility !== 'bifrost') return { effort };
   const levels = (await findCatalogModel(conn, remoteId))?.thinkingLevels;
-  /* absent levels mean the capability is unknown, not that there are none */
-  if (!levels || levels.length === 0) return levels ? {} : { effort };
+  /* a model that reports no selectable level takes none: sending one anyway is
+     what bifrost forwards into a 400, and `thinking: unknown` is not a guess */
+  if (levels && levels.length === 0) return {};
+  if (conn.compatibility !== 'bifrost') return { effort };
+  /* no catalog row at all means the capability is unknown, not that there is none */
+  if (!levels) return { effort };
   const to = clampEffort(effort, levels);
   return to === effort
     ? { effort }
@@ -1004,16 +1014,15 @@ export const reasoningRequest = async (
  * - openai/openrouter/ollama/lmstudio: top-level `reasoning_effort`
  *   with values `none`/`low`/`medium`/`high`.
  * - bifrost: a nested `reasoning: { effort }` object whose values run
- *   `none` through `xhigh`; the app's low/medium/high map directly. With no
- *   effort to send, an empty object still asks for the model's own default
- *   (a mandatory reasoner keeps reasoning when the object is omitted).
+ *   `none` through `xhigh`; the app's low/medium/high map directly.
+ * - no effort means no parameter at all: an empty `reasoning: {}` would still
+ *   pick an effort for a `thinking: unknown` model, so nothing is sent.
  */
 const reasoningEffort = (
   conn: ProviderConnectionRow,
   { effort }: ReasoningRequest,
 ): Record<string, unknown> => {
-  if (effort === undefined)
-    return conn.compatibility === 'bifrost' ? { reasoning: {} } : {};
+  if (effort === undefined) return {};
   /* 'off' takes the parameter out instead of sending 'none': not every upstream takes 'none' (gpt-6-astra 400s on it) */
   if (effort === 'off') return {};
   if (conn.compatibility === 'bifrost') return { reasoning: { effort } };
