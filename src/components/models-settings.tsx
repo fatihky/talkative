@@ -21,10 +21,14 @@
  * - Search ANDs every whitespace-separated term against name, id,
  *   provider and capability keywords; the counter turns into shown/total
  *   while filtering.
+ * - The provider filter is not applied here: focusing a provider (its
+ *   name in the connection list or a chip) makes the store refetch
+ *   ?provider=<name>, so the counter, the rows and the hidden ids all
+ *   describe that provider alone. The chips are the enabled connections,
+ *   so a provider with every model hidden stays reachable, and the focused
+ *   one is the only chip left so it can be switched off.
  * - Rows group by provider, keeping the numeric-aware alphabetical order
- *   the store applied. The filter chips are the providers (connection
- *   names) plus any the list asked to focus (a provider name click),
- *   which stay listed even with nothing to show so they can be cleared.
+ *   the store applied.
  * - Add model needs at least one connection: its form picks which one
  *   carries the request.
  * - 'stale' marks models served from a cached catalog after the upstream
@@ -65,6 +69,7 @@ export function ModelsSettings({
 } = {}) {
   const models = useModelOverridesStore((s) => s.items);
   const hidden = useModelOverridesStore((s) => s.hidden);
+  const status = useModelOverridesStore((s) => s.status);
   const connections = useModelOverridesStore((s) => s.connections);
   const router = useRouter();
   /* a ?model=<id> deep link (from the composer's thinking note) prefills the search */
@@ -79,6 +84,18 @@ export function ModelsSettings({
   const [providerFilter, setProviderFilter] = useState('');
   /* the chips and the provider list drive one filter: outside focus wins */
   const active = focusProvider || providerFilter;
+  /* the filter is applied by the store's fetch: the list is narrowed to that
+     provider's connections server-side, hidden ids included */
+  useEffect(() => {
+    void actions.setProvider(active);
+  }, [active]);
+  /* the chips are the enabled connections (one per name), so a provider whose
+     every model is hidden or whose catalog failed is still reachable */
+  const providers = [
+    ...new Set(
+      connections.map((c) => c.name).filter((n) => !active || n === active),
+    ),
+  ];
   const setActive = (p: string) => {
     const next = active === p ? '' : p;
     setProviderFilter(next);
@@ -98,33 +115,15 @@ export function ModelsSettings({
   /* every whitespace-separated term must hit the name, id or provider */
   const terms = modelQuery.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = (m: Model) => {
-    if (terms.length) {
-      const hay = modelSearchText(m).toLowerCase();
-      if (!terms.every((t) => hay.includes(t))) return false;
-    }
-    return !active || m.provider === active;
+    if (!terms.length) return true;
+    const hay = modelSearchText(m).toLowerCase();
+    return terms.every((t) => hay.includes(t));
   };
   const shownModels = models.filter(matches);
 
-  /* distinct providers in catalog order, for the filter chips; the focused
-     one stays listed even with no models left so it can be switched off */
-  const providers: string[] = [];
-  for (const m of models)
-    if (!providers.includes(m.provider)) providers.push(m.provider);
-  for (const p of hiddenProviders(models, hidden)) {
-    if (providers.includes(p)) continue;
-    /* a provider whose every model is hidden still needs a reachable chip */
-    providers.push(p);
-  }
-  if (active && !providers.includes(active)) providers.push(active);
-
-  const hiddenShown = hidden.filter((id) => {
-    if (terms.length) {
-      const hay = id.toLowerCase();
-      if (!terms.every((t) => hay.includes(t))) return false;
-    }
-    return !active || id.startsWith(`${active}:`) || hiddenByProvider(active, id);
-  });
+  const hiddenShown = hidden.filter(
+    (id) => !terms.length || terms.every((t) => id.toLowerCase().includes(t)),
+  );
 
   /* models group by provider, keeping the alphabetical order applied on load */
   const modelGroups: { provider: string; items: typeof shownModels }[] = [];
@@ -224,9 +223,11 @@ export function ModelsSettings({
         </div>
       )}
 
-      {models.length === 0 && hidden.length === 0 && (
+      {models.length === 0 && hidden.length === 0 && status !== 'loading' && (
         <div className="text-[12px] muted">
-          No models yet — add a provider above, then correct its catalog here.
+          {!active
+            ? 'No models yet — add a provider above, then correct its catalog here.'
+            : `No models from ${active} — it may be disabled or unreachable.`}
         </div>
       )}
 
@@ -306,25 +307,6 @@ export function ModelsSettings({
     </section>
   );
 }
-
-/* providers that only appear as hidden ids; ids are `${connectionId}:…` or a
-   custom id, so match the prefix against the connections we know */
-function hiddenProviders(models: Model[], hidden: string[]): string[] {
-  const out: string[] = [];
-  const names = new Map(
-    models.flatMap((m) =>
-      m.connectionId !== undefined ? [[m.connectionId, m.provider] as const] : [],
-    ),
-  );
-  for (const id of hidden) {
-    const name = names.get(Number(id.split(':')[0]));
-    if (name && !out.includes(name)) out.push(name);
-  }
-  return out;
-}
-
-const hiddenByProvider = (provider: string, id: string) =>
-  id.startsWith(`${provider}:`);
 
 function ModelRow({
   m,

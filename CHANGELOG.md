@@ -23,6 +23,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Omit the reasoning effort entirely for a model that reports no selectable level (`thinking: unknown`), instead of sending an empty `reasoning: {}` to bifrost or a guessed `reasoning_effort` elsewhere.
 - Send the opened provider API key with the `/models` lookup that resolves bifrost reasoning effort, so the request is no longer rejected for a missing virtual key.
+- Filter the capability-overrides list on `/settings/providers` by the focused provider server-side (`?provider=<name>`), so the row count, rows and hidden models all match that provider — including a provider whose every model is hidden — and the clearable provider chips now come from the configured connections instead of the visible rows.
 
 ## [0.2.1] - 2026-10-28
 

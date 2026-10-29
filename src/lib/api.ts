@@ -281,9 +281,15 @@ export const modelOverridesApi = {
 
 export async function fetchModelOverrides(opts: {
   refresh?: boolean;
+  /* connection name; the server narrows the list (and its hidden ids) to it */
+  provider?: string | undefined;
 }): Promise<ModelOverridesResponse> {
+  const q = new URLSearchParams();
+  if (opts.refresh) q.set('refresh', '1');
+  if (opts.provider) q.set('provider', opts.provider);
+  const qs = q.toString();
   return request<ModelOverridesResponse>(
-    `/api/model-overrides${opts.refresh ? '?refresh=1' : ''}`,
+    `/api/model-overrides${qs ? `?${qs}` : ''}`,
   );
 }
 

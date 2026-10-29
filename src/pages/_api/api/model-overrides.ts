@@ -17,6 +17,12 @@
  * - ?refresh=1 refetches every provider, like GET /api/models: settings
  *   passes it on its first load so a model added upstream since the
  *   cache was written can be overridden straight away.
+ * - ?provider=<name> narrows the list to the connections sharing that
+ *   name (what the catalog calls `provider`). Matching happens here, not
+ *   in the client, because a provider whose every model is hidden has no
+ *   items left to name it — its ids still parse to a connection. Hidden
+ *   ids are narrowed the same way, so the filter is coherent. connections
+ *   stays the full list: it names who a custom model may be sent to.
  */
 import { getCatalog } from '../../../server/catalog';
 import {
@@ -24,15 +30,25 @@ import {
   listOverrides,
   toDto as overrideDto,
 } from '../../../server/model-overrides';
-import { handle, listConnections } from '../../../server/providers';
+import { listConnections, handle } from '../../../server/providers';
+import { parseModelId } from '../../../server/model-id';
 import type { Model } from '../../../types';
 
-/* GET /api/model-overrides[?refresh=1] — the catalog with the caller's overrides applied */
+/* GET /api/model-overrides[?refresh=1][&provider=<name>] — the catalog with the caller's overrides applied */
 export const GET = (req: Request) =>
   handle(async (userId) => {
-    const refresh = new URL(req.url).searchParams.has('refresh');
+    const params = new URL(req.url).searchParams;
+    const refresh = params.has('refresh');
+    const provider = params.get('provider')?.trim() ?? '';
     const overrides = await listOverrides(userId);
-    const conns = (await listConnections(userId)).filter((c) => c.enabled);
+    const all = await listConnections(userId);
+    const conns = all
+      .filter((c) => c.enabled)
+      .filter((c) => !provider || c.name === provider);
+    /* every connection by id, so hidden ids filter even when their provider is off */
+    const names = new Map(all.map((c) => [c.id, c.name]));
+    const inFilter = (id: string) =>
+      !provider || names.get(parseModelId(id)?.connectionId ?? -1) === provider;
     const entries = await Promise.all(
       conns.map((c) => getCatalog(c, { refresh })),
     );
@@ -47,7 +63,7 @@ export const GET = (req: Request) =>
         const o = overrides.get(m.id);
         return o ? { ...m, overrides: overrideDto(o) } : m;
       }),
-      hidden: [...flags].flatMap(([id, f]) => (f.hidden ? [id] : [])),
+      hidden: [...flags].flatMap(([id, f]) => (f.hidden && inFilter(id) ? [id] : [])),
       syncedAt: Math.min(Date.now(), ...entries.map((e) => e.syncedAt)),
       connections: conns.map((c) => ({ id: c.id, name: c.name })),
     });
