@@ -8,6 +8,9 @@
   System One:
     https://docs.ollama.com/api/systemone.md
 
+  Chat completions `model` field (what a custom model's upstream id is sent as):
+    https://docs.ollama.com/api/chat.md
+
   Add more endpoint links here as we document the APIs this provider supports.
 -->
 

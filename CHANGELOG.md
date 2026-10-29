@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Make the model list on `/settings/providers` editable: correct a model's name, context window, thinking levels/default and other capabilities, set its USD-per-million pricing, hide models from every picker, and add models the provider doesn't list (with their own upstream name and optional base URL) — with Reset returning a model to what the provider reports. Overrides are stored per user in a new `model_overrides` table and applied wherever the catalog is read: the composer, decisions runs, settings, and the server's reasoning-effort lookup.
 - Show local model sizes (and quantization) in the composer's model selector, replacing the $0/M pricing line for lm studio and ollama models.
 - Filter the model catalog on `/settings/providers` when a provider name is clicked, and show the active provider as a clearable badge above the list.
 
@@ -20,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Omit the reasoning effort entirely for a model that reports no selectable level (`thinking: unknown`), instead of sending an empty `reasoning: {}` to bifrost or a guessed `reasoning_effort` elsewhere.
 - Send the opened provider API key with the `/models` lookup that resolves bifrost reasoning effort, so the request is no longer rejected for a missing virtual key.
 
 ## [0.2.1] - 2026-10-28

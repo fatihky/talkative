@@ -12,6 +12,9 @@
   Model load (a decision model must be loaded before it can answer):
     https://lmstudio.ai/docs/developer/rest/load.md
 
+  Chat completions `model` field (what a custom model's upstream id is sent as):
+    https://lmstudio.ai/docs/developer/openai-compat/chat-completions.md
+
   Add more endpoint links here as we document the APIs this provider supports.
 -->
 

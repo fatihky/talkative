@@ -82,6 +82,7 @@ import type {
 import { FETCHERS } from './catalog';
 import { OPENROUTER_ATTRIBUTION, USER_AGENT } from './identity';
 import { parseModelId } from './model-id';
+import { resolveModel } from './model-overrides';
 import { findConnection } from './providers';
 import { decryptSecret } from './secrets';
 import { type ActiveTool, invokeTool, toolSpec } from './tools';
@@ -723,10 +724,28 @@ async function* generate(
       yield { type: 'text', text };
     return;
   }
-  const conn = await findConnection(run.userId, parsed.connectionId);
-  if (!conn) throw new Error('provider connection no longer exists');
-  if (!conn.enabled) throw new Error(`provider "${conn.name}" is disabled`);
-  const effort = await reasoningRequest(conn, parsed.remoteId, thinkingLevel);
+  const base = await findConnection(run.userId, parsed.connectionId);
+  if (!base) throw new Error('provider connection no longer exists');
+  if (!base.enabled) throw new Error(`provider "${base.name}" is disabled`);
+  /* a user-added model runs through its connection but may name a different
+     upstream model and url than the catalog lists; a catalog model keeps both */
+  const custom = await resolveModel(
+    run.userId,
+    modelId,
+    async () => [],
+    () => base.name,
+  );
+  const override = custom?.custom;
+  const conn = !override?.baseUrl
+    ? base
+    : { ...base, baseUrl: override.baseUrl };
+  const remoteId = override?.remoteId ?? parsed.remoteId;
+  const effort = await reasoningRequest(
+    run.userId,
+    conn,
+    remoteId,
+    thinkingLevel,
+  );
   const specs = tools.map(toolSpec);
   /* say so when the composer's level isn't the one the model takes; the reply itself isn't affected */
   if (effort.adjusted)
@@ -757,11 +776,11 @@ async function* generate(
     const { text, calls, usage, usageDetails, routing, refusal, annotations } =
       yield* traceStream(
         conn,
-        parsed.remoteId,
+        remoteId,
         turns,
         chatCompletions(
           conn,
-          parsed.remoteId,
+          remoteId,
           effort,
           turns,
           offer,
@@ -949,22 +968,32 @@ const clampEffort = (
     supported.reduce((a, b) => (at(b) < at(a) ? b : a))) as ThinkingLevel;
 };
 
-/* the model's catalog row, or undefined when the catalog knows nothing about
-   it; fetched rather than read from redis so a cache outage can't block a
-   reply that used to go out without ever consulting the catalog */
+/* the model's catalog row with the user's overrides applied, or undefined when
+   nothing knows it; fetched rather than read from redis so a cache outage
+   can't block a reply that used to go out without ever consulting the catalog */
 const findCatalogModel = async (
+  userId: string,
   conn: ProviderConnectionRow,
   remoteId: string,
 ): Promise<Model | undefined> => {
   try {
     /* fetchers send the key upstream, so open the sealed row first — same as
        getCatalog does before handing a connection to a fetcher */
-    return (
+    const listed = (
       await FETCHERS[conn.compatibility]({
         ...conn,
         apiKey: decryptSecret(conn.apiKey),
       })
     ).find((m) => m.remoteId === remoteId);
+    /* overrides can rename capabilities (thinking levels, effort) that this
+       lookup reads, so fold them in the same way the picker does */
+    const found = await resolveModel(
+      userId,
+      `${conn.id}:${remoteId}`,
+      async () => (listed ? [listed] : []),
+      () => conn.name,
+    );
+    return found?.model ?? listed;
   } catch (e) {
     console.warn(
       `[catalog] effort lookup failed for ${conn.name}: ${errorText(e)}`,
@@ -991,12 +1020,14 @@ export type ReasoningRequest = {
  * unchanged: absent levels mean unknown, not none.
  */
 export const reasoningRequest = async (
+  userId: string,
   conn: ProviderConnectionRow,
   remoteId: string,
   level: ThinkingLevel | undefined,
 ): Promise<ReasoningRequest> => {
   const effort = level ?? 'medium';
-  const levels = (await findCatalogModel(conn, remoteId))?.thinkingLevels;
+  const levels = (await findCatalogModel(userId, conn, remoteId))
+    ?.thinkingLevels;
   /* a model that reports no selectable level takes none: sending one anyway is
      what bifrost forwards into a 400, and `thinking: unknown` is not a guess */
   if (levels && levels.length === 0) return {};

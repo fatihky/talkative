@@ -204,6 +204,13 @@
       "when": 1792843986859,
       "tag": "0028_add_message_search_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793262525414,
+      "tag": "0029_add_model_overrides",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ import { draftActions } from './draft';
 import { foldersActions } from './folders';
 import { layoutActions } from './layout';
 import { memoriesActions } from './memories';
+import { modelOverridesActions } from './model-overrides';
 import { notesActions } from './notes';
 import { prefsActions } from './prefs';
 import { providersActions } from './providers';
@@ -55,6 +56,10 @@ export { folderPath, isWithin, useFoldersStore } from './folders';
 export type { PanelTab, PreviewSnippet } from './layout';
 export { useLayoutStore } from './layout';
 export { useMemoriesStore } from './memories';
+export {
+  type OverrideConnection,
+  useModelOverridesStore,
+} from './model-overrides';
 export { useModelsStore } from './models';
 export { useNetworkStore } from './network';
 export { useNotesStore } from './notes';
@@ -76,6 +81,7 @@ export const actions = {
   ...foldersActions,
   ...draftActions,
   ...threadsActions,
+  ...modelOverridesActions,
   ...sendActions,
   ...notesActions,
   ...decisionsActions,

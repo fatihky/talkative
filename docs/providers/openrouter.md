@@ -12,6 +12,9 @@
   System One:
     https://openrouter.ai/docs/api/api-reference/systemone/submit-a-system-one-request.md
 
+  Chat completions `model` field (what a custom model's upstream id is sent as):
+    https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request.md
+
   Add more endpoint links here as we document the APIs this provider supports.
 -->
 

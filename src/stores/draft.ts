@@ -213,9 +213,15 @@ export const modelDisabledTools = (
   model: Model | null,
   statuses: Record<ToolId, ToolStatus> = useToolsStore.getState().items,
 ): Map<ToolId, string> => {
+  /* a model the server can't reach (an override's custom url pointing nowhere,
+     or an unparseable catalog id) takes no tools at all */
   const out = new Map<ToolId, string>();
+  if (model?.status === 'error')
+    for (const t of TOOLS)
+      out.set(t.id, `${t.label}: ${model.shortName} is unavailable`);
   for (const t of TOOLS) {
     const s = statuses[t.id];
+    if (out.has(t.id)) continue;
     if (s && !s.available)
       out.set(t.id, `${t.label}: ${s.reason ?? 'unavailable'}`);
     else if (
@@ -514,11 +520,9 @@ export const draftActions = {
   /* reopening a chat pre-selects its last message's model, leaving the new-chat default alone */
   applyChatModel(id: string) {
     const { items } = useModelsStore.getState();
-    /* a model the catalog no longer has would leave the composer on '—' */
-    if (
-      items.length > 0 &&
-      !items.some((m) => m.id === id && m.status !== 'error')
-    )
+    /* a model the catalog no longer has (or a hidden override) would leave the
+       composer on '—'; while the list is empty nothing can be checked yet */
+    if (items.length > 0 && !items.some((m) => m.id === id))
       return;
     applyModel(id, false);
   },

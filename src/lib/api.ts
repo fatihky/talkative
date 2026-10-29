@@ -5,9 +5,9 @@
  * - Client-only (stores and components); no server code imports it. The
  *   resource groups (providersApi, chatsApi, foldersApi, notesApi,
  *   decisionsApi, artifactsApi, memoriesApi, settingsApi,
- *   toolPreferencesApi, toolCredentialsApi, usersApi) are thin verbs over
- *   `request`, while the fetch* wrappers add the dev-flag behaviour the
- *   boot sequence needs.
+ *   toolPreferencesApi, toolCredentialsApi, usersApi, modelOverridesApi)
+ *   are thin verbs over `request`, while the fetch* wrappers add the
+ *   dev-flag behaviour the boot sequence needs.
  * - `request` is the single error contract: JSON in and out, a non-2xx
  *   becomes ApiError(status, body.error), a failed fetch becomes
  *   ApiError(0, …) so callers can read status 0 as "offline", and 204
@@ -48,6 +48,10 @@ import type {
   Message,
   MessageStatus,
   Model,
+  ModelCapabilities,
+  ModelKind,
+  ModelOverrideDto,
+  ModelPricing,
   Note,
   Provider,
   ProviderConnection,
@@ -55,6 +59,7 @@ import type {
   PublicArtifact,
   SiteSettings,
   Suggestion,
+  ThinkingLevel,
   Thought,
   ToolCall,
   ToolCredential,
@@ -226,6 +231,61 @@ export const providersApi = {
       `/api/providers/${id}/models${refresh ? '?refresh=1' : ''}`,
     ),
 };
+
+export type ModelOverridesResponse = {
+  /* the catalog with the caller's overrides applied, custom models included */
+  items: Model[];
+  /* ids left out because the user hid them */
+  hidden: string[];
+  syncedAt: number;
+  connections: { id: number; name: string }[];
+};
+
+/* model ids address rows, and a catalog id may contain '/' — encoded for the path */
+const overridePath = (id: string) =>
+  `/api/model-overrides/${encodeURIComponent(id)}`;
+
+/** a PUT body; unset keys (or null) mean "keep what the provider reports" */
+export type ModelOverrideInput = {
+  custom?: boolean;
+  connectionId?: number;
+  remoteId?: string;
+  baseUrl?: string;
+  kind?: ModelKind;
+  shortName?: string;
+  contextWindow?: number;
+  maxOutput?: number;
+  thinkingLevels?: ThinkingLevel[];
+  defaultThinkingLevel?: ThinkingLevel;
+  params?: string;
+  capabilities?: Partial<ModelCapabilities>;
+  pricing?: Partial<ModelPricing>;
+  hidden?: boolean;
+};
+/* callers build a body by spreading conditionally, so keys may be undefined */
+export type ModelOverrideBody = {
+  [K in keyof ModelOverrideInput]?: ModelOverrideInput[K] | undefined;
+};
+
+export const modelOverridesApi = {
+  list: () => request<ModelOverridesResponse>('/api/model-overrides'),
+  save: (id: string, override: ModelOverrideBody) =>
+    request<ModelOverrideDto>(overridePath(id), {
+      method: 'PUT',
+      body: JSON.stringify(override),
+    }),
+  /* back to what the provider reports, or forget a custom model */
+  remove: (id: string) =>
+    request<void>(overridePath(id), { method: 'DELETE' }),
+};
+
+export async function fetchModelOverrides(opts: {
+  refresh?: boolean;
+}): Promise<ModelOverridesResponse> {
+  return request<ModelOverridesResponse>(
+    `/api/model-overrides${opts.refresh ? '?refresh=1' : ''}`,
+  );
+}
 
 export const chatsApi = {
   list: () => request<ChatSummary[]>('/api/chats'),

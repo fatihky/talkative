@@ -42,6 +42,10 @@
  * - folders nest through a soft parentId self-reference; a folder's
  *   systemPrompt is inherited by its chats, and chat.systemPrompt stacks on
  *   top of the folder chain when generating.
+ * - model_overrides layers a user's corrections over a provider's catalog
+ *   (capabilities, context, pricing, custom models, hidden models); a row
+ *   with connection_id is a model the provider never listed, addressed by
+ *   remote_id through that connection.
  * - Indexes back the hot query paths: chats (userId,updatedAt) and
  *   (userId,createdAt) for the sidebar; messages chatId and parentId for
  *   tree loads; todos chatId and (chatId,done); notes/artifacts/decisions
@@ -236,6 +240,54 @@ export const providerConnections = pgTable(
 
 export type ProviderConnectionRow = typeof providerConnections.$inferSelect;
 export type NewProviderConnection = typeof providerConnections.$inferInsert;
+
+/*
+ * a user's correction to one model (server/model-overrides.ts). model_id is
+ * either a catalog id (${connectionId}:${remoteId}) or, for a user-added model,
+ * an id that deliberately doesn't parse; every other column is an override and
+ * null means "keep what the provider reports". connection_id, remote_id and
+ * base_url are only set on custom models: a run reaches the connection by that
+ * id, sends remote_id as the upstream model name, and may swap the connection's
+ * url for base_url. Deleting a connection drops the rows pointing at it.
+ */
+export const modelOverrides = pgTable(
+  'model_overrides',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    modelId: text('model_id').notNull(),
+    shortName: text('short_name'),
+    kind: text('kind'),
+    contextWindow: integer('context_window'),
+    maxOutput: integer('max_output'),
+    thinkingLevels: jsonb('thinking_levels').$type<string[]>(),
+    defaultThinkingLevel: text('default_thinking_level'),
+    capabilities: jsonb('capabilities').$type<Record<string, boolean>>(),
+    /* USD per 1M tokens, like Model.pricing */
+    pricing: jsonb('pricing').$type<Record<string, number>>(),
+    params: text('params'),
+    hidden: boolean('hidden').notNull().default(false),
+    connectionId: integer('connection_id').references(
+      () => providerConnections.id,
+      { onDelete: 'cascade' },
+    ),
+    remoteId: text('remote_id'),
+    baseUrl: text('base_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.modelId] }),
+    index('model_overrides_connection_id_idx').on(table.connectionId),
+  ],
+);
+
+export type ModelOverrideRow = typeof modelOverrides.$inferSelect;
+export type NewModelOverride = typeof modelOverrides.$inferInsert;
 
 /* folders nest through parent_id; a folder's system prompt is inherited by its chats */
 export const folders = pgTable(

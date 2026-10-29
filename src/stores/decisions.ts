@@ -114,6 +114,8 @@ const defaultModelId = (): string => {
   const last = LS.get<string>('decisions.lastModel', '');
   const items = useModelsStore.getState().items;
   if (items.length === 0) return last;
+  /* the stored pick must still be offered: an id the catalog dropped (hidden
+     or removed override) would leave the run without a model */
   if (last && items.some((m) => m.id === last)) return last;
   return items.find(isDecisionCapable)?.id ?? '';
 };

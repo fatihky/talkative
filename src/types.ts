@@ -26,7 +26,9 @@
  * - Models: Model.kind defaults to 'llm' (only llm models can chat),
  *   capabilities and thinkingLevels gate composer affordances, and
  *   connectionId + remoteId map a per-connection namespaced model id
- *   back to the id the upstream API knows it by.
+ *   back to the id the upstream API knows it by. Model.overrides
+ *   carries the user's corrections (and marks a custom model), so the
+ *   settings screen can show and clear them.
  * - Providers: Compatibility enumerates the supported upstream API
  *   dialects; ProviderConnection is the client-safe view of a
  *   user-configured provider — hasApiKey only, the key itself never
@@ -148,7 +150,39 @@ export type Model = {
   connectionId?: number | undefined;
   /* the id the upstream API knows the model by (`id` is namespaced per connection) */
   remoteId?: string | undefined;
+  /* the user's overrides applied to this row (never sent; see applyOverrides) */
+  overrides?: ModelOverrideDto | undefined;
 };
+
+/**
+ * The user's overrides for one model: every field is optional and unset
+ * means "what the provider reports". `custom` rows are models the
+ * provider never listed — they keep their kind, the connection to send
+ * through, the upstream name and an optional url override. `hidden`
+ * removes a catalog model from every picker without losing the rest.
+ */
+export type ModelOverrideDto = {
+  custom?: boolean | undefined;
+  /* a custom model's config; absent on a catalog model */
+  connectionId?: number | undefined;
+  remoteId?: string | undefined;
+  baseUrl?: string | undefined;
+  /* 'llm' on a catalog model is only a live edit; custom models need one */
+  kind?: ModelKind | undefined;
+  shortName?: string | undefined;
+  contextWindow?: number | undefined;
+  maxOutput?: number | undefined;
+  thinkingLevels?: ThinkingLevel[] | undefined;
+  defaultThinkingLevel?: ThinkingLevel | undefined;
+  params?: string | undefined;
+  capabilities?: ModelCapabilities | undefined;
+  pricing?: ModelPricing | undefined;
+  hidden: boolean;
+};
+
+/* every Model field with a default, so an override can replace part of one */
+export type ModelCapabilities = Model['capabilities'];
+export type ModelPricing = Model['pricing'];
 
 export type Compatibility =
   | 'openai'

@@ -10,6 +10,9 @@
   Decisions:
     https://docs.getbifrost.ai/api-reference/decisions/evaluate-a-decision.md
 
+  Chat completions `model` field (what a custom model's upstream id is sent as):
+    https://docs.getbifrost.ai/api-reference/chat-completions/create-a-chat-completion.md
+
   Add more endpoint links here as we document the APIs this provider supports.
 
   Bifrost is an OpenAI-compatible API gateway. The unified inference API lives

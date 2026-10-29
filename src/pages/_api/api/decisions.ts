@@ -17,6 +17,9 @@
  * - the run's `kind` is chosen from the picked model's catalog kind (a
  *   systemone model routes to /systemone, anything else to /decisions); a
  *   re-run whose model no longer resolves keeps the kind it ran with.
+ * - a custom model (a user-added override naming a connection) resolves
+ *   through model-overrides: its connection, base url and upstream name
+ *   replace the ones the id would carry.
  * - the row is written *before* the upstream call, so a failure still leaves
  *   the questions and the evidence behind: a client-minted id the caller
  *   doesn't own yet inserts, an id they do own re-runs that row (clearing the
@@ -53,6 +56,7 @@ import {
   handle,
   ValidationError,
 } from '../../../server/providers';
+import { resolveModel } from '../../../server/model-overrides';
 import type { DecisionKind } from '../../../types';
 
 /* GET /api/decisions — the caller's runs, newest first */
@@ -66,12 +70,26 @@ export const GET = () =>
 export const POST = (req: Request) =>
   handle(async (userId) => {
     const input = parseDecisionRun(await req.json());
+    /* a custom model (a user-added row naming a connection) resolves like a
+       catalog id; anything else must parse as one */
+    const custom = await resolveModel(
+      userId,
+      input.modelId,
+      async () => [],
+      () => undefined,
+    );
     const parsed = parseModelId(input.modelId);
-    if (!parsed)
+    const connectionId = custom?.custom?.connectionId ?? parsed?.connectionId;
+    if (connectionId === undefined)
       throw new ValidationError('modelId must be a provider model id');
-    const conn = await findConnection(userId, parsed.connectionId);
-    if (!conn) throw new ValidationError('provider not found');
-    if (!conn.enabled) throw new ValidationError(`${conn.name} is disabled`);
+    const base = await findConnection(userId, connectionId);
+    if (!base) throw new ValidationError('provider not found');
+    if (!base.enabled) throw new ValidationError(`${base.name} is disabled`);
+    const conn = !custom?.custom?.baseUrl
+      ? base
+      : { ...base, baseUrl: custom.custom.baseUrl };
+    /* the upstream name: a custom model's own, else what the id carries */
+    const remoteId = custom?.custom?.remoteId ?? parsed?.remoteId;
 
     const db = getDb();
     const existing = input.id ? await findDecision(db, userId, input.id) : null;
@@ -82,7 +100,9 @@ export const POST = (req: Request) =>
     /* the endpoint is chosen by the picked model's kind; a re-run whose model is
        no longer in the catalog keeps the kind it ran with */
     const catalog = await getCatalog(conn);
-    const model = catalog.items.find((m) => m.id === input.modelId);
+    const model = custom
+      ? custom.model
+      : catalog.items.find((m) => m.id === input.modelId);
     const kind: DecisionKind =
       model?.kind === 'systemone'
         ? 'systemone'
@@ -142,7 +162,7 @@ export const POST = (req: Request) =>
       const outcome = await runDecision(
         conn,
         {
-          model: parsed.remoteId,
+          model: remoteId ?? parsed?.remoteId ?? input.modelId,
           input: input.input,
           questions: input.questions,
         },

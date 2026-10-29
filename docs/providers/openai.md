@@ -10,6 +10,9 @@
   Using GPT-6 (per-model effort support):
     https://developers.openai.com/api/docs/guides/latest-model.md
 
+  Chat completions `model` field (what a custom model's upstream id is sent as):
+    https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create.md
+
   Add more endpoint links here as we document the APIs this provider supports.
 
   OpenAI is the base dialect: chat completions here are the shape every other

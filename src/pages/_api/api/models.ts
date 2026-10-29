@@ -19,8 +19,18 @@
  * - providerCount counts disabled connections too: turning every
  *   provider off must empty the picker instead of letting the UI fall
  *   back to the demo catalog.
+ * - the user's model_overrides are folded in last (applyOverrides):
+ *   edited rows carry their changes plus `overrides`, user-added models
+ *   are appended under their connection's name, and hidden ones are
+ *   dropped. syncedAt is taken before the merge, so an override can't
+ *   make the list look fresher than the catalogs it sits on.
  */
 import { getCatalog } from '../../../server/catalog';
+import {
+  applyOverrides,
+  listOverrides,
+  toDto as overrideDto,
+} from '../../../server/model-overrides';
 import { handle, listConnections } from '../../../server/providers';
 import type { Model } from '../../../types';
 
@@ -33,7 +43,18 @@ export const GET = (req: Request) =>
     const entries = await Promise.all(
       conns.map((c) => getCatalog(c, { refresh })),
     );
-    const items: Model[] = entries.flatMap((e) => e.items);
+    /* the freshest list is only as fresh as its stalest source */
+    const syncedAt = Math.min(Date.now(), ...entries.map((e) => e.syncedAt));
+    const overrides = await listOverrides(userId);
+    const { items: merged } = applyOverrides(
+      entries.flatMap((e) => e.items),
+      overrides,
+      (connectionId) => conns.find((c) => c.id === connectionId)?.name,
+    );
+    const items: Model[] = merged.map((m) => {
+      const o = overrides.get(m.id);
+      return o ? { ...m, overrides: overrideDto(o) } : m;
+    });
     const errors = Object.fromEntries(
       conns.flatMap((c, i) => {
         const err = entries[i]?.error;
@@ -43,7 +64,7 @@ export const GET = (req: Request) =>
     return Response.json({
       items,
       /* oldest list wins so the UI never overstates freshness */
-      syncedAt: Math.min(Date.now(), ...entries.map((e) => e.syncedAt)),
+      syncedAt,
       /* counts disabled ones too, so turning every provider off empties the picker
          instead of bringing back the demo catalog */
       providerCount: all.length,
