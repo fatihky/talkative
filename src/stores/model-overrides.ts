@@ -15,10 +15,9 @@
  *   server's ten-minute cache.
  * - Errors surface next to the header; a failed save leaves the dialog
  *   open so the edit isn't lost.
- * - A provider filter (?provider=<name>) is applied by the server, not
- *   in the component: only that provider's connections are fetched and
- *   only their hidden ids come back. `items` is therefore the filtered
- *   view; the unfiltered one is fetched again when the filter clears.
+ * - The provider filter is the component's: it narrows the loaded list,
+ *   so picking a provider never refetches. Hidden entries carry their
+ *   provider name for it.
  */
 'use client';
 
@@ -26,6 +25,7 @@ import { create } from 'zustand';
 import {
   fetchModelOverrides,
   type ModelOverrideBody,
+  type ModelOverridesResponse,
   modelOverridesApi,
 } from '../lib/api';
 import type { Model } from '../types';
@@ -35,14 +35,12 @@ export type OverrideConnection = { id: number; name: string };
 
 type ModelOverridesState = {
   items: Model[];
-  /* ids the server left out because the user hid them */
-  hidden: string[];
+  /* models the server left out because the user hid them */
+  hidden: ModelOverridesResponse['hidden'];
   connections: OverrideConnection[];
   status: 'idle' | 'loading' | 'ready' | 'error';
   error?: string | undefined;
   saving: boolean;
-  /* the connection name the last load was narrowed to; '' = every provider */
-  provider: string;
 };
 
 export const useModelOverridesStore = create<ModelOverridesState>()(() => ({
@@ -51,16 +49,20 @@ export const useModelOverridesStore = create<ModelOverridesState>()(() => ({
   connections: [],
   status: 'idle',
   saving: false,
-  provider: '',
 }));
 
 const set = useModelOverridesStore.setState;
 
+/* bumped per fetch: only the newest one may land, so the page's slow first
+   load (refresh) can't overwrite the reload that follows a save */
+let seq = 0;
+
 const load = (refresh: boolean) => {
-  const provider = useModelOverridesStore.getState().provider;
+  const mine = ++seq;
   set({ status: 'loading' });
-  return fetchModelOverrides({ refresh, provider })
+  return fetchModelOverrides({ refresh })
     .then((r) => {
+      if (mine !== seq) return r;
       set({
         items: r.items.toSorted(
           (a, b) =>
@@ -74,13 +76,12 @@ const load = (refresh: boolean) => {
         status: 'ready',
         error: undefined,
       });
-      /* one catalog for every screen: the composer reads the models store.
-         a narrowed list must not become the composer's catalog. */
-      if (!provider) applyModels(r);
+      /* one catalog for every screen: the composer reads the models store */
+      applyModels(r);
       return r;
     })
     .catch((e: unknown) => {
-      set({ status: 'error', error: errorText(e) });
+      if (mine === seq) set({ status: 'error', error: errorText(e) });
       throw e;
     });
 };
@@ -89,13 +90,6 @@ export const modelOverridesActions = {
   /* the page's first load: let the server refresh stale provider lists */
   load(refresh = false) {
     return load(refresh).catch(() => undefined);
-  },
-
-  /* narrow the list to one provider ('' = all); refetches when it changes */
-  setProvider(provider: string) {
-    if (useModelOverridesStore.getState().provider === provider) return;
-    set({ provider });
-    return load(false).catch(() => undefined);
   },
 
   /* PUT one model's overrides; a body that clears everything resets it */

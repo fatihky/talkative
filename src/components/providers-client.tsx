@@ -6,9 +6,8 @@
  * - Both sections share one provider filter, held here because it spans
  *   them: clicking a connection's name in the list focuses that provider
  *   in the catalog below, and the catalog's filter chips can set or clear
- *   the same filter. The model list applies it server-side (its store
- *   refetches ?provider=<name>), so the rows, the counter and the hidden
- *   models always agree.
+ *   the same filter. It narrows the model list already loaded, never
+ *   refetching it.
  * - The filter is the connection name (what the catalog calls `provider`),
  *   so providers sharing a name filter together.
  * - The model list comes from GET /api/model-overrides (the catalog with
@@ -25,7 +24,7 @@ import { ProviderSettings } from './provider-settings';
 
 export function ProvidersClient() {
   /* the connection name the catalog is filtered by; '' = all. Held here so
-     both sections share it; the model list's store refetches on change. */
+     both sections share it. */
   const [focused, setFocused] = useState('');
   const providers = useProvidersStore((s) => s.items);
   /* what the list was loaded for: the first load refreshes the provider

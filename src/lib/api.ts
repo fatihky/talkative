@@ -235,8 +235,8 @@ export const providersApi = {
 export type ModelOverridesResponse = {
   /* the catalog with the caller's overrides applied, custom models included */
   items: Model[];
-  /* ids left out because the user hid them */
-  hidden: string[];
+  /* models left out because the user hid them, with their connection name */
+  hidden: { id: string; provider?: string | undefined }[];
   syncedAt: number;
   connections: { id: number; name: string }[];
 };
@@ -281,15 +281,9 @@ export const modelOverridesApi = {
 
 export async function fetchModelOverrides(opts: {
   refresh?: boolean;
-  /* connection name; the server narrows the list (and its hidden ids) to it */
-  provider?: string | undefined;
 }): Promise<ModelOverridesResponse> {
-  const q = new URLSearchParams();
-  if (opts.refresh) q.set('refresh', '1');
-  if (opts.provider) q.set('provider', opts.provider);
-  const qs = q.toString();
   return request<ModelOverridesResponse>(
-    `/api/model-overrides${qs ? `?${qs}` : ''}`,
+    `/api/model-overrides${opts.refresh ? '?refresh=1' : ''}`,
   );
 }
 

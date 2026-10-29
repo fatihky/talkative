@@ -16,19 +16,19 @@
  * - Reset drops the row (DELETE), returning the model to its catalog
  *   values; a custom model disappears with it. Hide is the same row with
  *   `hidden` set, so its other overrides survive until it is unhidden.
- * - Hidden models aren't in the payload, so their ids are kept beside it;
- *   the provider filter offers them and the list shows an "Unhide" row.
+ * - Hidden models aren't in the payload, so they are kept beside it with
+ *   their provider name; the provider filter narrows them too and the
+ *   list shows an "Unhide" row.
  * - Search ANDs every whitespace-separated term against name, id,
  *   provider and capability keywords; the counter turns into shown/total
  *   while filtering.
- * - The provider filter is not applied here: focusing a provider (its
- *   name in the connection list or a chip) makes the store refetch
- *   ?provider=<name>, so the counter, the rows and the hidden ids all
- *   describe that provider alone. The chips are the enabled connections,
- *   so a provider with every model hidden stays reachable, and the focused
- *   one is the only chip left so it can be switched off.
- * - Rows group by provider, keeping the numeric-aware alphabetical order
- *   the store applied.
+ * - The provider filter (its name in the connection list or a chip)
+ *   narrows the already loaded list; it never refetches. The chips are
+ *   the enabled connections, one per name, so a provider with every
+ *   model hidden stays reachable; the counter is shown/total while
+ *   filtering.
+ * - Rows group by provider, one group each in first-seen order, keeping
+ *   the numeric-aware alphabetical order the store applied within it.
  * - Add model needs at least one connection: its form picks which one
  *   carries the request.
  * - 'stale' marks models served from a cached catalog after the upstream
@@ -84,18 +84,9 @@ export function ModelsSettings({
   const [providerFilter, setProviderFilter] = useState('');
   /* the chips and the provider list drive one filter: outside focus wins */
   const active = focusProvider || providerFilter;
-  /* the filter is applied by the store's fetch: the list is narrowed to that
-     provider's connections server-side, hidden ids included */
-  useEffect(() => {
-    void actions.setProvider(active);
-  }, [active]);
   /* the chips are the enabled connections (one per name), so a provider whose
      every model is hidden or whose catalog failed is still reachable */
-  const providers = [
-    ...new Set(
-      connections.map((c) => c.name).filter((n) => !active || n === active),
-    ),
-  ];
+  const providers = [...new Set(connections.map((c) => c.name))];
   const setActive = (p: string) => {
     const next = active === p ? '' : p;
     setProviderFilter(next);
@@ -115,6 +106,7 @@ export function ModelsSettings({
   /* every whitespace-separated term must hit the name, id or provider */
   const terms = modelQuery.toLowerCase().split(/\s+/).filter(Boolean);
   const matches = (m: Model) => {
+    if (active && m.provider !== active) return false;
     if (!terms.length) return true;
     const hay = modelSearchText(m).toLowerCase();
     return terms.every((t) => hay.includes(t));
@@ -122,16 +114,23 @@ export function ModelsSettings({
   const shownModels = models.filter(matches);
 
   const hiddenShown = hidden.filter(
-    (id) => !terms.length || terms.every((t) => id.toLowerCase().includes(t)),
+    (h) =>
+      (!active || h.provider === active) &&
+      terms.every((t) => h.id.toLowerCase().includes(t)),
   );
 
-  /* models group by provider, keeping the alphabetical order applied on load */
-  const modelGroups: { provider: string; items: typeof shownModels }[] = [];
+  /* one group per provider in first-seen order; rows keep the alphabetical
+     order applied on load */
+  const byProvider = new Map<string, Model[]>();
   for (const m of shownModels) {
-    const last = modelGroups[modelGroups.length - 1];
-    if (last?.provider === m.provider) last.items.push(m);
-    else modelGroups.push({ provider: m.provider, items: [m] });
+    const items = byProvider.get(m.provider);
+    if (items) items.push(m);
+    else byProvider.set(m.provider, [m]);
   }
+  const modelGroups = [...byProvider].map(([provider, items]) => ({
+    provider,
+    items,
+  }));
 
   const setError = (e: unknown) => setActionError(errorText(e));
 
@@ -277,7 +276,7 @@ export function ModelsSettings({
                 {hiddenShown.length}
               </span>
             </div>
-            {hiddenShown.map((id) => (
+            {hiddenShown.map(({ id }) => (
               <div
                 key={id}
                 className="flex min-h-8 items-center gap-2 border-b border-[var(--border)] py-1 text-[12px] last:border-b-0"
