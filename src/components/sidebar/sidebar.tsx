@@ -15,13 +15,20 @@
  *   It only exists outside the drawer.
  * - The filter input drives ChatList's title/tag search; the folder-plus
  *   button creates a top-level folder.
- * - "New chat" and every section link close the mobile drawer.
+ * - "New chat" and every section link close the mobile drawer. New chat is
+ *   an anchor to "/", so cmd/ctrl-click opens a fresh chat in a new tab.
  * - The highlighted chat comes from the UI context, which is null on the
  *   home ("new") screen.
  */
 'use client';
 
-import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type MouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'waku';
 import { I } from '../../lib/icons';
 import { Tip } from '../../lib/popover';
@@ -80,14 +87,18 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
             className="anim-fade flex flex-1 flex-col items-center gap-1 py-1.5"
           >
             <Tip label={`New chat ${mod}N`} side="bottom">
-              <button
-                type="button"
+              <Link
+                to="/"
                 aria-label="New chat"
-                onClick={() => actions.newChat()}
-                className="flex size-8 items-center justify-center rounded-[6px] bg-[var(--accent)] text-[var(--text-inv)] hover:opacity-90"
+                onClick={(e) => {
+                  if (isModifiedClick(e)) return;
+                  e.preventDefault();
+                  actions.newChat();
+                }}
+                className="flex size-8 items-center justify-center rounded-[6px] bg-[var(--accent)] text-[var(--text-inv)] no-underline hover:opacity-90"
               >
                 <I n="plus" s={15} />
-              </button>
+              </Link>
             </Tip>
             <Tip label="Chats" side="bottom">
               <button
@@ -122,17 +133,19 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
             style={{ width }}
           >
             <div className="px-2 pt-2 pb-1 flex flex-col gap-1">
-              <button
-                type="button"
-                onClick={() => {
-                  actions.newChat();
+              <Link
+                to="/"
+                onClick={(e) => {
                   actions.setMobileNav(false);
+                  if (isModifiedClick(e)) return;
+                  e.preventDefault();
+                  actions.newChat();
                 }}
-                className="ctl-primary h-8 w-full"
+                className="ctl-primary h-8 w-full no-underline"
                 aria-label="New chat"
               >
                 <I n="plus" s={14} /> New chat
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => {
@@ -199,6 +212,12 @@ export function Sidebar({ inDrawer = false }: { inDrawer?: boolean }) {
       )}
     </nav>
   );
+}
+
+/* new chat is a real link to "/" so cmd/ctrl/shift/middle-click opens a
+   fresh tab; a plain click stays in place and resets the draft instead */
+function isModifiedClick(e: MouseEvent<HTMLAnchorElement>) {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0;
 }
 
 function IndexItem({

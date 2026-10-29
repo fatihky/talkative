@@ -13,6 +13,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Show local model sizes (and quantization) in the composer's model selector, replacing the $0/M pricing line for lm studio and ollama models.
 
+### Changed
+
+- Make the sidebar's "New chat" buttons links to `/`, so cmd/ctrl/shift-click (or middle-click) opens a fresh chat in a new tab.
+
 ### Fixed
 
 - Send the opened provider API key with the `/models` lookup that resolves bifrost reasoning effort, so the request is no longer rejected for a missing virtual key.
