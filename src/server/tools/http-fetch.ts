@@ -34,6 +34,7 @@
  */
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { PRODUCT } from '../identity';
 import type { ServerTool } from './index';
 import { callWithRetry } from './rate-limit';
 
@@ -150,7 +151,7 @@ const fetchDirect = async (
       redirect: 'manual',
       signal: sig,
       headers: {
-        'user-agent': 'talkative/1.0 (+http_fetch tool)',
+        'user-agent': `${PRODUCT} (+http_fetch tool)`,
         accept: 'text/html,text/plain,application/json;q=0.9,*/*;q=0.5',
       },
     });

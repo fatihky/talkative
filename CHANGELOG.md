@@ -21,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Send the running app's real version in the `talkative/<version>` user-agent (read from `package.json` instead of a stale hardcoded `0.1.0`), and give the `http_fetch` tool's own requests the same version instead of a hardcoded `1.0`.
 - Omit the reasoning effort entirely for a model that reports no selectable level (`thinking: unknown`), instead of sending an empty `reasoning: {}` to bifrost or a guessed `reasoning_effort` elsewhere.
 - Send the opened provider API key with the `/models` lookup that resolves bifrost reasoning effort, so the request is no longer rejected for a missing virtual key.
 - Filter the capability-overrides list on `/settings/providers` by the focused provider server-side (`?provider=<name>`), so the row count, rows and hidden models all match that provider — including a provider whose every model is hidden — and the clearable provider chips now come from the configured connections instead of the visible rows.
