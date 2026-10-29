@@ -18,6 +18,7 @@
   "files": [
     "bin/",
     "dist/",
+    "instrumentation.mjs",
     "drizzle/*.sql",
     "drizzle/meta/_journal.json"
   ],
@@ -25,10 +26,10 @@
     "access": "public"
   },
   "scripts": {
-    "dev": "waku dev",
+    "dev": "NODE_OPTIONS=\"--import ./instrumentation.mjs $NODE_OPTIONS\" waku dev",
     "build": "waku build && rolldown -c rolldown.config.mjs",
     "prepublishOnly": "pnpm build",
-    "start": "waku start",
+    "start": "NODE_OPTIONS=\"--import ./instrumentation.mjs $NODE_OPTIONS\" waku start",
     "typegen": "waku router typegen",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --experimental-strip-types src/db/migrate.ts",
@@ -40,6 +41,8 @@
     "check": "biome check --write"
   },
   "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
+    "@opentelemetry/sdk-node": "^0.300.0",
     "@streamdown/mermaid": "^1.0.3",
     "better-auth": "^1.7.14",
     "dotenv": "^18.0.9",

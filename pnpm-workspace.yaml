@@ -1,5 +1,6 @@
 allowBuilds:
   esbuild: true
+  protobufjs: true
 minimumReleaseAgeExclude:
   - markstream-core@2.0.17
   - markstream-react@2.0.17

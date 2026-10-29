@@ -22,5 +22,7 @@ COPY --from=build /app/drizzle ./drizzle
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json drizzle.config.ts ./
 COPY src ./src
 COPY scripts ./scripts
+# open telemetry, preloaded into the server below (config via OTEL_* env vars)
+COPY instrumentation.mjs ./
 EXPOSE 8080
-CMD ["sh", "-c", "pnpm db:migrate && node dist/serve-node.js"]
+CMD ["sh", "-c", "pnpm db:migrate && node --import ./instrumentation.mjs dist/serve-node.js"]

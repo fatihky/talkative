@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Added
+
+- OpenTelemetry: `instrumentation.mjs` is preloaded with `node --import` by `pnpm dev`, `pnpm start`, the packaged `talkative` CLI and the Docker image, and reports a service name (new `OTEL_SERVICE_NAME`, default `talkative`). Configure the exporter with the standard `OTEL_*` variables.
+
 ### Changed
 
 - Filter the capability-overrides list on `/settings/providers` by provider in the browser, over the list already loaded, instead of refetching it with `?provider=<name>`; hidden models now carry their provider name so they filter too.

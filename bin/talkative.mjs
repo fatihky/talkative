@@ -122,6 +122,11 @@ switch (command) {
       env: {
         ...process.env,
         NODE_ENV: process.env.NODE_ENV || 'production',
+        // open telemetry runs from the user's cwd, where .env and
+        // node_modules (@opentelemetry/*, dotenv) live; NODE_OPTIONS stays
+        // inherited so a user-set --import/--require survives
+        NODE_OPTIONS:
+          `--import ${JSON.stringify(join(root, 'instrumentation.mjs'))} ${process.env.NODE_OPTIONS || ''}`.trim(),
         PORT: port,
         HOST: host,
       },
