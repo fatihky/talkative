@@ -4,3 +4,32 @@ minimumReleaseAgeExclude:
   - markstream-core@2.0.17
   - markstream-react@2.0.17
   - stream-markdown-parser@1.2.19
+  - '@biomejs/biome@2.6.4'
+  - '@biomejs/cli-android-arm64@2.6.4'
+  - '@biomejs/cli-android-x64@2.6.4'
+  - '@biomejs/cli-darwin-arm64@2.6.4'
+  - '@biomejs/cli-darwin-x64@2.6.4'
+  - '@biomejs/cli-linux-arm64-musl@2.6.4'
+  - '@biomejs/cli-linux-arm64@2.6.4'
+  - '@biomejs/cli-linux-x64-musl@2.6.4'
+  - '@biomejs/cli-linux-x64@2.6.4'
+  - '@biomejs/cli-win32-arm64@2.6.4'
+  - '@biomejs/cli-win32-x64@2.6.4'
+  - '@rolldown/binding-android-arm-eabi@1.2.16'
+  - '@rolldown/binding-android-arm64@1.2.16'
+  - '@rolldown/binding-darwin-arm64@1.2.16'
+  - '@rolldown/binding-darwin-x64@1.2.16'
+  - '@rolldown/binding-freebsd-x64@1.2.16'
+  - '@rolldown/binding-linux-arm-gnueabihf@1.2.16'
+  - '@rolldown/binding-linux-arm64-gnu@1.2.16'
+  - '@rolldown/binding-linux-arm64-musl@1.2.16'
+  - '@rolldown/binding-linux-ppc64-gnu@1.2.16'
+  - '@rolldown/binding-linux-s390x-gnu@1.2.16'
+  - '@rolldown/binding-linux-x64-gnu@1.2.16'
+  - '@rolldown/binding-linux-x64-musl@1.2.16'
+  - '@rolldown/binding-openharmony-arm64@1.2.16'
+  - '@rolldown/binding-win32-arm64-msvc@1.2.16'
+  - '@rolldown/binding-win32-x64-msvc@1.2.16'
+  - '@rolldown/plugin-babel@0.3.0'
+  - lucide-react@1.64.0
+  - rolldown@1.2.16
