@@ -1,8 +1,7 @@
 /* ProvidersPage (/settings/providers) — auth-gated: your provider
    connections and the merged model catalog on one page. */
 import { AuthGuard } from '../../components/auth-guard';
-import { ModelsSettings } from '../../components/models-settings';
-import { ProviderSettings } from '../../components/provider-settings';
+import { ProvidersClient } from '../../components/providers-client';
 import { SettingsSubPage } from '../../components/settings-client';
 
 export default async function ProvidersPage() {
@@ -11,8 +10,7 @@ export default async function ProvidersPage() {
       <div className="contents">
         <title>Providers & models — Talkative</title>
         <SettingsSubPage title="Providers & models">
-          <ProviderSettings />
-          <ModelsSettings />
+          <ProvidersClient />
         </SettingsSubPage>
       </div>
     </AuthGuard>

@@ -12,6 +12,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Show local model sizes (and quantization) in the composer's model selector, replacing the $0/M pricing line for lm studio and ollama models.
+- Filter the model catalog on `/settings/providers` when a provider name is clicked, and show the active provider as a clearable badge above the list.
 
 ### Changed
 

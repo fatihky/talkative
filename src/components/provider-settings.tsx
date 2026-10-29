@@ -20,6 +20,10 @@
  *   provider may be saved without one (local runtimes need none).
  * - Removing asks for confirmation first; with no providers at all the
  *   model picker falls back to the demo catalog.
+ * - The provider name is a button: clicking it (on the hooks given by the
+ *   page) filters the model catalog below to that provider's connection,
+ *   clicking it again clears the filter. Pressing it on a provider that
+ *   serves no models just states that the catalog is empty.
  */
 'use client';
 
@@ -52,7 +56,15 @@ const compatLabel = (c: Compatibility) =>
 const inputCls =
   'h-8 w-full rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]';
 
-export function ProviderSettings() {
+export function ProviderSettings({
+  focusedProvider,
+  onFocusProvider,
+}: {
+  /* the connection name the model catalog is filtered by */
+  focusedProvider?: string | undefined;
+  /* null clears the model catalog's provider filter */
+  onFocusProvider?: (provider: string | null) => void;
+} = {}) {
   const { items, status, error, catalogs } = useProvidersStore();
   /* null = closed, 'new' = add form, otherwise the connection being edited */
   const [editing, setEditing] = useState<'new' | ProviderConnection | null>(
@@ -122,7 +134,23 @@ export function ProviderSettings() {
                 className={`min-w-0 flex-1 ${p.enabled ? '' : 'opacity-50'}`}
               >
                 <div className="flex flex-wrap items-center gap-x-2">
-                  <span className="break-words font-medium">{p.name}</span>
+                  <button
+                    type="button"
+                    aria-pressed={
+                      !!focusedProvider && focusedProvider === p.name
+                    }
+                    title={`Show ${p.name} models`}
+                    onClick={() =>
+                      onFocusProvider?.(
+                        focusedProvider === p.name ? null : p.name,
+                      )
+                    }
+                    className={`cursor-pointer break-words text-left font-medium hover:text-[var(--accent)] ${
+                      focusedProvider === p.name ? 'text-[var(--accent)]' : ''
+                    }`}
+                  >
+                    {p.name}
+                  </button>
                   <span className="shrink-0 whitespace-nowrap muted">
                     {compatLabel(p.compatibility)}
                   </span>

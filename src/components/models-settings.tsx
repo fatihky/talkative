@@ -8,6 +8,11 @@
  *   while filtering.
  * - Rows group by provider, keeping the numeric-aware alphabetical order
  *   the catalog sync applied.
+ * - The filter chips are the providers (connection names) that have at
+ *   least one model, plus any connection the list asked to focus (a
+ *   provider name click). A focused provider stays listed — and selected
+ *   — even when the current search leaves it with nothing, so the chip
+ *   that filters can always be unset.
  * - With no provider configured the client falls back to the demo
  *   catalog, whose unkeyed entries carry status 'error' → "no key".
  * - 'stale' marks models served from a cached catalog after the upstream
@@ -30,7 +35,15 @@ import { I } from '../lib/icons';
 import { modelSearchText } from '../lib/models';
 import { useModelsStore } from '../stores';
 
-export function ModelsSettings() {
+export function ModelsSettings({
+  focusProvider,
+  onFocusProvider,
+}: {
+  /* the provider connection name to filter by, set by the provider list */
+  focusProvider?: string | undefined;
+  /* null once the provider list drops the focus again */
+  onFocusProvider?: (provider: string | null) => void;
+} = {}) {
   const models = useModelsStore((s) => s.items);
   const router = useRouter();
   /* a ?model=<id> deep link (from the composer's thinking note) prefills the search */
@@ -41,6 +54,13 @@ export function ModelsSettings() {
   const [modelQuery, setModelQuery] = useState(modelParam);
   /* provider filter via the handoff's `.model-chip` pills; empty = all */
   const [providerFilter, setProviderFilter] = useState('');
+  /* the chips and the provider list drive one filter: outside focus wins */
+  const active = focusProvider || providerFilter;
+  const setActive = (p: string) => {
+    const next = active === p ? '' : p;
+    setProviderFilter(next);
+    onFocusProvider?.(next || null);
+  };
   /* every whitespace-separated term must hit the name, id or provider */
   const terms = modelQuery.toLowerCase().split(/\s+/).filter(Boolean);
   const shownModels = models.filter((m) => {
@@ -48,13 +68,15 @@ export function ModelsSettings() {
       const hay = modelSearchText(m).toLowerCase();
       if (!terms.every((t) => hay.includes(t))) return false;
     }
-    if (providerFilter && m.provider !== providerFilter) return false;
+    if (active && m.provider !== active) return false;
     return true;
   });
-  /* distinct providers in catalog order, for the filter chips */
+  /* distinct providers in catalog order, for the filter chips; the focused
+     one stays listed even with no models left so it can be switched off */
   const providers: string[] = [];
   for (const m of models)
     if (!providers.includes(m.provider)) providers.push(m.provider);
+  if (active && !providers.includes(active)) providers.push(active);
   /* models group by provider, keeping the alphabetical order applied on sync */
   const modelGroups: { provider: string; items: typeof shownModels }[] = [];
   for (const m of shownModels) {
@@ -67,10 +89,19 @@ export function ModelsSettings() {
       <div className="mb-2 flex items-center gap-2">
         <div className="sec-label">Models — capability overrides</div>
         <span className="num text-[11px] muted">
-          {terms.length || providerFilter
+          {terms.length || active
             ? `${shownModels.length}/${models.length}`
             : models.length}
         </span>
+        {active && (
+          <button
+            type="button"
+            onClick={() => setActive(active)}
+            className="ctl-ghost h-6 shrink-0 rounded-[6px] px-1.5 text-[11px] muted"
+          >
+            {active} ×
+          </button>
+        )}
         <div className="ml-auto flex h-7 w-[200px] min-w-0 items-center gap-1.5 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2">
           <I n="search" s={12} className="muted shrink-0" />
           <input
@@ -92,9 +123,9 @@ export function ModelsSettings() {
             <button
               key={p}
               type="button"
-              className={`model-chip fltr ${providerFilter === p ? 'on' : ''}`}
-              aria-pressed={providerFilter === p}
-              onClick={() => setProviderFilter(providerFilter === p ? '' : p)}
+              className={`model-chip fltr ${active === p ? 'on' : ''}`}
+              aria-pressed={active === p}
+              onClick={() => setActive(p)}
             >
               {p}
             </button>
@@ -102,11 +133,11 @@ export function ModelsSettings() {
         </div>
       )}
       <div className="flex flex-col">
-        {(terms.length > 0 || providerFilter) && shownModels.length === 0 && (
+        {(terms.length > 0 || active) && shownModels.length === 0 && (
           <div className="py-2 text-[12px] muted">
             No models match
             {modelQuery.trim() ? ` “${modelQuery.trim()}”` : ''}
-            {providerFilter ? ` in ${providerFilter}` : ''}
+            {active ? ` in ${active}` : ''}
           </div>
         )}
         {modelGroups.map((g, gi) => (
