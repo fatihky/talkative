@@ -86,7 +86,6 @@ import { resolveModel } from './model-overrides';
 import { findConnection } from './providers';
 import { decryptSecret } from './secrets';
 import { type ActiveTool, invokeTool, toolSpec } from './tools';
-import { traceStream } from './tracing';
 
 const FLUSH_MS = 1000;
 /* finished runs linger briefly so late subscribers are served from memory */
@@ -774,19 +773,14 @@ async function* generate(
   for (let step = first; ; step++) {
     const offer = step < MAX_STEPS - 1 ? specs : [];
     const { text, calls, usage, usageDetails, routing, refusal, annotations } =
-      yield* traceStream(
+      yield* chatCompletions(
         conn,
         remoteId,
+        effort,
         turns,
-        chatCompletions(
-          conn,
-          remoteId,
-          effort,
-          turns,
-          offer,
-          step,
-          signal,
-        ),
+        offer,
+        step,
+        signal,
       );
     if (usage) run.usage = usage;
     if (usageDetails) run.usageDetails = usageDetails;
