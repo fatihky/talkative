@@ -232,6 +232,19 @@ export const providersApi = {
     ),
 };
 
+/** the connection and display name behind a namespaced `${connectionId}:${remoteId}` model id */
+export const modelOrigin = (
+  id: string,
+  connections: Pick<ProviderConnection, 'id' | 'name'>[],
+  models: Pick<Model, 'id' | 'shortName'>[] = [],
+): { provider: string; model: string } => {
+  const [, conn, remoteId] = /^(\d+):(.+)$/.exec(id) ?? [];
+  return {
+    provider: connections.find((c) => String(c.id) === conn)?.name ?? '',
+    model: models.find((m) => m.id === id)?.shortName ?? remoteId ?? id,
+  };
+};
+
 export type ModelOverridesResponse = {
   /* the catalog with the caller's overrides applied, custom models included */
   items: Model[];

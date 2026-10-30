@@ -4,10 +4,11 @@
  * time), a bubble around the body, and a hover-revealed action row.
  *
  * Business logic:
- * - the meta row shows "You" or the replying model (internal provider
- *   prefix stripped), a status suffix — interrupted means the server
- *   restarted mid-reply — plus the time of day with a full timestamp
- *   tooltip.
+ * - the meta row shows "You" or, for a reply, the provider connection's
+ *   name above the model's display name (the connection is matched from
+ *   the id's prefix, the name from the catalog, remote id as fallback),
+ *   a status suffix — interrupted means the server restarted mid-reply —
+ *   plus the time of day with a full timestamp tooltip.
  * - user turns are editable unless in flight; saving sends the edited
  *   copy as a new sibling branch, preserving the original.
  * - assistant replies with a parent can be regenerated as a sibling
@@ -28,11 +29,14 @@
 'use client';
 
 import { useState } from 'react';
+import { modelOrigin } from '../../lib/api';
 import { $fmt, fullTimestamp, timeOfDay } from '../../lib/format';
 import { I } from '../../lib/icons';
 import { removalSet } from '../../lib/message-tree';
 import { Tip } from '../../lib/popover';
 import { actions, type Msg, useThreadsStore } from '../../stores';
+import { useModelsStore } from '../../stores/models';
+import { useProvidersStore } from '../../stores/providers';
 import { BranchNav } from './branch-nav';
 import { CopyButton } from './copy-button';
 import { EditBox } from './edit-box';
@@ -89,6 +93,11 @@ export function MessageBubble({
 }) {
   const isUser = m.role === 'user';
   const [editing, setEditing] = useState(false);
+  const providers = useProvidersStore((s) => s.items);
+  const models = useModelsStore((s) => s.items);
+  /* the connection name and the model's display name; the id alone carries only a number */
+  const origin =
+    isUser || !m.modelId ? null : modelOrigin(m.modelId, providers, models);
   const canEdit = isUser && m.status !== 'sending' && m.status !== 'queued';
   /* a reply still generating has nothing to redo yet */
   const canRegen = !isUser && m.parentId !== null && m.status !== 'streaming';
@@ -108,7 +117,10 @@ export function MessageBubble({
     actions.deleteMessage(chatId, m.id);
   };
 
-  const modelLabel = !isUser && m.modelId ? m.modelId.replace(/^\d+:/, '') : '';
+  const modelLabel = isUser || !m.modelId ? '' : m.modelId.replace(/^\d+:/, '');
+
+  /* the remote id as-is while the catalog hasn't loaded (boot seeds it from cache) */
+  const modelName = origin ? origin.model : modelLabel || 'Assistant';
 
   return (
     <article
@@ -122,7 +134,23 @@ export function MessageBubble({
 
         <div className="msg-body">
           <div className="msg-meta" data-no-find>
-            <span>{isUser ? 'You' : modelLabel || 'Assistant'}</span>
+            <span className="msg-meta-who">
+              {isUser ? (
+                'You'
+              ) : origin?.provider ? (
+                <>
+                  <span
+                    className="msg-meta-provider"
+                    title={`Provider: ${origin.provider}`}
+                  >
+                    {origin.provider}
+                  </span>
+                  <span title={`Model: ${modelName}`}>{modelName}</span>
+                </>
+              ) : (
+                modelName
+              )}
+            </span>
             {m.createdAt && (
               <Tip label={fullTimestamp(m.createdAt)} side="bottom">
                 <span className="num cursor-default">

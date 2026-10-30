@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Show the provider connection's name above the model name in each assistant message header, so replies to a model served by several connections stay distinguishable.
 - OpenTelemetry: `instrumentation.mjs` is preloaded with `node --import` by `pnpm dev`, `pnpm start`, the packaged `talkative` CLI and the Docker image, and reports a service name (new `OTEL_SERVICE_NAME`, default `talkative`). Configure the exporter with the standard `OTEL_*` variables.
 
 ### Changed

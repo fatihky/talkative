@@ -566,6 +566,24 @@ select:focus-visible {
 .private-msg:focus-within .msg-actions {
   opacity: 1;
 }
+/* the provider stacks above the model, so a long pair wraps instead of squeezing the time */
+.msg-meta-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 36ch;
+  line-height: 1.25;
+}
+.msg-meta-who > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-meta-provider {
+  color: var(--text-2);
+  font-weight: 500;
+}
 /* touch devices have no hover; keep actions visible there */
 @media (pointer: coarse) {
   .msg-actions {
