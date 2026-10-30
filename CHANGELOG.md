@@ -25,6 +25,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Keep every provider chip on `/settings/providers` while one is selected, so you can switch providers directly, and offer every connection to Add model while a filter is on.
 - List hidden custom models on `/settings/providers` so they can be unhidden.
 - Stop the page's slow first catalog refresh on `/settings/providers` from overwriting a newer model list.
+- Stop saving a capability override from writing back the catalog values the form was prefilled with: only ticked supports are sent, and an untouched thinking list is no longer saved as "takes no effort", so saving one field no longer wipes the provider's thinking levels and disables the composer's effort picker.
 
 ## [0.2.2] - 2026-10-29
 

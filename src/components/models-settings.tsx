@@ -44,7 +44,7 @@ import { ctxFmt, humanBytes } from '../lib/format';
 import { I } from '../lib/icons';
 import { modelSearchText } from '../lib/models';
 import type { ModelOverrideBody } from '../lib/api';
-import type { Model, ModelKind, ThinkingLevel } from '../types';
+import type { Model, ModelCapabilities, ModelKind, ThinkingLevel } from '../types';
 import { actions, useModelOverridesStore } from '../stores';
 import { errorText } from '../stores/models';
 
@@ -521,6 +521,14 @@ function OverrideForm({
       return;
     }
     const thinking = f.levels.some((l) => l !== 'off');
+    /* the form prefills every field from the catalog row, so a box left
+       unticked says nothing and sending it would overwrite what the provider
+       reports. Only a capability the user turned on is sent; turning one off
+       means editing a provider that claimed it, which the server can't tell
+       apart without a per-field baseline. thinking rides on its levels. */
+    const caps: Partial<ModelCapabilities> = Object.fromEntries(
+      CAPS.filter((k) => f.caps[k]).map((k) => [k, true]),
+    );
     const body: ModelOverrideBody = {
       hidden: false,
       ...(f.custom
@@ -532,8 +540,10 @@ function OverrideForm({
             kind: f.kind,
           }
         : {}),
-      thinkingLevels: f.levels,
-      ...(thinking ? { capabilities: { ...f.caps, thinking: true } } : {}),
+      /* [] is a real value ("takes no effort"), so an untouched,
+         unreported list stays out of the body rather than claiming that */
+      ...(f.levels.length ? { thinkingLevels: f.levels } : {}),
+      ...(thinking ? { capabilities: { ...caps, thinking: true } } : {}),
       ...(f.shortName.trim() ? { shortName: f.shortName.trim() } : {}),
       ...(num(f.contextWindow) !== undefined
         ? { contextWindow: num(f.contextWindow) }
