@@ -23,6 +23,9 @@
  * - the model sees numbered title/url/snippet blocks ('no results' when
  *   empty); the untouched upstream response is returned as `raw` so the ui
  *   can show it exactly as it came.
+ * - scrape.do hands back google's own redirects (/goto?url=…) in `link` for
+ *   results whose destination the page doesn't carry; it's asked for
+ *   resolveGoto=true and any redirect left over is unwrapped locally.
  * - one of the two throttled tools: calls run under the concurrency
  *   semaphore, per user for an own key or per provider for a shared env
  *   key, when the user has the preference set.
@@ -68,6 +71,31 @@ const call = async (
   /* kept as text so the ui can show the response exactly as it came */
   const raw = await res.text();
   return { json: JSON.parse(raw) as unknown, raw };
+};
+
+/*
+ * google serves result links as its own redirect (/url?q=…, /goto?url=…)
+ * when the page doesn't carry the destination — ai overview references,
+ * image-led cards, dmca complaint links. scrape.do unwraps those it can when
+ * asked with resolveGoto, so this is the backstop for the rest: pull the
+ * destination out of the q/url param and leave anything unparseable alone.
+ */
+const unwrapGoogleRedirect = (href: string): string => {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return href;
+  }
+  if (url.hostname !== 'google.com' && !url.hostname.endsWith('.google.com')) {
+    return href;
+  }
+  if (!url.pathname.startsWith('/url') && !url.pathname.startsWith('/goto')) {
+    return href;
+  }
+  const target = url.searchParams.get('q') ?? url.searchParams.get('url');
+  /* a related-search link carries a real google url in q, not a redirect */
+  return target?.startsWith('http') ? target : href;
 };
 
 /* ids match the provider-key ids in the tool-credentials registry */
@@ -221,8 +249,11 @@ const BACKENDS: Record<string, Backend> = {
   /* same key as the http_fetch backend */
   'scrape.do': {
     async search(provider, q, n, key, signal) {
-      /* no result count param; a page holds ~10 organic results, so slice */
-      const qs = new URLSearchParams({ token: key, q });
+      /* no result count param; a page holds ~10 organic results, so slice.
+         resolveGoto swaps the google.com/goto redirects google leaves in
+         `link` (ai overview references, image-led cards) for the destination
+         url at no extra credit — it only costs response time */
+      const qs = new URLSearchParams({ token: key, q, resolveGoto: 'true' });
       const { json, raw } = await call(
         provider,
         `https://api.scrape.do/plugin/google/search?${qs}`,
@@ -238,7 +269,7 @@ const BACKENDS: Record<string, Backend> = {
         raw,
         hits: (data.organic_results ?? []).slice(0, n).map((r) => ({
           title: r.title ?? '',
-          url: r.link ?? '',
+          url: unwrapGoogleRedirect(r.link ?? ''),
           snippet: r.snippet ?? '',
         })),
       };

@@ -21,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Unwrap Google's `google.com/goto` and `/url?q=` redirect links in scrape.do search results: the backend now asks for `resolveGoto=true` and any redirect left in `link` is resolved locally, so the model and the tool card see the publisher URL.
 - Give every outside link `rel="noopener noreferrer"`, including markdown and artifact links, which previously only had `noreferrer`, and the search results in tool calls, which had neither `noopener`.
 - Stop sending `reasoning_effort` to models whose reasoning capability is unknown — `GET /v1/models` exposes none for openai and ollama, so every request carried a guessed `medium` that models without the parameter reject with a 400; a model with `thinkingLevels: []` still gets no effort on any compatibility.
 - Skip System One/decision models when background jobs like chat classification pick a model, so an ollama connection whose first model is a decision model no longer fails with `"<model>" does not support chat`.
