@@ -22,6 +22,7 @@ import type { ApiContext } from 'waku/router';
 import { getCatalog } from '../../../../server/catalog';
 import {
   applyOverrides,
+  isRedundantCapabilities,
   listOverrides,
   parseInput,
   removeOverride,
@@ -64,6 +65,20 @@ export const PUT = (req: Request, { params }: Ctx) =>
     const input = parseInput(params.id, await req.json());
     const cid = input.base.connectionId;
     if (cid !== null && !(await findConnection(userId, cid))) return notFound();
+    /* capabilities are merged over the provider's flags, so a block that only
+       restates them would pin today's catalog onto the row and hide what the
+       provider starts reporting later; it's dropped unless it says something */
+    if (input.base.connectionId === null) {
+      const conns = await listConnections(userId);
+      const items = (
+        await Promise.all(conns.map((c) => getCatalog(c)))
+      ).flatMap((e) => e.items);
+      const catalog = items.find((m) => m.id === params.id);
+      if (isRedundantCapabilities(input.override.capabilities, catalog?.capabilities)) {
+        const { capabilities: _caps, ...rest } = input.override;
+        input.override = rest;
+      }
+    }
     await saveOverride(userId, params.id, input);
     return Response.json(overrideDto(input.override));
   });

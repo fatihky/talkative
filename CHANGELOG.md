@@ -11,16 +11,21 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Render GitHub `github_repo_search`, `github_issue_search`, `github_pr_search` and `github_discussion_search` results in the thread as clickable title/URL/detail links, like `web_search`, with the raw API response behind the "inspect raw results" disclosure.
+
 - Show the provider connection's name above the model name in each assistant message header, so replies to a model served by several connections stay distinguishable.
 - Add a per-user Enter-key preference for the composer: Enter can send the message or start a new line (Shift+Enter always breaks, ⌘/Ctrl+Enter always sends). Set it on `/settings/appearance` or by clicking the send hint in the composer footer; it is stored server-side and follows the account across devices.
 - OpenTelemetry: `instrumentation.mjs` is preloaded with `node --import` by `pnpm dev`, `pnpm start`, the packaged `talkative` CLI and the Docker image, and reports a service name (new `OTEL_SERVICE_NAME`, default `talkative`). Configure the exporter with the standard `OTEL_*` variables.
 
 ### Changed
 
+- Show a "Model override saved" / "Model override reset" toast when an override is saved from the dialog, hidden, unhidden or reset on `/settings/providers`.
+- Show a "Tool settings saved" toast once a tool-preference edit is persisted, so a grant, provider, result-count or concurrency change no longer saves silently.
 - Filter the capability-overrides list on `/settings/providers` by provider in the browser, over the list already loaded, instead of refetching it with `?provider=<name>`; hidden models now carry their provider name so they filter too.
 
 ### Fixed
 
+- Let the model-override dialog turn a capability off, not just on: the form now sends only the `Supports` checkboxes that differ from the catalog row (the old body only ever sent `true` values, so unticking a tool-capable model did nothing), and the PUT drops a block that merely restates the provider's flags so it can't pin today's catalog.
 - Unwrap Google's `google.com/goto` and `/url?q=` redirect links in scrape.do search results: the backend now asks for `resolveGoto=true` and any redirect left in `link` is resolved locally, so the model and the tool card see the publisher URL.
 - Give every outside link `rel="noopener noreferrer"`, including markdown and artifact links, which previously only had `noreferrer`, and the search results in tool calls, which had neither `noopener`.
 - Stop sending `reasoning_effort` to models whose reasoning capability is unknown — `GET /v1/models` exposes none for openai and ollama, so every request carried a guessed `medium` that models without the parameter reject with a 400; a model with `thinkingLevels: []` still gets no effort on any compatibility.

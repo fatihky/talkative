@@ -80,6 +80,16 @@ export type MergedCatalog = { items: Model[]; flags: Map<string, ModelFlags> };
 export const isEmptyOverride = (o: ModelOverride): boolean =>
   Object.values(o).every((v) => v === undefined || v === null);
 
+/* a capability block that only says what the provider already reports
+   carries no override; a custom model's blank baseline is all-false, so
+   sending it back is still "nothing set" */
+export const isRedundantCapabilities = (
+  caps: Partial<ModelCapabilities> | undefined,
+  base: Partial<ModelCapabilities> | undefined,
+): boolean =>
+  caps !== undefined &&
+  Object.entries(caps).every(([k, v]) => (base?.[k as keyof ModelCapabilities] ?? false) === v);
+
 /* the client's view of a row: what settings shows and prefills from */
 export const toDto = (o: ModelOverride): ModelOverrideDto => ({
   ...(o.connectionId !== undefined ? { custom: true } : {}),

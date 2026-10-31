@@ -30,6 +30,7 @@ import {
 } from '../lib/api';
 import type { Model } from '../types';
 import { applyModels, errorText } from './models';
+import { uiActions } from './ui';
 
 export type OverrideConnection = { id: number; name: string };
 
@@ -101,6 +102,9 @@ export const modelOverridesActions = {
     } finally {
       set({ saving: false });
     }
+    /* a reset body drops the row server-side, so the two say different things */
+    const cleared = Object.keys(override).length === 0;
+    uiActions.toast(cleared ? 'Model override reset' : 'Model override saved');
   },
 
   async reset(id: string) {
@@ -111,5 +115,6 @@ export const modelOverridesActions = {
     } finally {
       set({ saving: false });
     }
+    uiActions.toast('Model override reset');
   },
 };

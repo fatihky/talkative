@@ -320,11 +320,14 @@ const saveToolPrefs = (prefs: ToolPreferences) => {
   if (toolPrefsTimer) clearTimeout(toolPrefsTimer);
   toolPrefsTimer = setTimeout(() => {
     toolPrefsTimer = null;
-    toolPreferencesApi.put(prefs).catch((err) => {
-      const msg = err instanceof Error ? err.message : 'unknown error';
-      console.error('[tool-prefs] save failed:', msg);
-      uiActions.toast(`Could not save tool settings: ${msg}`, 'error');
-    });
+    toolPreferencesApi
+      .put(prefs)
+      .then(() => uiActions.toast('Tool settings saved'))
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'unknown error';
+        console.error('[tool-prefs] save failed:', msg);
+        uiActions.toast(`Could not save tool settings: ${msg}`, 'error');
+      });
   }, 400);
 };
 

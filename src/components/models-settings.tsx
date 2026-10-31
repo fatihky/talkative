@@ -521,13 +521,18 @@ function OverrideForm({
       return;
     }
     const thinking = f.levels.some((l) => l !== 'off');
-    /* the form prefills every field from the catalog row, so a box left
-       unticked says nothing and sending it would overwrite what the provider
-       reports. Only a capability the user turned on is sent; turning one off
-       means editing a provider that claimed it, which the server can't tell
-       apart without a per-field baseline. thinking rides on its levels. */
+    /* Only a capability that differs from what the row already reports is
+       sent: a box left alone says nothing, so a prefilled form never
+       rewrites the catalog. The server merges this over the provider's
+       flags, so `false` takes one away and the reset path is DELETE. */
+    const base = (initial?.overrides?.capabilities ?? initial?.capabilities) as
+      | Partial<ModelCapabilities>
+      | undefined;
     const caps: Partial<ModelCapabilities> = Object.fromEntries(
-      CAPS.filter((k) => f.caps[k]).map((k) => [k, true]),
+      CAPS.filter((k) => f.caps[k] !== (base?.[k] ?? false)).map((k) => [
+        k,
+        f.caps[k],
+      ]),
     );
     const body: ModelOverrideBody = {
       hidden: false,
@@ -543,12 +548,18 @@ function OverrideForm({
       /* [] is a real value ("takes no effort"), so an untouched,
          unreported list stays out of the body rather than claiming that */
       ...(f.levels.length ? { thinkingLevels: f.levels } : {}),
-      ...(thinking ? { capabilities: { ...caps, thinking: true } } : {}),
+      ...(Object.keys(caps).length || thinking
+        ? { capabilities: { ...caps, ...(thinking ? { thinking: true } : {}) } }
+        : {}),
       ...(f.shortName.trim() ? { shortName: f.shortName.trim() } : {}),
-      ...(num(f.contextWindow) !== undefined
+      /* a count is sent only when it differs from the catalog row, so the
+         prefilled numbers don't turn into overrides of their own */
+      ...(num(f.contextWindow) !== undefined &&
+      num(f.contextWindow) !== initial?.context.window
         ? { contextWindow: num(f.contextWindow) }
         : {}),
-      ...(num(f.maxOutput) !== undefined
+      ...(num(f.maxOutput) !== undefined &&
+      num(f.maxOutput) !== initial?.context.maxOutput
         ? { maxOutput: num(f.maxOutput) }
         : {}),
       ...(f.dflt ? { defaultThinkingLevel: f.dflt } : {}),
