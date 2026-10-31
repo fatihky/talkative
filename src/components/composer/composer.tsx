@@ -14,8 +14,9 @@
  *   navigates before the server answers; a thread sends via sendReply,
  *   which queues the turn while a reply is streaming and drains the
  *   queue in order once the run settles.
- * - Enter sends per the enterToSend pref, ⌘/Ctrl+Enter always sends,
- *   Shift+Enter inserts a newline, Escape blurs.
+ * - Enter sends per the enterToSend pref (an account setting, see
+ *   stores/prefs), ⌘/Ctrl+Enter always sends, Shift+Enter inserts a
+ *   newline, Escape blurs.
  * - pasted or picked files upload through attachFiles into the tray; a
  *   storage failure keeps the metadata so the composer isn't blocked.
  * - the textarea auto-grows to 40% of the viewport, then scrolls

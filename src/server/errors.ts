@@ -3,8 +3,9 @@
  *
  * Business logic:
  * - ValidationError is thrown by input parsers across the server modules
- *   (users, settings, tool-credentials, tool-preferences, chats, folders,
- *   artifacts, …) and the API routes to signal bad request data.
+ *   (users, settings, user-prefs, tool-credentials, tool-preferences,
+ *   chats, folders, artifacts, …) and the API routes to signal bad request
+ *   data.
  * - The `handle` wrapper in providers.ts is the single place that turns it
  *   into a 400 JSON response, separating "the client sent nonsense" from
  *   an unexpected 500; the message becomes the response body verbatim.

@@ -5,8 +5,8 @@
  * - saving doesn't mutate the turn: it sends the edited copy as a
  *   sibling branch, preserving the original and its replies.
  * - empty or whitespace-only text can't be saved.
- * - Enter follows the enterToSend pref, ⌘/Ctrl+Enter always saves,
- *   Escape cancels.
+ * - Enter follows the enterToSend pref (an account setting), ⌘/Ctrl+Enter
+ *   always saves, Escape cancels.
  * - opens focused with the caret at the end of the text; the box fits
  *   2–12 rows of content.
  */

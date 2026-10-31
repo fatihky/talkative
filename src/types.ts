@@ -601,10 +601,24 @@ export type Toast = {
   level: 'info' | 'warn' | 'error';
 };
 
+/**
+ * what the browser remembers between visits (stores/prefs). `enterToSend`
+ * is only the copy in use right now — the account-level value lives in
+ * UserPrefs and is loaded at boot.
+ */
 export type Prefs = {
   theme: 'light' | 'dark' | 'system';
   enterToSend: boolean;
   spellcheck: boolean;
+};
+
+/**
+ * account-level preferences (GET/PATCH /api/user-preferences). Every key is
+ * optional: an absent key was never saved, so the client keeps what it has.
+ */
+export type UserPrefs = {
+  /* bare Enter sends the composer's message (true) or inserts a newline (false) */
+  enterToSend?: boolean | undefined;
 };
 
 /**

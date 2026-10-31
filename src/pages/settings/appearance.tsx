@@ -1,5 +1,5 @@
 /* AppearancePage (/settings/appearance) — auth-gated theme and composer
-   preferences, stored per user. */
+   preferences: theme and spellcheck per browser, the Enter key per user. */
 
 import { AppearanceSettings } from '../../components/appearance-settings';
 import { AuthGuard } from '../../components/auth-guard';

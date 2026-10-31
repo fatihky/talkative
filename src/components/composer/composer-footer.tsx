@@ -7,7 +7,9 @@
  *   while the draft is empty.
  * - the attach button only appears on wide (≥768px) layouts.
  * - the send-key hint follows the enterToSend pref (Enter vs
- *   ⌘/Ctrl+Enter) and is replaced by "Queued on reconnect" offline.
+ *   ⌘/Ctrl+Enter) and is replaced by "Queued on reconnect" offline. The
+ *   hint is a button: clicking it flips the account pref, so the
+ *   composer's Enter behaviour can be switched without a trip to settings.
  * - streaming/sending/blockedReason/queueCount pass through to the
  *   SendButton, so sending during a live run queues the turn instead
  *   of being rejected.
@@ -116,19 +118,34 @@ export function ComposerFooter({
         <ModelPicker /> <ParamsButton />
         <TimestampToggle />
         {wide && (
-          <span className="flex items-center gap-1.5 text-[11px] muted">
-            {conn === 'offline' ? (
-              'Queued on reconnect'
-            ) : enterToSend ? (
-              <>
-                Enter to send <Kbd>⏎</Kbd>
-              </>
-            ) : (
-              <>
-                {mod}+Enter to send <Kbd>{mod}⏎</Kbd>
-              </>
-            )}
-          </span>
+          <Tip
+            label={
+              enterToSend
+                ? 'Enter sends the message.\nClick to make Enter start a new line.'
+                : 'Enter starts a new line; the send shortcut still sends.\nClick to make Enter send.'
+            }
+            side="top"
+          >
+            <button
+              type="button"
+              aria-pressed={!enterToSend}
+              aria-label="Toggle Enter to send"
+              onClick={() => actions.setEnterToSend(!enterToSend)}
+              className="flex items-center gap-1.5 rounded-[4px] px-1 text-[11px] muted hover:bg-[var(--sunken)] hover:text-[var(--text-2)]"
+            >
+              {conn === 'offline' ? (
+                'Queued on reconnect'
+              ) : enterToSend ? (
+                <>
+                  Enter to send <Kbd>⏎</Kbd>
+                </>
+              ) : (
+                <>
+                  {mod}+Enter to send <Kbd>{mod}⏎</Kbd>
+                </>
+              )}
+            </button>
+          </Tip>
         )}
         <SendButton
           streaming={streaming}

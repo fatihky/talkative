@@ -5,9 +5,9 @@
  * - Client-only (stores and components); no server code imports it. The
  *   resource groups (providersApi, chatsApi, foldersApi, notesApi,
  *   decisionsApi, artifactsApi, memoriesApi, settingsApi,
- *   toolPreferencesApi, toolCredentialsApi, usersApi, modelOverridesApi)
- *   are thin verbs over `request`, while the fetch* wrappers add the
- *   dev-flag behaviour the boot sequence needs.
+ *   toolPreferencesApi, toolCredentialsApi, userPreferencesApi, usersApi,
+ *   modelOverridesApi) are thin verbs over `request`, while the fetch*
+ *   wrappers add the dev-flag behaviour the boot sequence needs.
  * - `request` is the single error contract: JSON in and out, a non-2xx
  *   becomes ApiError(status, body.error), a failed fetch becomes
  *   ApiError(0, …) so callers can read status 0 as "offline", and 204
@@ -67,6 +67,7 @@ import type {
   ToolProviderKey,
   ToolStatus,
   UrlCitation,
+  UserPrefs,
 } from '../types';
 import type { ArtifactSnapshot } from './artifacts';
 import { MODELS } from './mock';
@@ -460,6 +461,21 @@ export const toolPreferencesApi = {
       body: JSON.stringify(prefs),
     }),
 };
+
+export const userPreferencesApi = {
+  get: () => request<UserPrefs>('/api/user-preferences'),
+  patch: (patch: UserPrefs) =>
+    request<UserPrefs>('/api/user-preferences', {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+};
+
+/* applied to the prefs store at boot; an offline simulated boot skips it */
+export async function fetchUserPrefs(dev: DevFlags): Promise<UserPrefs> {
+  if (dev.simulateOffline) throw new ApiError(0, 'offline');
+  return userPreferencesApi.get();
+}
 
 export type SiteSettingsResponse = SiteSettings & {
   isAdmin: boolean;

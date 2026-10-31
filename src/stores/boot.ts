@@ -29,7 +29,9 @@
  *   new-chat default can neither replace what the chat shows nor slip
  *   into the next chat through the persisted home.draft.
  * - server-saved tool preferences override the localStorage copy, and are
- *   skipped entirely while simulating offline.
+ *   skipped entirely while simulating offline; the account-level composer
+ *   prefs (enterToSend) are fetched the same way and keep the cached copy
+ *   if they don't arrive.
  * - boot also wires the online/offline listeners: connection becomes
  *   offline / degraded / connected, and reconnecting with queued sends
  *   flushes them.
@@ -48,6 +50,7 @@ import {
   fetchProviderHealth,
   fetchSuggestions,
   fetchTools,
+  fetchUserPrefs,
   toolPreferencesApi,
 } from '../lib/api';
 import { modKey } from '../lib/format';
@@ -248,6 +251,11 @@ export const bootActions = {
         .get()
         .then(applyToolPreferences)
         .catch(() => {});
+    /* the composer's Enter key is an account pref: the cached value paints
+       first, the saved one lands a moment later */
+    void fetchUserPrefs(dev)
+      .then(prefsActions.applyAccountPrefs)
+      .catch(() => {});
     /* folders only shape the sidebar, so they don't gate the stage */
     void fetchFolders(dev)
       .then((items) => {
