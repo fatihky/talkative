@@ -12,9 +12,10 @@
  *   and a Pill: `RUNNING` (rippling) while in flight, else the handoff's
  *   resolved labels — `DONE · Ns`, `FAILED`, or a bespoke label for
  *   `save_memory` ("SAVED").
- * - expanding reveals the result summary: search tools list the source
- *   count and titles, everything else shows the pretty-printed arguments
- *   and result/raw response.
+ * - expanding reveals the result summary: web and GitHub search tools
+ *   render clickable title/URL/snippet links with the raw response behind
+ *   a disclosure, everything else shows the pretty-printed arguments and
+ *   result/raw response.
  * - a failed call offers retry only while the chat is idle (onRetry is
  *   unset during generation): it confirms via the app modal (rest of the
  *   branch will be re-generated), then reruns the call and continues the
@@ -96,6 +97,110 @@ const parseSearchHits = (raw: string | undefined): Hit[] => {
   }
   return [];
 };
+
+const str = (v: unknown) => (typeof v === 'string' ? v : '');
+
+/*
+ * pull hits out of a GitHub search raw response. REST searches keep their
+ * rows in `items`, while discussion search (GraphQL) nests them under
+ * `data.search.nodes`; titles, links and snippets mirror the digest the
+ * server hands the model.
+ */
+const parseGithubHits = (name: string, raw: string | undefined): Hit[] => {
+  if (!raw) return [];
+  try {
+    const root = JSON.parse(raw) as Record<string, unknown>;
+    const search = (root.data as Record<string, unknown> | undefined)?.search as
+      | Record<string, unknown>
+      | undefined;
+    const rows = (search?.nodes ?? root.items) as unknown[] | undefined;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .map((r) => {
+        if (typeof r !== 'object' || r === null) return null;
+        const o = r as Record<string, unknown>;
+        if (name === 'github_repo_search') {
+          const title = str(o.full_name);
+          const url =
+            str(o.html_url) || (title ? `https://github.com/${title}` : '');
+          if (!title || !url) return null;
+          const meta = [
+            typeof o.stargazers_count === 'number' &&
+              `★ ${o.stargazers_count}`,
+            str(o.language),
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          const desc = str(o.description).slice(0, 160);
+          return {
+            title,
+            url,
+            snippet: [meta, desc].filter(Boolean).join(' — '),
+          };
+        }
+        if (name === 'github_discussion_search') {
+          const title = str(o.title);
+          const url = str(o.url);
+          if (!title || !url) return null;
+          const repo = str(
+            (o.repository as Record<string, unknown> | undefined)?.nameWithOwner,
+          );
+          const author =
+            str((o.author as Record<string, unknown> | undefined)?.login) ||
+            'unknown';
+          const category = str(
+            (o.category as Record<string, unknown> | undefined)?.name,
+          );
+          const upvotes = typeof o.upvoteCount === 'number' ? o.upvoteCount : 0;
+          const meta = [category && `📁 ${category}`, `▲ ${upvotes}`]
+            .filter(Boolean)
+            .join(' · ');
+          return {
+            title,
+            url,
+            snippet: `${repo ? `${repo} · ` : ''}by ${author} · ${meta}`,
+          };
+        }
+        /* issue and pull request search share the /search/issues shape */
+        const title = str(o.title);
+        const url = str(o.html_url);
+        if (!title || !url) return null;
+        const author =
+          str((o.user as Record<string, unknown> | undefined)?.login) ||
+          'unknown';
+        if (name === 'github_pr_search') {
+          const merged = (
+            o.pull_request as Record<string, unknown> | undefined
+          )?.merged_at;
+          const status = merged ? 'merged' : str(o.state);
+          return { title, url, snippet: `by ${author} · ${status}` };
+        }
+        const labels = ((o.labels as Record<string, unknown>[]) ?? [])
+          .map((l) => l.name)
+          .join(', ');
+        const meta = [str(o.state), labels && `labels: ${labels}`]
+          .filter(Boolean)
+          .join(' · ');
+        return { title, url, snippet: `by ${author} · ${meta}` };
+      })
+      .filter((h): h is Hit => h !== null);
+  } catch {
+    /* fall through to the plain result text */
+  }
+  return [];
+};
+
+/* tools whose results render as a hit list rather than raw text */
+const SEARCH_TOOLS = new Set([
+  'web_search',
+  'github_repo_search',
+  'github_issue_search',
+  'github_pr_search',
+  'github_discussion_search',
+]);
+
+const parseHits = (name: string, raw: string | undefined): Hit[] =>
+  name === 'web_search' ? parseSearchHits(raw) : parseGithubHits(name, raw);
 
 /* the glyph shown in the card head, per tool kind */
 const TOOL_ICON: Record<string, string> = {
@@ -197,8 +302,9 @@ export function ToolCallView({
 
       {open && (
         <div className="tool-card-body">
-          {c.name === 'web_search' ? (
+          {SEARCH_TOOLS.has(c.name) ? (
             <SearchResults
+              name={c.name}
               raw={c.raw}
               result={c.result}
               err={c.status === 'error'}
@@ -237,15 +343,17 @@ export function ToolCallView({
 
 /* clickable search results with the untouched response behind a disclosure */
 function SearchResults({
+  name,
   raw,
   result,
   err,
 }: {
+  name: string;
   raw: string | undefined;
   result: string | undefined;
   err: boolean;
 }) {
-  const hits = parseSearchHits(raw);
+  const hits = parseHits(name, raw);
   const showRaw = raw !== undefined || err;
   return (
     <>

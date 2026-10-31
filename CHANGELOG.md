@@ -12,7 +12,6 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Lead the model list on `/settings/providers` with the last 5 models used across chats as a "Recent" group of the same editable rows; opening one clears the search and provider filters.
-
 - Render GitHub `github_repo_search`, `github_issue_search`, `github_pr_search` and `github_discussion_search` results in the thread as clickable title/URL/detail links, like `web_search`, with the raw API response behind the "inspect raw results" disclosure.
 
 - Show the provider connection's name above the model name in each assistant message header, so replies to a model served by several connections stay distinguishable.
