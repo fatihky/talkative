@@ -22,7 +22,8 @@
  * - suggestions belong to the home screen but live here: boot refills them
  *   after the chats land, and an empty list collapses the chips.
  * - useRecentModelIds derives the three models carrying the most messages
- *   across all chats, which the home screen offers as a "recent" row.
+ *   across all chats, which the home screen offers as a "recent" row;
+ *   useRecentModelIds(5) widens it, as the providers page's model list does.
  * - setChatSystemPrompt resolves true once the prompt is stored and false
  *   when the write failed, so callers that show a saving state can wait on it.
  */
@@ -73,18 +74,24 @@ export const setChatItems = (items: ChatSummary[]) => {
 export const setClassifying = (chatId: string, on: boolean) =>
   set({ classifying: { ...get().classifying, [chatId]: on } });
 
-export const recentModelIds = (items: ChatSummary[]): string[] => {
+/* `limit` ids at most, most messages first; a chat with no model yet never counts */
+export const recentModelIds = (
+  items: ChatSummary[],
+  limit = 3,
+): string[] => {
   const count = new Map<string, number>();
-  for (const c of items)
+  for (const c of items) {
+    if (!c.modelId) continue;
     count.set(c.modelId, (count.get(c.modelId) ?? 0) + c.messageCount);
+  }
   return [...count.entries()]
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
+    .slice(0, limit)
     .map(([id]) => id);
 };
 
-export const useRecentModelIds = () =>
-  useChatsStore(useShallow((s) => recentModelIds(s.items)));
+export const useRecentModelIds = (limit = 3) =>
+  useChatsStore(useShallow((s) => recentModelIds(s.items, limit)));
 
 export const chatsActions = {
   setChatFilter(filter: string) {

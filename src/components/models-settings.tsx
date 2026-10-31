@@ -33,8 +33,12 @@
  *   carries the request.
  * - 'stale' marks models served from a cached catalog after the upstream
  *   fetch failed, so a dead provider still lists what it last reported.
- *   An overridden model is badged so an edited row is never mistaken for
+ * - An overridden model is badged so an edited row is never mistaken for
  *   what the provider said.
+ * - The last 5 models used across chats lead the list as a "Recent"
+ *   group of the same rows (narrowed by the provider filter, hidden while
+ *   searching); each row names its provider, and opening one clears both
+ *   filters so the form's row is on screen.
  */
 'use client';
 
@@ -45,7 +49,7 @@ import { I } from '../lib/icons';
 import { modelSearchText } from '../lib/models';
 import type { ModelOverrideBody } from '../lib/api';
 import type { Model, ModelCapabilities, ModelKind, ThinkingLevel } from '../types';
-import { actions, useModelOverridesStore } from '../stores';
+import { actions, useModelOverridesStore, useRecentModelIds } from '../stores';
 import { errorText } from '../stores/models';
 
 const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
@@ -119,6 +123,8 @@ export function ModelsSettings({
       terms.every((t) => h.id.toLowerCase().includes(t)),
   );
 
+  const recentIds = useRecentModelIds(5);
+
   /* one group per provider in first-seen order; rows keep the alphabetical
      order applied on load */
   const byProvider = new Map<string, Model[]>();
@@ -133,6 +139,21 @@ export function ModelsSettings({
   }));
 
   const setError = (e: unknown) => setActionError(errorText(e));
+
+  /* the models chats were last carried by, newest work first; ones the catalog
+     no longer lists (or that the provider filter excludes) drop out */
+  const recentModels = recentIds.flatMap((id) => {
+    const m = models.find((x) => x.id === id);
+    return m && (!active || m.provider === active) ? [m] : [];
+  });
+  /* focusing the recent row's model: both filters go so its row is on screen */
+  const editRecent = (id: string) => {
+    setActionError(null);
+    setModelQuery('');
+    setProviderFilter('');
+    onFocusProvider?.(null);
+    setEditing(id);
+  };
 
   const hide = (m: Model) => {
     setActionError(null);
@@ -172,7 +193,7 @@ export function ModelsSettings({
         )}
         <button
           type="button"
-          disabled={connections.length === 0 || editing === 'new'}
+          disabled={connections.length === 0}
           title={
             connections.length === 0
               ? 'Add a provider first'
@@ -219,6 +240,32 @@ export function ModelsSettings({
               {p}
             </button>
           ))}
+        </div>
+      )}
+
+      {recentModels.length > 0 && !terms.length && (
+        <div className="mb-2">
+          <div className="sec-label mb-1 flex items-center gap-1.5 pt-1">
+            <I n="clock" s={12} />
+            <span>Recent</span>
+            <span className="num text-[11px] muted">
+              {recentModels.length}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            {recentModels.map((m) => (
+              <ModelRow
+                key={m.id}
+                m={m}
+                showProvider
+                editing={editing === m.id}
+                onEdit={() => editRecent(m.id)}
+                onHide={() => hide(m)}
+                onReset={() => reset(m.id)}
+                onDone={() => setEditing(null)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -310,6 +357,7 @@ export function ModelsSettings({
 function ModelRow({
   m,
   editing,
+  showProvider = false,
   onEdit,
   onHide,
   onReset,
@@ -317,6 +365,8 @@ function ModelRow({
 }: {
   m: Model;
   editing: boolean;
+  /* the row sits outside its provider group (the recent list), so it names it */
+  showProvider?: boolean;
   onEdit: () => void;
   onHide: () => void;
   onReset: () => void;
@@ -418,6 +468,11 @@ function ModelRow({
             {connections.find((c) => c.id === o.connectionId)?.name ??
               `connection ${o.connectionId}`}
             {o.baseUrl ? ` · ${o.baseUrl}` : ''}
+          </span>
+        )}
+        {showProvider && (
+          <span className="num w-full truncate text-[11px] muted">
+            {m.provider}
           </span>
         )}
       </div>
