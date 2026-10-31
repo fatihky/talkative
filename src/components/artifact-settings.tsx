@@ -152,6 +152,7 @@ export function ArtifactSettings() {
               <Link
                 to={`/a/${a.id}`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="ctl h-6 rounded-[5px] px-1.5 text-[11px]"
               >
                 View

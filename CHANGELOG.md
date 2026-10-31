@@ -21,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Give every outside link `rel="noopener noreferrer"`, including markdown and artifact links, which previously only had `noreferrer`, and the search results in tool calls, which had neither `noopener`.
 - Stop sending `reasoning_effort` to models whose reasoning capability is unknown — `GET /v1/models` exposes none for openai and ollama, so every request carried a guessed `medium` that models without the parameter reject with a 400; a model with `thinkingLevels: []` still gets no effort on any compatibility.
 - Skip System One/decision models when background jobs like chat classification pick a model, so an ollama connection whose first model is a decision model no longer fails with `"<model>" does not support chat`.
 - Show each provider's models on `/settings/providers` as one group instead of splitting them into many small groups that followed the alphabetical order across providers.

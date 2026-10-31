@@ -261,7 +261,7 @@ function SearchResults({
               <a
                 href={h.url}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="line-clamp-1 font-medium text-[var(--accent)] hover:underline"
               >
                 {h.title}
