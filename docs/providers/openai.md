@@ -31,6 +31,11 @@ responses) is model-dependent: values can include `none`, `minimal`, `low`,
 accepted everywhere — e.g. `gpt-6-astra` and `gpt-6.1-sol` return a 400 for it,
 so the request is rejected outright rather than mapped to a neighbour.
 
+`GET /v1/models` reports no capability info, so a model's supported efforts are
+unknown to the app and no `reasoning_effort` is sent at all. Set the model's
+thinking levels as a capability override (`thinkingLevels: []` for "takes
+none") to have an effort sent — a value the model doesn't take is a 400.
+
 ## Decisions
 
 `POST /v1/decisions` — evaluates one shared `input` against a list of

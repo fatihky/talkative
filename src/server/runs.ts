@@ -1005,13 +1005,13 @@ export type ReasoningRequest = {
 
 /**
  * Decides which reasoning effort a request should carry. A level the model
- * lists is sent as-is, as is one the catalog can't vouch for; past the model's
- * top level it is clamped and reported. A model that reports no selectable
- * effort (`thinking: unknown`, or a mandatory/default-only reasoner) is sent
- * none at all — bifrost forwards the value verbatim, so a level its upstream
- * doesn't list comes back as a 400 rather than a clamp (other compatibilities
- * would only make the level up). A model with no catalog row keeps the level
- * unchanged: absent levels mean unknown, not none.
+ * lists is sent as-is; past the model's top level it is clamped and reported.
+ * `thinking: unknown` — no catalog row, or a provider whose list exposes no
+ * capability info (openai, ollama) — sends nothing at all: the level would be
+ * a guess, and upstreams reject values they don't take (`reasoning_effort`
+ * on a model without it is a 400 on openai). A model that reports no
+ * selectable effort (`thinkingLevels: []`, e.g. a mandatory/default-only
+ * reasoner) is sent none either, on every compatibility.
  */
 export const reasoningRequest = async (
   userId: string,
@@ -1022,12 +1022,15 @@ export const reasoningRequest = async (
   const effort = level ?? 'medium';
   const levels = (await findCatalogModel(userId, conn, remoteId))
     ?.thinkingLevels;
-  /* a model that reports no selectable level takes none: sending one anyway is
-     what bifrost forwards into a 400, and `thinking: unknown` is not a guess */
-  if (levels && levels.length === 0) return {};
-  if (conn.compatibility !== 'bifrost') return { effort };
-  /* no catalog row at all means the capability is unknown, not that there is none */
-  if (!levels) return { effort };
+  /* unknown capabilities are not a guess: nothing is sent */
+  if (!levels) return {};
+  /* a model that reports no selectable level takes none */
+  if (levels.length === 0) return {};
+  /* only bifrost announces the efforts an upstream takes, so only there can a
+     level be clamped; elsewhere a model that lists some levels gets the asked
+     one through untouched */
+  if (conn.compatibility !== 'bifrost' || levels.includes(effort))
+    return { effort };
   const to = clampEffort(effort, levels);
   return to === effort
     ? { effort }
