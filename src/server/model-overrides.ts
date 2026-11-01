@@ -6,27 +6,30 @@
  * - a catalog is only as good as what the upstream admits: openai's
  *   spec exposes no capabilities, local runtimes report partial ones,
  *   and a model behind a proxy may simply be missing. an override
- *   fixes that per user, so it lives in model_overrides (user_id,
- *   model_id) rather than in the shared redis catalog.
- * - model_id is either a catalog id (`${connectionId}:${remoteId}`, the
- *   same string the composer sends) or, for a custom model, an id that
- *   doesn't parse — runs.ts then reads the custom row's remoteId,
- *   connectionId and baseUrl instead of splitting the id apart.
+ *   fixes that per user, so it lives in model_overrides rather than
+ *   in the shared redis catalog.
+ * - a row is keyed by (connection_id, model_id): the provider
+ *   connection it belongs to and the model id string the provider's
+ *   /models endpoint reports. That pair is exactly what the catalog id
+ *   `${connectionId}:${modelId}` names, so the composer's ids address
+ *   rows directly — including a model the provider never listed, which
+ *   is just a row whose pair no catalog entry matches (runs read its
+ *   baseUrl and send model_id upstream as-is).
  * - every field is optional: only what the row carries is applied, so
  *   an override that sets just the context window leaves the
  *   provider's thinking levels alone. `hidden` is the one removal
  *   switch — a hidden model stays stored (with its other overrides) but
  *   drops out of the merged list.
- * - applyOverrides mutates the rows' `overrides` member in place (it
- *   already carries applied fields, so callers can see it's edited)
- *   and returns the flags a catalog row can't express: hidden and, for
- *   custom models, the connection/base url/remote id a run needs.
- * - the server is the authority on what custom models can do: parseInput
- *   forces kind to llm/decision/systemone and derives `thinking` from
- *   the levels, so a row can never claim thinking with no level to
- *   offer (which the composer treats as "none") or the reverse.
- * - resolveModel serves one model id for runs: a custom model as
- *   recorded, otherwise the catalog row with its overrides applied.
+ * - applyOverrides folds rows into catalog items in place and returns the
+ *   flags a catalog row can't express: hidden and, for user-added models,
+ *   the connection/base url a run needs.
+ * - the server is the authority on what user-added models can do:
+ *   parseInput forces kind to llm/decision/systemone and derives
+ *   `thinking` from the levels, so a row can never claim thinking with
+ *   no level to offer (which the composer treats as "none") or the
+ *   reverse.
+ * - resolveModel serves one model id for runs: the catalog row with the
+ *   user's overrides applied, or the user-added model as recorded.
  */
 
 import { and, eq } from 'drizzle-orm';
@@ -44,15 +47,20 @@ import type {
 import { ValidationError } from './errors';
 import { parseModelId } from './model-id';
 
-/* only these can be chosen for a custom model: embeddings can't chat and
+/* only these can be chosen for a user-added model: embeddings can't chat and
    'llm' is the default, so anything else is a typo */
 const KINDS = ['llm', 'decision', 'systemone'] as const;
 const LEVELS: readonly ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
 
+/** the pair a row is keyed by, and the catalog id that names it */
+export type OverrideTarget = { connectionId: number; modelId: string };
+
+const keyOf = (t: OverrideTarget): string => `${t.connectionId}:${t.modelId}`;
+
 /* what a row can change about a model, all optional: unset = keep the provider's value */
-export type ModelOverride = {
+export type ModelOverride = OverrideTarget & {
   shortName?: string | undefined;
-  /* custom models only (there is no catalog row to inherit from) */
+  /* user-added models only (there is no catalog row to inherit from) */
   kind?: ModelKind | undefined;
   contextWindow?: number | undefined;
   maxOutput?: number | undefined;
@@ -62,26 +70,34 @@ export type ModelOverride = {
   pricing?: Partial<ModelPricing> | undefined;
   params?: string | undefined;
   hidden: boolean;
-  /* custom models only: the connection a run sends to, and an optional url override */
-  connectionId?: number | undefined;
-  remoteId?: string | undefined;
+  /* user-added models only: the url to reach instead of the connection's */
   baseUrl?: string | undefined;
 };
 
 /** flags a catalog Model can't carry; kept beside the item and never sent to the client */
 export type ModelFlags = {
   hidden: boolean;
-  /* custom models only: the connection they run against and the url to reach it */
+  /* user-added models only: the connection they run against and the url to reach it */
   custom?: { connectionId: number; remoteId: string; baseUrl: string | undefined };
 };
 
 export type MergedCatalog = { items: Model[]; flags: Map<string, ModelFlags> };
 
+/* nothing left to override: `hidden` is a switch, not a value, and the
+   (connection, model) key is the row's address, so a visible row that sets
+   nothing is not worth storing — but only for a model the provider lists;
+   for a user-added one the row itself is the model */
 export const isEmptyOverride = (o: ModelOverride): boolean =>
-  Object.values(o).every((v) => v === undefined || v === null);
+  !o.hidden &&
+  Object.entries(o).every(
+    ([k, v]) =>
+      k === 'hidden' || k === 'connectionId' || k === 'modelId' ||
+      v === undefined ||
+      v === null,
+  );
 
 /* a capability block that only says what the provider already reports
-   carries no override; a custom model's blank baseline is all-false, so
+   carries no override; a user-added model's blank baseline is all-false, so
    sending it back is still "nothing set" */
 export const isRedundantCapabilities = (
   caps: Partial<ModelCapabilities> | undefined,
@@ -90,11 +106,13 @@ export const isRedundantCapabilities = (
   caps !== undefined &&
   Object.entries(caps).every(([k, v]) => (base?.[k as keyof ModelCapabilities] ?? false) === v);
 
-/* the client's view of a row: what settings shows and prefills from */
-export const toDto = (o: ModelOverride): ModelOverrideDto => ({
-  ...(o.connectionId !== undefined ? { custom: true } : {}),
-  ...(o.connectionId !== undefined ? { connectionId: o.connectionId } : {}),
-  ...(o.remoteId !== undefined ? { remoteId: o.remoteId } : {}),
+/* the client's view of a row: what settings shows and prefills from.
+   `custom` says the pair isn't in the provider's catalog — the caller
+   knows because it fetched the catalog */
+export const toDto = (o: ModelOverride, custom: boolean): ModelOverrideDto => ({
+  ...(custom ? { custom: true } : {}),
+  connectionId: o.connectionId,
+  remoteId: o.modelId,
   ...(o.baseUrl !== undefined ? { baseUrl: o.baseUrl } : {}),
   ...(o.kind !== undefined ? { kind: o.kind } : {}),
   ...(o.shortName !== undefined ? { shortName: o.shortName } : {}),
@@ -115,6 +133,8 @@ export const toDto = (o: ModelOverride): ModelOverrideDto => ({
 });
 
 const toOverride = (r: ModelOverrideRow): ModelOverride => ({
+  connectionId: r.connectionId,
+  modelId: r.modelId,
   shortName: r.shortName ?? undefined,
   kind: (r.kind as ModelKind | null) ?? undefined,
   contextWindow: r.contextWindow ?? undefined,
@@ -125,12 +145,10 @@ const toOverride = (r: ModelOverrideRow): ModelOverride => ({
   pricing: r.pricing ?? undefined,
   params: r.params ?? undefined,
   hidden: r.hidden,
-  connectionId: r.connectionId ?? undefined,
-  remoteId: r.remoteId ?? undefined,
   baseUrl: r.baseUrl ?? undefined,
 });
 
-/* the user's rows, keyed by the model id they override */
+/* the user's rows, keyed by the catalog id that names the pair */
 export const listOverrides = async (
   userId: string,
 ): Promise<Map<string, ModelOverride>> => {
@@ -138,7 +156,12 @@ export const listOverrides = async (
     .select()
     .from(modelOverrides)
     .where(eq(modelOverrides.userId, userId));
-  return new Map(rows.map((r) => [r.modelId, toOverride(r)]));
+  return new Map(
+    rows.map((r) => [
+      keyOf({ connectionId: r.connectionId, modelId: r.modelId }),
+      toOverride(r),
+    ]),
+  );
 };
 
 /* applies what the override sets; undefined fields leave the provider's value */
@@ -164,7 +187,7 @@ const apply = <T>(m: Model, o: ModelOverride): Model => ({
 /* a user-added model has no catalog row to fall back on, so it starts blank */
 const fromScratch = (id: string, provider: string, o: ModelOverride): Model => ({
   id,
-  shortName: o.shortName ?? id,
+  shortName: o.shortName ?? o.modelId,
   provider,
   kind: o.kind ?? 'llm',
   capabilities: {
@@ -191,14 +214,14 @@ const fromScratch = (id: string, provider: string, o: ModelOverride): Model => (
   },
   status: 'ok',
   connectionId: o.connectionId,
-  remoteId: o.remoteId,
+  remoteId: o.modelId,
 });
 
 /**
  * Folds the user's overrides into already-fetched catalog rows: edited
- * rows are rewritten in place, custom models are appended (grouped by
- * provider), hidden ones are dropped. `providerOf` names the connection
- * a custom model belongs to.
+ * rows are rewritten in place, models the catalog doesn't list are
+ * appended (grouped by provider), hidden ones are dropped. `providerOf`
+ * names the connection a user-added model belongs to.
  */
 export const applyOverrides = (
   items: Model[],
@@ -215,23 +238,26 @@ export const applyOverrides = (
   });
   const known = new Set(items.map((m) => m.id));
   for (const [id, o] of overrides) {
-    if (known.has(id) || o.hidden || o.connectionId === undefined) continue;
+    if (known.has(id) || o.hidden) continue;
     const provider = providerOf(o.connectionId);
     if (!provider) continue;
     out.push(fromScratch(id, provider, o));
     flags.set(id, {
       hidden: false,
-      custom: { connectionId: o.connectionId, remoteId: o.remoteId ?? id, baseUrl: o.baseUrl },
+      custom: {
+        connectionId: o.connectionId,
+        remoteId: o.modelId,
+        baseUrl: o.baseUrl,
+      },
     });
   }
   return { items: out, flags };
 };
 
 /**
- * One model id as a run should see it: a custom model exactly as
- * recorded, otherwise the provider's row with the user's override
- * applied (undefined when nothing knows it). `fetchItems` is only
- * called for a catalog id, so a custom model never waits on upstream.
+ * One model id as a run should see it: the catalog row with the user's
+ * overrides applied, or — when only a row knows the pair — the user-added
+ * model as recorded (undefined when nothing knows it).
  */
 export const resolveModel = async (
   userId: string,
@@ -240,22 +266,25 @@ export const resolveModel = async (
   providerOf: (connectionId: number) => string | undefined,
 ): Promise<{ model: Model; custom?: ModelFlags['custom'] } | undefined> => {
   const overrides = await listOverrides(userId);
-  const o = overrides.get(id);
-  /* a row naming a connection is a model the provider never listed */
-  if (o?.connectionId !== undefined) {
-    if (o.hidden) return undefined;
-    const provider = providerOf(o.connectionId) ?? String(o.connectionId);
-    const custom = {
-      connectionId: o.connectionId,
-      remoteId: o.remoteId ?? id,
-      baseUrl: o.baseUrl,
-    };
-    return { model: fromScratch(id, provider, o), custom };
-  }
-  if (!parseModelId(id)) return undefined;
+  const parsed = parseModelId(id);
+  if (!parsed) return undefined;
+  const o = overrides.get(
+    keyOf({ connectionId: parsed.connectionId, modelId: parsed.remoteId }),
+  );
+  if (o?.hidden) return undefined;
   const found = (await fetchItems()).find((m) => m.id === id);
-  if (!found || o?.hidden) return undefined;
-  return { model: o ? apply(found, o) : found };
+  if (found) return { model: o ? apply(found, o) : found };
+  if (!o) return undefined;
+  /* no catalog row lists the pair: the row makes it a user-added model */
+  const provider = providerOf(parsed.connectionId) ?? String(parsed.connectionId);
+  return {
+    model: fromScratch(id, provider, o),
+    custom: {
+      connectionId: parsed.connectionId,
+      remoteId: parsed.remoteId,
+      baseUrl: o.baseUrl,
+    },
+  };
 };
 
 /* ---------- validation ---------- */
@@ -309,39 +338,24 @@ const url = (v: unknown): string | null | undefined => {
 };
 
 export type OverrideInput = {
-  base: { connectionId: number | null; remoteId: string | null; baseUrl: string | null };
+  connectionId: number;
+  modelId: string;
   override: ModelOverride;
 };
 
 /**
- * Validates a PUT body: `custom` marks an added model (connectionId in
- * the body is then required and the row remembers remoteId/baseUrl),
- * otherwise the model id must be one the catalog names. Every other
- * field is optional; null and '' both mean "clear this override".
+ * Validates a PUT body against the (connection, model) pair the route's
+ * id names: every field is optional; null and '' both mean "clear this
+ * override".
  */
-export const parseInput = (id: string, body: unknown): OverrideInput => {
+export const parseInput = (target: OverrideTarget, body: unknown): OverrideInput => {
   const b = (body ?? {}) as Record<string, unknown>;
-  const custom = b.custom === true;
-  let connectionId: number | null = null;
-  let remoteId: string | null = null;
-  const baseUrl = url(b.baseUrl) ?? null;
-  if (custom) {
-    if (parseModelId(id))
-      throw new ValidationError('a custom model id must not look like a catalog id');
-    const c = b.connectionId;
-    if (typeof c !== 'number' || !Number.isInteger(c) || c <= 0)
-      throw new ValidationError('connectionId is required for a custom model');
-    connectionId = c;
-    const r = typeof b.remoteId === 'string' ? b.remoteId.trim() : '';
-    if (!r) throw new ValidationError('remoteId is required for a custom model');
-    remoteId = r;
-  }
 
   const override: ModelOverride = {
+    connectionId: target.connectionId,
+    modelId: target.modelId,
     hidden: bool(b.hidden, 'hidden') ?? false,
-    connectionId: connectionId ?? undefined,
-    remoteId: remoteId ?? undefined,
-    baseUrl: baseUrl ?? undefined,
+    baseUrl: url(b.baseUrl) ?? undefined,
   };
 
   if (b.shortName !== undefined) {
@@ -356,9 +370,10 @@ export const parseInput = (id: string, body: unknown): OverrideInput => {
     override.kind = b.kind as ModelKind;
   }
   const window = count(b.contextWindow, 'contextWindow', 100_000_000);
-  if (window) override.contextWindow = window;
+  /* 0 is a real value (a provider that reports none), so only null/undefined clear */
+  if (window != null) override.contextWindow = window;
   const maxOutput = count(b.maxOutput, 'maxOutput', 10_000_000);
-  if (maxOutput) override.maxOutput = maxOutput;
+  if (maxOutput != null) override.maxOutput = maxOutput;
   if (b.thinkingLevels !== undefined) {
     /* [] is a real value here: it says "this model takes no effort at all" */
     if (!isLevelList(b.thinkingLevels))
@@ -423,7 +438,8 @@ export const parseInput = (id: string, body: unknown): OverrideInput => {
     throw new ValidationError('defaultThinkingLevel must be one of thinkingLevels');
 
   return {
-    base: { connectionId, remoteId, baseUrl },
+    connectionId: target.connectionId,
+    modelId: target.modelId,
     override,
   };
 };
@@ -432,11 +448,11 @@ export const parseInput = (id: string, body: unknown): OverrideInput => {
 
 export const saveOverride = async (
   userId: string,
+  connectionId: number,
   modelId: string,
   input: OverrideInput,
 ): Promise<void> => {
-  const { base, override } = input;
-  const db = getDb();
+  const { override } = input;
   /* every field the row sets; nulls clear what a previous save set */
   const value = {
     shortName: override.shortName ?? null,
@@ -452,36 +468,37 @@ export const saveOverride = async (
     pricing: (override.pricing ?? null) as Record<string, number> | null,
     params: override.params ?? null,
     hidden: override.hidden,
-    connectionId: base.connectionId,
-    remoteId: base.remoteId,
-    baseUrl: base.baseUrl,
+    baseUrl: override.baseUrl ?? null,
   };
-  const isCustom = base.connectionId !== null;
-  if (!isCustom && isEmptyOverride(override)) {
-    /* nothing left to override: forget the row instead of storing blanks */
-    await removeOverride(userId, modelId);
-    return;
-  }
-  await db
+  await getDb()
     .insert(modelOverrides)
-    .values({ userId, modelId, ...value })
+    .values({ userId, connectionId, modelId, ...value })
     .onConflictDoUpdate({
-      target: [modelOverrides.userId, modelOverrides.modelId],
+      target: [
+        modelOverrides.userId,
+        modelOverrides.connectionId,
+        modelOverrides.modelId,
+      ],
       set: { ...value, updatedAt: new Date() },
     });
 };
 
-export const removeOverride = async (userId: string, modelId: string) =>
+export const removeOverride = async (
+  userId: string,
+  connectionId: number,
+  modelId: string,
+) =>
   getDb()
     .delete(modelOverrides)
     .where(
       and(
         eq(modelOverrides.userId, userId),
+        eq(modelOverrides.connectionId, connectionId),
         eq(modelOverrides.modelId, modelId),
       ),
     );
 
-/* dropping a connection takes its overrides (and custom models) with it */
+/* dropping a connection takes its overrides (and user-added models) with it */
 export const dropConnectionOverrides = async (connectionId: number) =>
   getDb()
     .delete(modelOverrides)

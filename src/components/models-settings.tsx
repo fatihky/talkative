@@ -14,8 +14,10 @@
  *   default level must be one of the selected levels, and a custom
  *   model needs a connection and the upstream model name.
  * - Reset drops the row (DELETE), returning the model to its catalog
- *   values; a custom model disappears with it. Hide is the same row with
- *   `hidden` set, so its other overrides survive until it is unhidden.
+ *   values; a custom model disappears with it. Hide saves the stored row
+ *   back with `hidden` set and Unhide PUTs it back with `hidden` cleared,
+ *   so its other overrides survive both ways; a row with nothing else set
+ *   is dropped by the server as "empty".
  * - Hidden models aren't in the payload, so they are kept beside it with
  *   their provider name; the provider filter narrows them too and the
  *   list shows an "Unhide" row.
@@ -48,7 +50,7 @@ import { ctxFmt, humanBytes } from '../lib/format';
 import { I } from '../lib/icons';
 import { modelSearchText } from '../lib/models';
 import type { ModelOverrideBody } from '../lib/api';
-import type { Model, ModelCapabilities, ModelKind, ThinkingLevel } from '../types';
+import type { Model, ModelCapabilities, ModelKind, ModelOverrideDto, ThinkingLevel } from '../types';
 import { actions, useModelOverridesStore, useRecentModelIds } from '../stores';
 import { errorText } from '../stores/models';
 
@@ -155,17 +157,24 @@ export function ModelsSettings({
     setEditing(id);
   };
 
+  /* a stored override is already a valid PUT body: sending it back keeps the
+     row's other fields, since a PUT replaces the row instead of patching it */
+  const withRow = (
+    o: ModelOverrideDto | undefined,
+    hidden: boolean,
+  ): ModelOverrideBody => ({ ...(o ?? {}), hidden });
+
   const hide = (m: Model) => {
     setActionError(null);
-    actions
-      .save(m.id, { connectionId: m.connectionId, hidden: true })
-      .catch(setError);
+    actions.save(m.id, withRow(m.overrides, true)).catch(setError);
   };
 
   const unhide = (id: string) => {
     setActionError(null);
     /* a row with no other overrides is dropped by the server as "empty" */
-    actions.save(id, { hidden: false }).catch(setError);
+    actions
+      .save(id, withRow(hidden.find((h) => h.id === id)?.override, false))
+      .catch(setError);
   };
 
   const reset = (id: string) => {
@@ -507,7 +516,8 @@ type FormState = {
 const toForm = (m: Model | null, connections: { id: number }[]): FormState => {
   const o = m?.overrides;
   return {
-    custom: o?.custom === true,
+    /* adding a model always targets a connection: there is no catalog row to edit */
+    custom: m === null || o?.custom === true,
     connectionId: o?.connectionId ?? connections[0]?.id ?? 0,
     remoteId: o?.remoteId ?? m?.remoteId ?? '',
     baseUrl: o?.baseUrl ?? '',
@@ -550,11 +560,13 @@ function OverrideForm({
   const patch = (p: Partial<FormState>) => setF((cur) => ({ ...cur, ...p }));
 
   /* the id the row is stored under: an edited row keeps its id, a new custom
-     model gets one derived from the connection and upstream name */
+     model gets the catalog id `${connectionId}:${upstream name}` — the same
+     shape every model carries, with no `custom:` prefix anymore (old chats
+     that hold one still resolve, server-side) */
   const modelId =
     initial?.id ??
     (f.connectionId && f.remoteId.trim()
-      ? `custom:${f.connectionId}:${f.remoteId.trim()}`
+      ? `${f.connectionId}:${f.remoteId.trim()}`
       : '');
 
   const toggleLevel = (l: ThinkingLevel) => {
@@ -576,19 +588,89 @@ function OverrideForm({
       return;
     }
     const thinking = f.levels.some((l) => l !== 'off');
+    const o = initial?.overrides;
+    /* The PUT replaces the whole row, yet the form prefills from the merged
+       row the override was already applied to: a field that is overridden
+       prefills with the override, so comparing it to the row would call it
+       unchanged and silently drop it on the next save. Compare against the
+       catalog instead, and always re-send a field that is overridden —
+       clearing it is how a single field is reset. */
+    const count = (
+      value: string,
+      overridden: boolean,
+      catalog: number | null,
+    ): number | undefined => {
+      const n = num(value);
+      return n === undefined || (!overridden && n === catalog)
+        ? undefined
+        : n;
+    };
+    const word = (
+      value: string,
+      overridden: boolean,
+      catalog: string | undefined,
+    ): string | undefined => {
+      const s = value.trim();
+      return s && (overridden || s !== (catalog ?? '')) ? s : undefined;
+    };
     /* Only a capability that differs from what the row already reports is
        sent: a box left alone says nothing, so a prefilled form never
        rewrites the catalog. The server merges this over the provider's
-       flags, so `false` takes one away and the reset path is DELETE. */
-    const base = (initial?.overrides?.capabilities ?? initial?.capabilities) as
-      | Partial<ModelCapabilities>
-      | undefined;
+       flags, so `false` takes one away and the reset path is DELETE. An
+       overridden flag has no catalog value to compare with, so it is
+       always sent as shown. */
     const caps: Partial<ModelCapabilities> = Object.fromEntries(
-      CAPS.filter((k) => f.caps[k] !== (base?.[k] ?? false)).map((k) => [
-        k,
-        f.caps[k],
-      ]),
+      CAPS.filter(
+        (k) =>
+          o?.capabilities?.[k] !== undefined ||
+          f.caps[k] !== (initial?.capabilities[k] ?? false),
+      ).map((k) => [k, f.caps[k]]),
     );
+    /* levels ride the same rule: an untouched provider list stays out, an
+       overridden one is re-sent even when unchanged (an empty box is the
+       real value "takes no effort") */
+    const catalogLevels = initial?.thinkingLevels;
+    const levels: ThinkingLevel[] | undefined =
+      o?.thinkingLevels !== undefined ||
+      (catalogLevels !== undefined
+        ? catalogLevels.join() !== f.levels.join()
+        : f.levels.length > 0)
+        ? f.levels
+        : undefined;
+    const window = count(
+      f.contextWindow,
+      o?.contextWindow !== undefined,
+      initial?.context.window ?? null,
+    );
+    const maxOutput = count(
+      f.maxOutput,
+      o?.maxOutput !== undefined,
+      initial?.context.maxOutput ?? null,
+    );
+    const shortName = word(
+      f.shortName,
+      o?.shortName !== undefined,
+      initial?.shortName,
+    );
+    const params = word(f.params, o?.params !== undefined, initial?.params);
+    const price = (k: 'input' | 'cachedInput' | 'output'): number | undefined => {
+      const n = num(f.pricing[k]);
+      return n === undefined ||
+        (o?.pricing?.[k] === undefined && n === initial?.pricing[k])
+        ? undefined
+        : n;
+    };
+    const pricing: Partial<Model['pricing']> = {};
+    for (const k of ['input', 'cachedInput', 'output'] as const) {
+      const n = price(k);
+      if (n !== undefined) pricing[k] = n;
+    }
+    const dflt: ThinkingLevel | undefined =
+      f.dflt &&
+      (o?.defaultThinkingLevel !== undefined ||
+        f.dflt !== initial?.defaultThinkingLevel)
+        ? f.dflt
+        : undefined;
     const body: ModelOverrideBody = {
       hidden: false,
       ...(f.custom
@@ -600,36 +682,23 @@ function OverrideForm({
             kind: f.kind,
           }
         : {}),
-      /* [] is a real value ("takes no effort"), so an untouched,
-         unreported list stays out of the body rather than claiming that */
-      ...(f.levels.length ? { thinkingLevels: f.levels } : {}),
-      ...(Object.keys(caps).length || thinking
-        ? { capabilities: { ...caps, ...(thinking ? { thinking: true } : {}) } }
+      ...(levels !== undefined ? { thinkingLevels: levels } : {}),
+      /* thinking is only claimed alongside the levels that offer it: the
+         server derives it, and a body without levels can't carry it */
+      ...(Object.keys(caps).length || (levels !== undefined && thinking)
+        ? {
+            capabilities: {
+              ...caps,
+              ...(levels !== undefined && thinking ? { thinking: true } : {}),
+            },
+          }
         : {}),
-      ...(f.shortName.trim() ? { shortName: f.shortName.trim() } : {}),
-      /* a count is sent only when it differs from the catalog row, so the
-         prefilled numbers don't turn into overrides of their own */
-      ...(num(f.contextWindow) !== undefined &&
-      num(f.contextWindow) !== initial?.context.window
-        ? { contextWindow: num(f.contextWindow) }
-        : {}),
-      ...(num(f.maxOutput) !== undefined &&
-      num(f.maxOutput) !== initial?.context.maxOutput
-        ? { maxOutput: num(f.maxOutput) }
-        : {}),
-      ...(f.dflt ? { defaultThinkingLevel: f.dflt } : {}),
-      ...(f.params.trim() ? { params: f.params.trim() } : {}),
-      pricing: {
-        ...(num(f.pricing.input) !== undefined
-          ? { input: num(f.pricing.input) ?? 0 }
-          : {}),
-        ...(num(f.pricing.cachedInput) !== undefined
-          ? { cachedInput: num(f.pricing.cachedInput) ?? 0 }
-          : {}),
-        ...(num(f.pricing.output) !== undefined
-          ? { output: num(f.pricing.output) ?? 0 }
-          : {}),
-      },
+      ...(shortName ? { shortName } : {}),
+      ...(window !== undefined ? { contextWindow: window } : {}),
+      ...(maxOutput !== undefined ? { maxOutput } : {}),
+      ...(dflt ? { defaultThinkingLevel: dflt } : {}),
+      ...(params ? { params } : {}),
+      pricing,
     };
     try {
       await actions.save(modelId, body);

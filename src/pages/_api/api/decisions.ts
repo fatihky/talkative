@@ -70,8 +70,9 @@ export const GET = () =>
 export const POST = (req: Request) =>
   handle(async (userId) => {
     const input = parseDecisionRun(await req.json());
-    /* a custom model (a user-added row naming a connection) resolves like a
-       catalog id; anything else must parse as one */
+    /* a model id parses into its (connection, remote) pair — including the
+       `custom:`-prefixed ones old chats carry; the user's row (when one
+       exists) contributes its baseUrl override */
     const custom = await resolveModel(
       userId,
       input.modelId,

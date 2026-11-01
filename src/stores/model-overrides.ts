@@ -102,8 +102,12 @@ export const modelOverridesActions = {
     } finally {
       set({ saving: false });
     }
-    /* a reset body drops the row server-side, so the two say different things */
-    const cleared = Object.keys(override).length === 0;
+    /* a body the server drops as empty (only `hidden: false`) reads as a reset */
+    const cleared =
+      !override.hidden &&
+      Object.entries(override).every(
+        ([k, v]) => k === 'hidden' || v === undefined || v === null,
+      );
     uiActions.toast(cleared ? 'Model override reset' : 'Model override saved');
   },
 

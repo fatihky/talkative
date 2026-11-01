@@ -156,14 +156,16 @@ export type Model = {
 
 /**
  * The user's overrides for one model: every field is optional and unset
- * means "what the provider reports". `custom` rows are models the
- * provider never listed — they keep their kind, the connection to send
- * through, the upstream name and an optional url override. `hidden`
- * removes a catalog model from every picker without losing the rest.
+ * means "what the provider reports". A row is addressed by the catalog
+ * id `${connectionId}:${remoteId}` (the route's path id); `custom: true`
+ * marks a model the provider never listed — it keeps its kind, the
+ * connection to send through, the upstream name and an optional url
+ * override. `hidden` removes a catalog model from every picker without
+ * losing the rest.
  */
 export type ModelOverrideDto = {
   custom?: boolean | undefined;
-  /* a custom model's config; absent on a catalog model */
+  /* set on every row now; on a catalog model it repeats the id's prefix */
   connectionId?: number | undefined;
   remoteId?: string | undefined;
   baseUrl?: string | undefined;

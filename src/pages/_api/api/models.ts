@@ -46,14 +46,17 @@ export const GET = (req: Request) =>
     /* the freshest list is only as fresh as its stalest source */
     const syncedAt = Math.min(Date.now(), ...entries.map((e) => e.syncedAt));
     const overrides = await listOverrides(userId);
+    const items0 = entries.flatMap((e) => e.items);
+    const listed = new Set(items0.map((m) => m.id));
     const { items: merged } = applyOverrides(
-      entries.flatMap((e) => e.items),
+      items0,
       overrides,
       (connectionId) => conns.find((c) => c.id === connectionId)?.name,
     );
     const items: Model[] = merged.map((m) => {
       const o = overrides.get(m.id);
-      return o ? { ...m, overrides: overrideDto(o) } : m;
+      /* a pair the catalog doesn't list is a user-added model */
+      return o ? { ...m, overrides: overrideDto(o, !listed.has(m.id)) } : m;
     });
     const errors = Object.fromEntries(
       conns.flatMap((c, i) => {

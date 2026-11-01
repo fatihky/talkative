@@ -19,9 +19,8 @@
  *   cache was written can be overridden straight away.
  * - `hidden` names each hidden model's provider (the connection name), so
  *   the settings provider filter can narrow them on the client without a
- *   refetch: an id alone can't say, since a custom id needn't carry its
- *   connection. Hidden custom models are listed too, else they could
- *   never be unhidden.
+ *   refetch. Hidden custom models are listed too, else they could never
+ *   be unhidden.
  */
 import { getCatalog } from '../../../server/catalog';
 import {
@@ -29,7 +28,6 @@ import {
   listOverrides,
   toDto as overrideDto,
 } from '../../../server/model-overrides';
-import { parseModelId } from '../../../server/model-id';
 import { handle, listConnections } from '../../../server/providers';
 import type { Model } from '../../../types';
 
@@ -44,24 +42,26 @@ export const GET = (req: Request) =>
     );
     const providerOf = (cid: number) => conns.find((c) => c.id === cid)?.name;
     const items: Model[] = entries.flatMap((e) => e.items);
-    const { items: merged, flags } = applyOverrides(
+    const { items: merged } = applyOverrides(
       items,
       overrides,
       providerOf,
     );
+    /* a pair the provider's catalog doesn't list is a user-added model,
+       whatever its row looks like — read-time, so a provider that starts
+       listing it turns the row back into a plain override */
+    const listed = new Set(items.map((m) => m.id));
     const hidden = [...overrides].flatMap(([id, o]) => {
       if (!o.hidden) return [];
-      /* a catalog model the merge dropped, or a custom one on a live connection */
-      const custom = o.connectionId !== undefined;
-      if (!flags.has(id) && !custom) return [];
-      const provider = providerOf(o.connectionId ?? parseModelId(id)?.connectionId ?? -1);
-      if (custom && !provider) return [];
-      return [{ id, provider }];
+      /* a connection the user disabled (or dropped) hides its rows too */
+      const provider = providerOf(o.connectionId);
+      if (!provider) return [];
+      return [{ id, provider, override: overrideDto(o, !listed.has(id)) }];
     });
     return Response.json({
       items: merged.map((m) => {
         const o = overrides.get(m.id);
-        return o ? { ...m, overrides: overrideDto(o) } : m;
+        return o ? { ...m, overrides: overrideDto(o, !listed.has(m.id)) } : m;
       }),
       hidden,
       syncedAt: Math.min(Date.now(), ...entries.map((e) => e.syncedAt)),

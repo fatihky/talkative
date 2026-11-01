@@ -236,24 +236,40 @@ export const providersApi = {
     ),
 };
 
-/** the connection and display name behind a namespaced `${connectionId}:${remoteId}` model id */
+/** the connection and display name behind a namespaced `${connectionId}:${remoteId}` model id
+ *  (old chats may still carry `custom:`-prefixed or percent-encoded ids) */
 export const modelOrigin = (
   id: string,
   connections: Pick<ProviderConnection, 'id' | 'name'>[],
   models: Pick<Model, 'id' | 'shortName'>[] = [],
 ): { provider: string; model: string } => {
-  const [, conn, remoteId] = /^(\d+):(.+)$/.exec(id) ?? [];
+  let s = /^(?:custom:)?(\d+):(.+)$/.exec(id) ? id : '';
+  if (!s && id.includes('%')) {
+    try {
+      s = decodeURIComponent(id);
+    } catch {
+      /* keep the raw form: a literal `%` is not encoding */
+    }
+  }
+  const [, conn, remoteId] =
+    (/^(?:custom:)?(\d+):(.+)$/.exec(s) ?? /^(\d+):(.+)$/.exec(id)) ?? [];
   return {
     provider: connections.find((c) => String(c.id) === conn)?.name ?? '',
-    model: models.find((m) => m.id === id)?.shortName ?? remoteId ?? id,
+    model:
+      models.find((m) => m.id === id)?.shortName ?? remoteId ?? id,
   };
 };
 
 export type ModelOverridesResponse = {
   /* the catalog with the caller's overrides applied, custom models included */
   items: Model[];
-  /* models left out because the user hid them, with their connection name */
-  hidden: { id: string; provider?: string | undefined }[];
+  /* models left out because the user hid them, with their connection name
+     and the stored row, so Unhide can PUT the row back as it was */
+  hidden: {
+    id: string;
+    provider?: string | undefined;
+    override?: ModelOverrideDto | undefined;
+  }[];
   syncedAt: number;
   connections: { id: number; name: string }[];
 };

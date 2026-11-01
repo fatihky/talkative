@@ -211,6 +211,13 @@
       "when": 1793262525414,
       "tag": "0029_add_model_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793533326760,
+      "tag": "0030_key_model_overrides_by_connection_and_model",
+      "breakpoints": true
     }
   ]
 }

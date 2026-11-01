@@ -242,13 +242,13 @@ export type ProviderConnectionRow = typeof providerConnections.$inferSelect;
 export type NewProviderConnection = typeof providerConnections.$inferInsert;
 
 /*
- * a user's correction to one model (server/model-overrides.ts). model_id is
- * either a catalog id (${connectionId}:${remoteId}) or, for a user-added model,
- * an id that deliberately doesn't parse; every other column is an override and
- * null means "keep what the provider reports". connection_id, remote_id and
- * base_url are only set on custom models: a run reaches the connection by that
- * id, sends remote_id as the upstream model name, and may swap the connection's
- * url for base_url. Deleting a connection drops the rows pointing at it.
+ * a user's correction to one model (server/model-overrides.ts). The row is
+ * keyed by the provider connection it belongs to and the model id string the
+ * provider's /models endpoint reports — the pair the catalog id
+ * (${connectionId}:${modelId}) names. Every other column is an override and
+ * null means "keep what the provider reports". A model the provider doesn't
+ * list is a user-added one: runs reach it by connection_id + model_id and may
+ * swap the connection's url for base_url. Deleting a connection drops its rows.
  */
 export const modelOverrides = pgTable(
   'model_overrides',
@@ -256,6 +256,10 @@ export const modelOverrides = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    connectionId: integer('connection_id')
+      .notNull()
+      .references(() => providerConnections.id, { onDelete: 'cascade' }),
+    /* the model id string from the provider's /models endpoint */
     modelId: text('model_id').notNull(),
     shortName: text('short_name'),
     kind: text('kind'),
@@ -268,11 +272,7 @@ export const modelOverrides = pgTable(
     pricing: jsonb('pricing').$type<Record<string, number>>(),
     params: text('params'),
     hidden: boolean('hidden').notNull().default(false),
-    connectionId: integer('connection_id').references(
-      () => providerConnections.id,
-      { onDelete: 'cascade' },
-    ),
-    remoteId: text('remote_id'),
+    /* user-added models only: swaps the connection's base url */
     baseUrl: text('base_url'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -281,7 +281,9 @@ export const modelOverrides = pgTable(
       .notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.userId, table.modelId] }),
+    primaryKey({
+      columns: [table.userId, table.connectionId, table.modelId],
+    }),
     index('model_overrides_connection_id_idx').on(table.connectionId),
   ],
 );
