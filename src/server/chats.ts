@@ -30,14 +30,22 @@
  *   tags, folderId, leafId, systemPrompt — plus `pinned`, which becomes
  *   pinnedAt = now or null. pinnedAt is only an ordering key: the sidebar
  *   floats pinned chats to the top, most recently pinned first.
+ * - forkChat copies the root-to-`uptoId` path into a brand-new chat titled
+ *   "copy of <old title>" and lands on its tip. Only that one branch
+ *   travels — off-branch siblings stay behind — and every copied message
+ *   gets a fresh id with its parentId rewritten to the copy above it, so
+ *   the ids are unique across both chats. Uploads are soft references
+ *   (schema.ts), so both chats keep pointing at the same attachment rows
+ *   and pruning one leaves the other's files alone.
  */
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '../db';
-import type { ChatRow, MessageRow } from '../db/schema';
+import type { ChatRow, MessageRow, NewChat, NewMessage } from '../db/schema';
 import { chats, messages } from '../db/schema';
 import type {
   Attachment,
   ChatSummary,
+  ChatDetail,
   Message as MessageDto,
   ThinkingLevel,
 } from '../types';
@@ -326,4 +334,78 @@ export const parseChatPatch = (body: unknown): ChatPatch => {
   const systemPrompt = parseSystemPrompt(b.systemPrompt);
   if (systemPrompt !== undefined) out.systemPrompt = systemPrompt;
   return out;
+};
+
+/**
+ * copies the branch that ends at `uptoId` into a new chat titled "copy of <old title>",
+ * returns the new chat plus its (newly minted) messages, or null when `uptoId` isn't a
+ * message of `chat`. the copy keeps the new chat's leafId on uptoId's copy.
+ */
+export const forkChat = async (
+  db: Db,
+  chat: ChatRow,
+  uptoId: string,
+): Promise<ChatDetail | null> => {
+  const path = await branchPath(db, chat.id, uptoId);
+  if (path.length === 0 || path.at(-1)?.id !== uptoId) return null;
+  /* one id per copied turn, in path order, so the parent above it is already mapped */
+  const ids = path.map(() => crypto.randomUUID());
+  const copies = path.map((m, i) => ({
+    ...m,
+    id: ids[i] as string,
+    chatId: '',
+    parentId: i === 0 ? null : (ids[i - 1] as string),
+  }));
+  const leafId = ids.at(-1) as string;
+  const newId = crypto.randomUUID();
+  /* the newest turn carries the model the chat reopens with; fall back to the row's */
+  const modelId = copies.findLast((m) => m.modelId)?.modelId ?? chat.modelId;
+  const now = Date.now();
+  /* +1ms apart keeps the copied user-before-assistant order under a createdAt sort */
+  const rows = copies.map(({ chatId: _chatId, ...m }, i) => ({
+    ...m,
+    chatId: newId,
+    createdAt: new Date(now + i),
+  }));
+  const chatValues: NewChat = {
+    id: newId,
+    userId: chat.userId,
+    title: `copy of ${chat.title}`,
+    firstPrompt: chat.firstPrompt,
+    modelId,
+    leafId,
+    messageCount: rows.length,
+    /* the copied path is a single branch with one tip */
+    branchCount: 1,
+    costUsd: String(
+      rows.reduce(
+        (sum, m) => sum + Number((m.usage as MessageDto['usage'])?.costUsd ?? 0),
+        0,
+      ),
+    ),
+    tags: chat.tags,
+    ...(chat.category ? { category: chat.category } : {}),
+    ...(chat.folderId ? { folderId: chat.folderId } : {}),
+    ...(chat.systemPrompt ? { systemPrompt: chat.systemPrompt } : {}),
+  };
+
+  /* the chat and its whole branch land together: a half-copied fork is worse than none */
+  const result = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(chats)
+      .values(chatValues)
+      .returning();
+    if (!created) throw new Error('insert failed');
+    const inserted = await tx
+      .insert(messages)
+      .values(rows satisfies NewMessage[])
+      .returning();
+    return { chat: created, messages: inserted };
+  });
+
+  return {
+    chat: toChatDto(result.chat),
+    messages: result.messages.map(toMessageDto),
+    leafId,
+  };
 };

@@ -15,6 +15,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Render GitHub `github_repo_search`, `github_issue_search`, `github_pr_search` and `github_discussion_search` results in the thread as clickable title/URL/detail links, like `web_search`, with the raw API response behind the "inspect raw results" disclosure.
 
 - Show the provider connection's name above the model name in each assistant message header, so replies to a model served by several connections stay distinguishable.
+- Add a Fork button to assistant replies: it copies the branch up to that reply into a new chat titled `copy of <title>`, toasts the new title and opens it, leaving the original untouched.
 - Add a per-user Enter-key preference for the composer: Enter can send the message or start a new line (Shift+Enter always breaks, ⌘/Ctrl+Enter always sends). Set it on `/settings/appearance` or by clicking the send hint in the composer footer; it is stored server-side and follows the account across devices.
 - OpenTelemetry: `instrumentation.mjs` is preloaded with `node --import` by `pnpm dev`, `pnpm start`, the packaged `talkative` CLI and the Docker image, and reports a service name (new `OTEL_SERVICE_NAME`, default `talkative`). Configure the exporter with the standard `OTEL_*` variables.
 

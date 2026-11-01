@@ -13,6 +13,10 @@
  *   copy as a new sibling branch, preserving the original.
  * - assistant replies with a parent can be regenerated as a sibling
  *   branch using the currently selected model.
+ * - an assistant reply can also be forked: the server copies the branch
+ *   up to it into a new chat titled "copy of <title>" and the client
+ *   opens it. Fork is disabled while the chat is busy and hidden while
+ *   the reply itself is still streaming.
  * - edit/regen/delete are disabled while the chat is busy — the server
  *   generates one reply at a time.
  * - delete confirms with the full subtree size (nested branches
@@ -101,6 +105,8 @@ export function MessageBubble({
   const canEdit = isUser && m.status !== 'sending' && m.status !== 'queued';
   /* a reply still generating has nothing to redo yet */
   const canRegen = !isUser && m.parentId !== null && m.status !== 'streaming';
+  /* forking copies the branch up to this reply; a half-written one makes a bad copy */
+  const canFork = !isUser && m.status !== 'streaming' && m.status !== 'sending';
   const canDelete =
     m.status !== 'streaming' && m.status !== 'sending' && m.status !== 'queued';
   const remove = () => {
@@ -311,6 +317,22 @@ export function MessageBubble({
                     className="icon-only"
                   >
                     <I n="pencil" s={12} />
+                  </button>
+                </Tip>
+              )}
+              {canFork && (
+                <Tip
+                  label="Fork — copy the chat up to this reply into a new chat"
+                  side="top"
+                >
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => actions.forkChat(chatId, m.id)}
+                    aria-label="Fork chat from this reply"
+                    className="icon-only"
+                  >
+                    <I n="fork" s={12} />
                   </button>
                 </Tip>
               )}

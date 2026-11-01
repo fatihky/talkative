@@ -35,6 +35,9 @@
  * - uploadAttachment posts multipart straight through fetch (request would
  *   force a JSON content-type) under the client-minted attachment id, and
  *   returns the metadata it was handed rather than the response body.
+ * - chatsApi.fork copies the branch ending at a message into a new chat
+ *   and answers the same ChatDetail GET /api/chats/:id does, so the caller
+ *   can seed the new thread before navigating to it.
  */
 import type {
   AdminUser,
@@ -322,6 +325,12 @@ export const chatsApi = {
     }),
   remove: (id: string) =>
     request<void>(`/api/chats/${id}`, { method: 'DELETE' }),
+  /* copies the branch ending at `uptoId` into a new chat titled "copy of <old title>" */
+  fork: (id: string, uptoId: string) =>
+    request<ChatDetail>(`/api/chats/${id}/fork`, {
+      method: 'POST',
+      body: JSON.stringify({ uptoId }),
+    }),
 };
 
 export const foldersApi = {

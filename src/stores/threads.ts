@@ -54,6 +54,10 @@
  *   tool steps inline, appending any off-branch messages after it, while
  *   editMessage turns the failed turn's stored payload back into the
  *   composer draft and removes that turn.
+ * - forkChat asks the server to copy the branch up to a message into a
+ *   new chat ("copy of <title>"), seeds that thread from the response so
+ *   the new page renders without a refetch, toasts the new title and
+ *   navigates to it.
  */
 'use client';
 
@@ -526,6 +530,33 @@ export const threadsActions = {
           'error',
         );
       });
+  },
+
+  /**
+   * copies the branch up to message `msgId` into a new chat ("copy of <title>") and opens
+   * it. refused while this chat is streaming — the copy would catch a half-written reply.
+   */
+  async forkChat(chatId: string, msgId: string) {
+    const t = get().threads[chatId];
+    if (!t || t.streaming) return;
+    try {
+      const { chat, messages, leafId } = await chatsApi.fork(chatId, msgId);
+      putThread(chat.id, {
+        messages,
+        leafId,
+        draft: '',
+        streaming: false,
+        queue: [],
+      });
+      upsertChat(chat);
+      uiActions.toast(`Forked to “${chat.title}”`, 'info');
+      uiActions.navigateTo(`/c/${chat.id}`);
+    } catch (e) {
+      uiActions.toast(
+        `Fork failed — ${e instanceof Error ? e.message : 'error'}`,
+        'error',
+      );
+    }
   },
 
   /** downloads the branch on screen as a plain-text file, thinking and tool steps included */
