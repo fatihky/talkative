@@ -88,6 +88,10 @@ const P = {
   /* eye (vision capability badge) */
   vision:
     'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  /* speaker with waves (audio capability badge) */
+  audio: 'M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12',
+  /* curly braces around a dot (JSON capability badge) */
+  json: 'M8 4c-1.7 0-2 1-2 2.5v1.5c0 1.5-1 2-2 2 1 0 2 .5 2 2v1.5c0 1.5.3 2.5 2 2.5M16 4c1.7 0 2 1 2 2.5v1.5c0 1.5 1 2 2 2-1 0-2 .5-2 2v1.5c0 1.5-.3 2.5-2 2.5M12 12h.01',
 };
 
 export function I({

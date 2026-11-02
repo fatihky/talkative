@@ -21,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Show each model's capabilities on `/settings/providers` as icon badges (thinking, vision, tools, audio, JSON, fast, decisions) with tooltips instead of a `vision:yes · tools:no` text readout.
 - Key model overrides by provider connection and the model id string from the provider's `/models` endpoint (`(user_id, connection_id, model_id)` primary key, `remote_id` column dropped) instead of a concatenated `model_id` string; every model — user-added ones included — is now addressed by the catalog id `${connectionId}:${modelId}`, so the `custom:` id prefix is no longer minted for new saves and user-added models no longer fall back to canned demo replies. Old chats carrying `custom:`-prefixed (or percent-encoded) ids still resolve. The migration re-keys existing rows: it percent-decodes ids, splits connection ids out of the old strings, strips the `custom:` prefix, and drops rows it can't map, keeping the newest save when a pair ends up twice.
 - Show a "Model override saved" / "Model override reset" toast when an override is saved from the dialog, hidden, unhidden or reset on `/settings/providers`.
 - Show a "Tool settings saved" toast once a tool-preference edit is persisted, so a grant, provider, result-count or concurrency change no longer saves silently.

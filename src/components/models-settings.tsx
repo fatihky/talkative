@@ -36,7 +36,9 @@
  * - 'stale' marks models served from a cached catalog after the upstream
  *   fetch failed, so a dead provider still lists what it last reported.
  * - An overridden model is badged so an edited row is never mistaken for
- *   what the provider said.
+ *   what the provider said. Its capabilities show as icon badges with
+ *   tooltips, one per flag the model reports (the composer's glyphs), so
+ *   absent means "no"; thinking keeps its level list as text beside them.
  * - The last 5 models used across chats lead the list as a "Recent"
  *   group of the same rows (narrowed by the provider filter, hidden while
  *   searching); each row names its provider, and opening one clears both
@@ -363,6 +365,36 @@ export function ModelsSettings({
   );
 }
 
+/* one badge per capability the row reports, in a fixed order, each with a
+   tooltip: a missing badge means the model doesn't have it */
+const CAP_BADGES = [
+  { key: 'thinking', icon: 'brain', label: 'Thinking' },
+  { key: 'vision', icon: 'vision', label: 'Vision' },
+  { key: 'tools', icon: 'wrench', label: 'Tool use' },
+  { key: 'audio', icon: 'audio', label: 'Audio input' },
+  { key: 'json', icon: 'json', label: 'Structured output (JSON)' },
+  { key: 'fast', icon: 'play', label: 'Fast' },
+  { key: 'decisions', icon: 'decision', label: 'Decision support' },
+] as const;
+
+function CapBadges({ caps }: { caps: Model['capabilities'] }) {
+  const on = CAP_BADGES.filter((b) => caps[b.key]);
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {on.map((b) => (
+        <span
+          key={b.key}
+          title={b.label}
+          aria-label={b.label}
+          className="grid size-[18px] place-items-center rounded-[4px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-2)]"
+        >
+          <I n={b.icon} s={11} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ModelRow({
   m,
   editing,
@@ -391,6 +423,27 @@ function ModelRow({
         </span>
         <span className="num w-[50px] shrink-0 muted">{m.params ?? '—'}</span>
         <span className="num w-[70px] shrink-0">{ctxFmt(m.context.window)}</span>
+        <CapBadges caps={m.capabilities} />
+        <span
+          className="flex-1 truncate text-[11px] muted"
+          title={
+            m.thinkingLevels === undefined
+              ? 'thinking levels not reported by this provider'
+              : m.thinkingLevels.length === 0
+                ? 'thinking not available'
+                : `thinking levels: ${orderLevels(m.thinkingLevels).join(' / ')}`
+          }
+        >
+          {m.thinkingLevels?.length
+            ? `thinking: ${orderLevels(m.thinkingLevels).join('/')}${
+                m.defaultThinkingLevel
+                  ? ` · default:${m.defaultThinkingLevel}`
+                  : ''
+              }`
+            : m.thinkingLevels === undefined
+              ? 'thinking: unknown'
+              : 'thinking: no'}
+        </span>
         {m.kind && m.kind !== 'llm' && (
           <span className="shrink-0 rounded-[4px] bg-[var(--sunken)] px-1 text-[10px] muted">
             {m.kind}
@@ -410,23 +463,7 @@ function ModelRow({
         {m.status === 'stale' && (
           <span className="shrink-0 text-[var(--warn)]">stale</span>
         )}
-        <span className="flex-1 truncate muted">
-          thinking:
-          {m.thinkingLevels === undefined
-            ? 'unknown'
-            : m.thinkingLevels.length === 0
-              ? 'no'
-              : 'yes'}
-          {m.defaultThinkingLevel
-            ? ` · default:${m.defaultThinkingLevel}`
-            : ''}
-          {m.thinkingLevels?.length
-            ? ` · levels:${orderLevels(m.thinkingLevels).join('/')}`
-            : ''}{' '}
-          · vision:{m.capabilities.vision ? 'yes' : 'no'} · tools:
-          {m.capabilities.tools ? 'yes' : 'no'} · decisions:
-          {m.capabilities.decisions ? 'yes' : 'no'}
-        </span>
+        <span className="flex-1" />
         <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
