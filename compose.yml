@@ -21,6 +21,10 @@ services:
       # optional: encrypts provider api keys at rest; empty means plaintext storage
       PROVIDER_KEY_ENC_KEYS: ${PROVIDER_KEY_ENC_KEYS:-}
       PROVIDER_KEY_ENC_ACTIVE: ${PROVIDER_KEY_ENC_ACTIVE:-}
+      # optional: OTLP export to a collector on the host. The Node SDK's own
+      # default is 4318/http+protobuf; this picks the gRPC collector on 4317.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
       # uploaded images are written here; a volume keeps them across restarts
       UPLOADS_DIR: /data/uploads
     volumes:
