@@ -366,16 +366,57 @@ export function ModelsSettings({
 }
 
 /* one badge per capability the row reports, in a fixed order, each with a
-   tooltip: a missing badge means the model doesn't have it */
+   tooltip: a missing badge means the model doesn't have it. The hint says
+   what the flag actually buys, since a bare name doesn't tell you. */
 const CAP_BADGES = [
-  { key: 'thinking', icon: 'brain', label: 'Thinking' },
-  { key: 'vision', icon: 'vision', label: 'Vision' },
-  { key: 'tools', icon: 'wrench', label: 'Tool use' },
-  { key: 'audio', icon: 'audio', label: 'Audio input' },
-  { key: 'json', icon: 'json', label: 'Structured output (JSON)' },
-  { key: 'fast', icon: 'play', label: 'Fast' },
-  { key: 'decisions', icon: 'decision', label: 'Decision support' },
-] as const;
+  {
+    key: 'thinking',
+    icon: 'brain',
+    label: 'Thinking',
+    hint: 'Sends a reasoning effort level with the request; the composer offers the levels listed on the row.',
+  },
+  {
+    key: 'vision',
+    icon: 'vision',
+    label: 'Vision',
+    hint: 'Accepts images: screenshots and pictures pasted or attached to the composer reach the model as image parts.',
+  },
+  {
+    key: 'tools',
+    icon: 'wrench',
+    label: 'Tool use',
+    hint: 'Can call tools (web search, GitHub, code execution, …): the tool bar offers them and the model may ask to run one.',
+  },
+  {
+    key: 'audio',
+    icon: 'audio',
+    label: 'Audio input',
+    hint: 'Accepts audio files as input alongside text and images.',
+  },
+  {
+    key: 'json',
+    icon: 'json',
+    label: 'Structured output (JSON)',
+    hint: 'Supports a JSON response format (response_format), so replies can be forced into a strict schema.',
+  },
+  {
+    key: 'fast',
+    icon: 'play',
+    label: 'Fast',
+    hint: 'A low-latency model, recommended for quick tasks: pickers prioritise it and the decision picker marks it as fast.',
+  },
+  {
+    key: 'decisions',
+    icon: 'decision',
+    label: 'Decision support',
+    hint: 'Can answer the decision endpoints (/decisions, /systemone), so it is offered as a decision model.',
+  },
+] as const satisfies readonly {
+  key: keyof Model['capabilities'];
+  icon: string;
+  label: string;
+  hint: string;
+}[];
 
 function CapBadges({ caps }: { caps: Model['capabilities'] }) {
   const on = CAP_BADGES.filter((b) => caps[b.key]);
@@ -384,7 +425,7 @@ function CapBadges({ caps }: { caps: Model['capabilities'] }) {
       {on.map((b) => (
         <span
           key={b.key}
-          title={b.label}
+          title={`${b.label} — ${b.hint}`}
           aria-label={b.label}
           className="grid size-[18px] place-items-center rounded-[4px] border border-[var(--border)] bg-[var(--bg)] text-[var(--text-2)]"
         >
@@ -876,7 +917,11 @@ function OverrideForm({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
         {label('Supports')}
         {CAPS.map((k) => (
-          <label key={k} className="flex cursor-pointer items-center gap-1">
+          <label
+            key={k}
+            className="flex cursor-pointer items-center gap-1"
+            title={CAP_BADGES.find((b) => b.key === k)?.hint}
+          >
             <input
               type="checkbox"
               checked={f.caps[k]}
