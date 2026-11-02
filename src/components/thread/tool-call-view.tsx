@@ -10,8 +10,8 @@
  * Business logic:
  * - the head shows the tool's glyph, its name, a quoted detail preview,
  *   and a Pill: `RUNNING` (rippling) while in flight, else the handoff's
- *   resolved labels — `DONE · Ns`, `FAILED`, or a bespoke label for
- *   `save_memory` ("SAVED").
+ *   resolved labels — `DONE · Ns`, `FAILED`, or a bespoke label for the
+ *   `memory` tool ("SAVED", "APPENDED", "LISTED", "FORGOT" by its action).
  * - expanding reveals the result summary: web and GitHub search tools
  *   render clickable title/URL/snippet links with the raw response behind
  *   a disclosure, everything else shows the pretty-printed arguments and
@@ -59,6 +59,28 @@ const prettyArgs = (raw: string) => {
     return JSON.stringify(JSON.parse(raw || '{}'), null, 2);
   } catch {
     return raw;
+  }
+};
+
+/* the pill label for a memory call: the action decides whether a fact was
+   written over or extended, so SAVED/APPENDED/LISTED/FORGOT read apart */
+const memoryPill = (raw: string): string | null => {
+  try {
+    const action = (JSON.parse(raw || '{}') as { action?: unknown }).action;
+    switch (action) {
+      case 'save':
+        return 'SAVED';
+      case 'append':
+        return 'APPENDED';
+      case 'list':
+        return 'LISTED';
+      case 'delete':
+        return 'FORGOT';
+      default:
+        return null;
+    }
+  } catch {
+    return null;
   }
 };
 
@@ -233,7 +255,7 @@ function StatusPill({ c }: { c: ToolCall }) {
     return <span className="pill d">FAILED</span>;
   }
   if (c.name === 'save_memory' || c.name === 'memory') {
-    return <span className="pill s">SAVED</span>;
+    return <span className="pill s">{memoryPill(c.args) ?? 'SAVED'}</span>;
   }
   return (
     <span className={`pill s`}>

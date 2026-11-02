@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Add an `append` action to the `memory` tool: it adds a line to an existing fact (creating the key when it doesn't exist yet) instead of replacing it, so accumulating facts like a list of decisions no longer need a full rewrite; memory cards label the call `APPENDED` (`SAVED`/`LISTED`/`FORGOT` for the other actions) instead of always `SAVED`.
 - Open a turn's reasoning and tool cards when a search hit (or the find bar's current match) lands inside one, and mark a match that stays in a closed card on its head, so a search never hides behind a collapsed block.
 - Let a queued message be edited in place in the thread's queue list: it keeps its spot in the send order and is restamped with the composer's current model and params.
 - Lead the model list on `/settings/providers` with the last 5 models used across chats as a "Recent" group of the same editable rows; opening one clears the search and provider filters.
