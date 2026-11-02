@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Open a turn's reasoning and tool cards when a search hit (or the find bar's current match) lands inside one, and mark a match that stays in a closed card on its head, so a search never hides behind a collapsed block.
 - Let a queued message be edited in place in the thread's queue list: it keeps its spot in the send order and is restamped with the composer's current model and params.
 - Lead the model list on `/settings/providers` with the last 5 models used across chats as a "Recent" group of the same editable rows; opening one clears the search and provider filters.
 - Render GitHub `github_repo_search`, `github_issue_search`, `github_pr_search` and `github_discussion_search` results in the thread as clickable title/URL/detail links, like `web_search`, with the raw API response behind the "inspect raw results" disclosure.
@@ -24,6 +25,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Default the app container to OTLP over gRPC at `http://localhost:4317` (`OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_PROTOCOL` in `compose.yml`), still overridable from the environment.
 - Show each model's capabilities on `/settings/providers` as icon badges (thinking, vision, tools, audio, JSON, fast, decisions) with tooltips instead of a `vision:yes · tools:no` text readout.
+- Spell out what each capability flag does in the tooltips on `/settings/providers`: the row badges and the edit form's `Supports` checkboxes now explain tools, JSON, fast and the rest instead of just naming them.
 - Key model overrides by provider connection and the model id string from the provider's `/models` endpoint (`(user_id, connection_id, model_id)` primary key, `remote_id` column dropped) instead of a concatenated `model_id` string; every model — user-added ones included — is now addressed by the catalog id `${connectionId}:${modelId}`, so the `custom:` id prefix is no longer minted for new saves and user-added models no longer fall back to canned demo replies. Old chats carrying `custom:`-prefixed (or percent-encoded) ids still resolve. The migration re-keys existing rows: it percent-decodes ids, splits connection ids out of the old strings, strips the `custom:` prefix, and drops rows it can't map, keeping the newest save when a pair ends up twice.
 - Show a "Model override saved" / "Model override reset" toast when an override is saved from the dialog, hidden, unhidden or reset on `/settings/providers`.
 - Show a "Tool settings saved" toast once a tool-preference edit is persisted, so a grant, provider, result-count or concurrency change no longer saves silently.

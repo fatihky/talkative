@@ -21,10 +21,14 @@
  *   branch will be re-generated), then reruns the call and continues the
  *   reply as a new branch. The retry button suppresses its own click so
  *   the head doesn't also toggle.
+ * - the card is a state-driven disclosure (data-collapsible): a search that
+ *   lands inside it opens it from outside the app's state (lib/search.tsx),
+ *   so it reads its own flag on mount, and once it was opened that way it
+ *   follows the flag rather than dragging it back to the user's toggle.
  */
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { I } from '../../lib/icons';
 import { actions } from '../../stores';
 import type { ToolCall } from '../../types';
@@ -125,8 +129,7 @@ const parseGithubHits = (name: string, raw: string | undefined): Hit[] => {
             str(o.html_url) || (title ? `https://github.com/${title}` : '');
           if (!title || !url) return null;
           const meta = [
-            typeof o.stargazers_count === 'number' &&
-              `★ ${o.stargazers_count}`,
+            typeof o.stargazers_count === 'number' && `★ ${o.stargazers_count}`,
             str(o.language),
           ]
             .filter(Boolean)
@@ -143,7 +146,8 @@ const parseGithubHits = (name: string, raw: string | undefined): Hit[] => {
           const url = str(o.url);
           if (!title || !url) return null;
           const repo = str(
-            (o.repository as Record<string, unknown> | undefined)?.nameWithOwner,
+            (o.repository as Record<string, unknown> | undefined)
+              ?.nameWithOwner,
           );
           const author =
             str((o.author as Record<string, unknown> | undefined)?.login) ||
@@ -169,9 +173,8 @@ const parseGithubHits = (name: string, raw: string | undefined): Hit[] => {
           str((o.user as Record<string, unknown> | undefined)?.login) ||
           'unknown';
         if (name === 'github_pr_search') {
-          const merged = (
-            o.pull_request as Record<string, unknown> | undefined
-          )?.merged_at;
+          const merged = (o.pull_request as Record<string, unknown> | undefined)
+            ?.merged_at;
           const status = merged ? 'merged' : str(o.state);
           return { title, url, snippet: `by ${author} · ${status}` };
         }
@@ -253,9 +256,39 @@ export function ToolCallView({
   /* collapsed by default; a resolved head stays closed and non-hover */
   const [open, setOpen] = useState(false);
   const resolved = c.status !== 'running';
+  /* the card as mounted, to read a flag a search set before React got here */
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const bySearch = useRef(false);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    bySearch.current = el.hasAttribute('data-search-opened');
+    if (el.dataset.collapsible === 'open') setOpen(true);
+  }, []);
+  /* once a search opened it and nothing else re-renders it, follow its flag —
+     the search closes the card when no hit is focused in it any more */
+  useEffect(() => {
+    if (!bySearch.current) return;
+    const el = rootRef.current;
+    setOpen(el?.dataset.collapsible === 'open');
+  });
+
+  const toggle = () =>
+    setOpen((v) => {
+      const el = rootRef.current;
+      if (el) {
+        el.dataset.collapsible = v ? 'closed' : 'open';
+        /* the user took it over: a search no longer closes it on their behalf */
+        el.removeAttribute('data-search-opened');
+        bySearch.current = false;
+      }
+      return !v;
+    });
 
   return (
     <div
+      ref={rootRef}
+      data-collapsible={open ? 'open' : 'closed'}
       className={`tool-card ${open ? '' : 'collapsed'} ${resolved ? 'resolved' : ''}`}
     >
       {/* biome-ignore lint/a11y/useSemanticElements: the head holds a retry button, and buttons can't nest */}
@@ -264,11 +297,11 @@ export function ToolCallView({
         role="button"
         tabIndex={0}
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setOpen((v) => !v);
+            toggle();
           }
         }}
       >

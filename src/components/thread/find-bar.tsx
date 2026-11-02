@@ -8,6 +8,14 @@
  * - matches repaint through CSS highlights (lib/search.tsx) and are
  *   recomputed, debounced, whenever the thread re-renders (a streaming
  *   reply, a branch switch), keeping the current index where it still fits.
+ * - a match inside a collapsed reasoning/tool card is invisible to the
+ *   browser: cards holding one are opened as the needle is typed, so their
+ *   hits are real ranges; anything still closed is painted through a stand-in
+ *   on the card's head (lib/search.tsx) and closes again once no match of the
+ *   needle is inside it.
+ * - the thread owns the paint: it keeps a search result's own words lit and
+ *   shows only the bar's focused match as the current one, so the bar hands it
+ *   that match (onCurrent) instead of painting over it.
  * - Enter / ↓ goes to the next match and Shift+Enter / ↑ to the previous,
  *   wrapping around; each move centers the match in the scroller and calls
  *   onNavigate so the thread stops following the bottom.
@@ -19,7 +27,7 @@
 import { type RefObject, useEffect, useRef, useState } from 'react';
 import { I } from '../../lib/icons';
 import { Tip } from '../../lib/popover';
-import { findRanges, paintHighlights } from '../../lib/search';
+import { findRanges, openHiddenHits } from '../../lib/search';
 
 export function FindBar({
   rootRef,
@@ -28,6 +36,7 @@ export function FindBar({
   onClose,
   onNavigate,
   focusKey,
+  onCurrent,
 }: {
   rootRef: RefObject<HTMLElement | null>;
   scrollRef: RefObject<HTMLElement | null>;
@@ -37,6 +46,8 @@ export function FindBar({
   onNavigate: () => void;
   /* bumped by the shortcut while already open, to refocus the input */
   focusKey: number;
+  /* the match being centered, for the thread to paint alongside its hit */
+  onCurrent: (r: Range | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [q, setQ] = useState('');
@@ -51,30 +62,25 @@ export function FindBar({
     inputRef.current?.select();
   }, [focusKey]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: version stands in for the thread's DOM
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const root = rootRef.current;
-      const needle = q.trim();
-      const next = root && needle ? findRanges(root, [needle]) : [];
-      setRanges(next);
-      if (needle !== lastNeedle.current) {
-        lastNeedle.current = needle;
-        setIdx(0);
-        if (next[0]) reveal(next[0]);
-      } else setIdx((i) => (i < next.length ? i : 0));
-    }, 120);
-    return () => clearTimeout(t);
-  }, [q, version]);
-
-  useEffect(() => {
-    paintHighlights(ranges, ranges[idx]);
-  }, [ranges, idx]);
-
-  /* clear the paint when the bar goes away */
-  useEffect(() => () => paintHighlights([]), []);
-
-  const reveal = (r: Range | undefined) => {
+  /* the matches read off `root`, keeping the current one when it still fits;
+     `pick` also moves the focus there (a new needle always does) */
+  const read = (pick: number | null) => {
+    const root = rootRef.current;
+    const needle = q.trim();
+    if (!root || !needle) {
+      setRanges([]);
+      onCurrent(null);
+      return;
+    }
+    /* cards opened for the previous needle may close again; opening the ones
+       the new needle lands in makes their hits real ranges, not stand-ins */
+    openHiddenHits(root, [needle]);
+    const next = findRanges(root, [needle]);
+    setRanges(next);
+    const i = pick ?? (idx < next.length ? idx : 0);
+    setIdx(i);
+    onCurrent(next[i] ?? null);
+    const r = next[i];
     const el = scrollRef.current;
     if (!r || !el) return;
     onNavigate();
@@ -86,11 +92,33 @@ export function FindBar({
     });
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version stands in for the thread's DOM
+  useEffect(() => {
+    const t = setTimeout(() => {
+      read(q.trim() !== lastNeedle.current ? 0 : null);
+      lastNeedle.current = q.trim();
+    }, 120);
+    return () => clearTimeout(t);
+  }, [q, version]);
+
+  /* the thread paints the hit's terms plus this match; a card holding a hit is
+     opened with it, and one that stays collapsed is painted through its head */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the DOM the ranges were read off stands in for the paint
+  useEffect(() => {
+    const r = ranges[idx];
+    if (!r) return;
+    const root = rootRef.current;
+    if (root) openHiddenHits(root, [q.trim()]);
+    onCurrent(r);
+  }, [ranges, idx]);
+
+  /* drop the focused match when the bar goes away; the thread's own hit stays lit */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only on unmount
+  useEffect(() => () => onCurrent(null), []);
+
   const step = (d: 1 | -1) => {
     if (!ranges.length) return;
-    const i = (idx + d + ranges.length) % ranges.length;
-    setIdx(i);
-    reveal(ranges[i]);
+    read((idx + d + ranges.length) % ranges.length);
   };
 
   return (

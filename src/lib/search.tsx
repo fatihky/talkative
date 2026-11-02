@@ -18,6 +18,13 @@
  *   match, `search-current` for the focused one) so rendered markdown is
  *   never mutated; where the API is missing it paints nothing and only the
  *   scroll-to-match still works.
+ * - with `paint` false it still does the open/collapse pass, but leaves the
+ *   paint to whoever owns the search (the thread) — a find bar merges its
+ *   hits with the search result's instead of clobbering them.
+ * - paintHiddenHighlights paints hits a collapsed disclosure hides (reasoning,
+ *   tool output) through a zero-size stand-in in its head, so the word still
+ *   lights up; the disclosure opens itself whenever its hidden hits include
+ *   any of `focus` (the search's terms, or the focused find-bar match).
  */
 'use client';
 
@@ -135,4 +142,100 @@ export const paintHighlights = (ranges: Range[], current?: Range) => {
   reg.set('search-hit', new H(...ranges));
   if (current) reg.set('search-current', new H(current));
   else reg.delete('search-current');
+};
+
+/* the stand-in a collapsed disclosure paints its hidden hits with */
+export const HIDDEN_ATTR = 'data-search-hidden';
+/* out of the head's flow, so its (invisible) box is a 1px dot, not a line */
+const HIDDEN_CLS = 'absolute top-0 left-0 size-px overflow-hidden opacity-0';
+/* a disclosure the search opened, so it closes again once no hit is focused */
+const OPENED_ATTR = 'data-search-opened';
+
+type HighlightCtor = new (...r: Range[]) => unknown;
+const HighlightClass = (): HighlightCtor | null =>
+  (globalThis as unknown as { Highlight?: HighlightCtor }).Highlight ?? null;
+
+const isOpen = (d: HTMLElement) =>
+  d.matches('details')
+    ? (d as HTMLDetailsElement).open
+    : d.dataset.collapsible === 'open';
+
+/* a <details> opens from its DOM; a data-collapsible card renders from state,
+   so it reopens itself on the next render unless its flag is cleared too */
+const setOpen = (d: HTMLElement, open: boolean, bySearch: boolean) => {
+  if (d.matches('details')) (d as HTMLDetailsElement).open = open;
+  d.dataset.collapsible = open ? 'open' : 'closed';
+  if (open && bySearch) d.setAttribute(OPENED_ATTR, '');
+  else d.removeAttribute(OPENED_ATTR);
+};
+
+/* the reasoning/tool cards that hold matches: opens each whose hidden hits
+   include any of `focus` (prefix either way), and closes again the ones the
+   search opened once nothing it focused is still inside them */
+export const openHiddenHits = (root: ParentNode, focus: string[]) => {
+  const fs = focus.map((f) => f.toLowerCase()).filter(Boolean);
+  for (const d of root.querySelectorAll<HTMLElement>(
+    'details, [data-collapsible]',
+  )) {
+    if (isOpen(d)) continue;
+    const hits = findRanges(d, fs);
+    if (!hits.length) continue;
+    const text = (r: Range) =>
+      (r.startContainer.nodeValue ?? '').slice(r.startOffset, r.endOffset);
+    if (hits.some((r) => fs.some((f) => text(r).includes(f))))
+      setOpen(d, true, true);
+  }
+  for (const d of root.querySelectorAll<HTMLElement>(`[${OPENED_ATTR}]`)) {
+    if (isOpen(d) && !findRanges(d, fs).length) setOpen(d, false, false);
+  }
+};
+
+/**
+ * paints `ranges` — hits sitting inside a collapsed disclosure, which the
+ * browser won't paint — as stand-ins in the disclosure's own first element:
+ * each hit gets one (blank, zero-size) character there, so the words' count
+ * and colour still show in the card's head while its text stays closed.
+ * Stand-ins of the previous paint go first. `paint` false only drops them,
+ * leaving the painting to the caller, which merges in its own ranges.
+ */
+export const paintHiddenHighlights = (
+  ranges: Range[],
+  label: string,
+  paint = true,
+) => {
+  for (const el of document.querySelectorAll<HTMLElement>(`[${HIDDEN_ATTR}]`))
+    el.removeAttribute(HIDDEN_ATTR);
+  const H = HighlightClass();
+  if (!paint || !ranges.length || !H) return;
+
+  const byOwner = new Map<Element, Range[]>();
+  for (const r of ranges) {
+    const owner = r.commonAncestorContainer.parentElement?.closest(
+      'details, [data-collapsible]',
+    );
+    if (owner?.firstElementChild)
+      byOwner.set(owner, [...(byOwner.get(owner) ?? []), r]);
+  }
+
+  const out: Range[] = [];
+  for (const [owner, hits] of byOwner) {
+    const host = owner.firstElementChild as HTMLElement;
+    const holder = document.createElement('span');
+    holder.className = HIDDEN_CLS;
+    holder.setAttribute(HIDDEN_ATTR, '');
+    holder.setAttribute('aria-hidden', 'true');
+    holder.title = label;
+    holder.textContent = ' '.repeat(hits.length);
+    host.style.position ||= 'relative';
+    host.prepend(holder);
+    const text = holder.firstChild as Text;
+    hits.forEach((_, i) => {
+      const r = document.createRange();
+      r.setStart(text, i);
+      r.setEnd(text, i + 1);
+      out.push(r);
+    });
+  }
+  const reg = registry();
+  if (reg) reg.set('search-hit', new H(...out));
 };
