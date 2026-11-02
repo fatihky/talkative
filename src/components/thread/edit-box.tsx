@@ -9,6 +9,8 @@
  *   always saves, Escape cancels.
  * - opens focused with the caret at the end of the text; the box fits
  *   2–12 rows of content.
+ * - queued messages reuse it in a compact row: same keys, a "Save" label
+ *   (nothing is sent until the queue drains) and smaller type.
  */
 'use client';
 
@@ -19,10 +21,15 @@ export function EditBox({
   initial,
   onSave,
   onCancel,
+  saveLabel = 'Send',
+  compact = false,
 }: {
   initial: string;
   onSave: (text: string) => void;
   onCancel: () => void;
+  /* queued turns are saved to the queue, not sent */
+  saveLabel?: string;
+  compact?: boolean;
 }) {
   const [text, setText] = useState(initial);
   const enterToSend = usePrefsStore((s) => s.enterToSend);
@@ -65,7 +72,7 @@ export function EditBox({
           }
           if (e.key === 'Escape') onCancel();
         }}
-        className="scroll-thin w-full resize-none overflow-hidden bg-transparent text-[13px] leading-[1.55] outline-none"
+        className={`scroll-thin w-full resize-none overflow-hidden bg-transparent outline-none ${compact ? 'text-[12px] leading-[1.5]' : 'text-[13px] leading-[1.55]'}`}
       />
       <div className="flex justify-end gap-2">
         <button type="button" className="ctl h-7 px-3" onClick={onCancel}>
@@ -77,7 +84,7 @@ export function EditBox({
           disabled={text.trim() === ''}
           onClick={save}
         >
-          Send
+          {saveLabel}
         </button>
       </div>
     </div>

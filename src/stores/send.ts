@@ -25,7 +25,9 @@
  * - sendReply appends to thread.queue while a reply is streaming;
  *   drainQueue (registered with onStreamSettled, so finishStream calls
  *   it) sends one at a time and resolves parentId at send time, so each queued turn follows the
- *   latest reply. dequeueMessage drops one that hasn't started yet.
+ *   latest reply. dequeueMessage drops one that hasn't started yet, and
+ *   updateQueuedMessage rewrites one in place, restamping its payload from
+ *   the composer so an edit also picks up the current model and params.
  * - a reply parents to the last assistant message on the visible branch,
  *   and an earlier failed turn with that same parent is removed so it
  *   doesn't linger as a phantom branch.
@@ -95,12 +97,14 @@ const payloadFor = (
   content: string,
   attachments: OutgoingMessage['attachments'],
   parentId: string | null,
+  /* a restamp of an existing turn must not spend the composer's one-shot toggle */
+  oneShot = true,
 ): OutgoingMessage => {
   const d = useDraftStore.getState();
   rememberActiveTools(chatId);
   /* one-shot: consume the timestamp-prefix toggle, then reset it */
   const timestamps = useUIStore.getState().timestampPrefix;
-  if (timestamps) useUIStore.setState({ timestampPrefix: false });
+  if (timestamps && oneShot) useUIStore.setState({ timestampPrefix: false });
   return {
     role: 'user',
     content,
@@ -374,6 +378,36 @@ export const sendActions = {
     if (!t) return;
     patchThread(chatId, {
       queue: t.queue.filter((q) => q.id !== queuedId),
+    });
+  },
+
+  /**
+   * rewrites a queued message in place, keeping its spot in the send order. the
+   * payload is restamped from the composer so the edit also picks up the model
+   * and params selected since it was queued.
+   */
+  updateQueuedMessage(chatId: string, queuedId: string, content: string) {
+    const t = useThreadsStore.getState().threads[chatId];
+    const q = t?.queue.find((x) => x.id === queuedId);
+    if (!t || !q) return;
+    const text = content.trim();
+    if (text === '' && q.attachments.length === 0) return;
+    patchThread(chatId, {
+      queue: t.queue.map((x) =>
+        x.id === queuedId
+          ? {
+              ...x,
+              content: text,
+              payload: payloadFor(
+                chatId,
+                text,
+                x.attachments as OutgoingMessage['attachments'],
+                null,
+                false,
+              ),
+            }
+          : x,
+      ),
     });
   },
 

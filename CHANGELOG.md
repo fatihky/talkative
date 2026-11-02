@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Let a queued message be edited in place in the thread's queue list: it keeps its spot in the send order and is restamped with the composer's current model and params.
 - Lead the model list on `/settings/providers` with the last 5 models used across chats as a "Recent" group of the same editable rows; opening one clears the search and provider filters.
 - Render GitHub `github_repo_search`, `github_issue_search`, `github_pr_search` and `github_discussion_search` results in the thread as clickable title/URL/detail links, like `web_search`, with the raw API response behind the "inspect raw results" disclosure.
 

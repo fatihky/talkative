@@ -28,7 +28,7 @@
  *   ResizeObserver follows markdown that grows after commit.
  * - while generating: a spinner telling the reader to stop from the
  *   composer, plus the queued messages listed in send order, each
- *   removable until it starts.
+ *   editable in place or removable until it starts.
  * - a failed send surfaces as an ErrorCard at the thread's end.
  */
 'use client';
@@ -51,6 +51,7 @@ import { applyThreadModel, branchPath } from '../../stores/threads';
 import { chatActionsMenu } from '../chat-actions';
 import { MoveMenu } from '../sidebar/move-menu';
 import { ErrorCard } from './error-card';
+import { EditBox } from './edit-box';
 import { FindBar } from './find-bar';
 import { MessageBubble } from './message-bubble';
 
@@ -69,6 +70,8 @@ export function ThreadScreen() {
   const hasFolders = useFoldersStore((s) => s.items.length > 0);
   /* null while closed; otherwise bumped by each shortcut press to refocus the input */
   const [find, setFind] = useState<number | null>(null);
+  /* id of the queued message opened in the inline editor; a queue row re-edits and moves on */
+  const [editingQueued, setEditingQueued] = useState<string | null>(null);
   /* the conversation exists even before its summary loads (e.g. a just-sent chat) */
   const exists = chat !== null || thread !== null;
 
@@ -342,29 +345,53 @@ export function ThreadScreen() {
 
         {(thread?.queue.length ?? 0) > 0 && (
           <div className="flex flex-col gap-0.5 py-0.5">
-            {thread?.queue.map((q, i) => (
-              <div
-                key={q.id}
-                className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--sunken)] px-2 py-1 text-[12px]"
-              >
-                <span className="flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] text-[8px] font-bold text-[var(--text-inv)]">
-                  {i + 1}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[var(--text-2)]">
-                  {q.content || '(attachment)'}
-                </span>
-                <Tip label="Cancel queued message" side="top">
-                  <button
-                    type="button"
-                    aria-label="Cancel queued message"
-                    onClick={() => actions.dequeueMessage(chatId, q.id)}
-                    className="ctl-icon shrink-0 text-[var(--text-3)] hover:text-[var(--text)]"
-                  >
-                    <I n="x" s={10} />
-                  </button>
-                </Tip>
-              </div>
-            ))}
+            {thread?.queue.map((q, i) =>
+              editingQueued === q.id ? (
+                <EditBox
+                  key={q.id}
+                  initial={q.content}
+                  compact
+                  saveLabel="Save"
+                  onCancel={() => setEditingQueued(null)}
+                  onSave={(text) => {
+                    setEditingQueued(null);
+                    actions.updateQueuedMessage(chatId, q.id, text);
+                  }}
+                />
+              ) : (
+                <div
+                  key={q.id}
+                  className="flex items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--sunken)] px-2 py-1 text-[12px]"
+                >
+                  <span className="flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--accent)] text-[8px] font-bold text-[var(--text-inv)]">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[var(--text-2)]">
+                    {q.content || '(attachment)'}
+                  </span>
+                  <Tip label="Edit queued message" side="top">
+                    <button
+                      type="button"
+                      aria-label="Edit queued message"
+                      onClick={() => setEditingQueued(q.id)}
+                      className="ctl-icon shrink-0 text-[var(--text-3)] hover:text-[var(--text)]"
+                    >
+                      <I n="pencil" s={10} />
+                    </button>
+                  </Tip>
+                  <Tip label="Cancel queued message" side="top">
+                    <button
+                      type="button"
+                      aria-label="Cancel queued message"
+                      onClick={() => actions.dequeueMessage(chatId, q.id)}
+                      className="ctl-icon shrink-0 text-[var(--text-3)] hover:text-[var(--text)]"
+                    >
+                      <I n="x" s={10} />
+                    </button>
+                  </Tip>
+                </div>
+              ),
+            )}
           </div>
         )}
 
