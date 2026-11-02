@@ -47,6 +47,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - List hidden custom models on `/settings/providers` so they can be unhidden.
 - Stop the page's slow first catalog refresh on `/settings/providers` from overwriting a newer model list.
 - Stop saving a capability override from writing back the catalog values the form was prefilled with: only ticked supports are sent, and an untouched thinking list is no longer saved as "takes no effort", so saving one field no longer wipes the provider's thinking levels and disables the composer's effort picker.
+- Let the composer span the full width of the chat column on phones: below 640px the dock drops its side gutter (and the stage, folder screen and banner stack drop theirs too), so the input, tool bar and footer run edge to edge instead of sitting in an 8px margin.
 
 ## [0.2.2] - 2026-10-29
 

@@ -449,6 +449,16 @@ select:focus-visible {
     scrollbar-width: thin;
     scrollbar-color: var(--border-strong) transparent;
   }
+  /* the dock around the composer: gutter goes to zero on phones so the
+     composer spans the full width of the chat column */
+  .composer-dock {
+    padding-inline: 0;
+  }
+  @media (min-width: 640px) {
+    .composer-dock {
+      padding-inline: 24px;
+    }
+  }
 }
 
 /* ── Message bubble & tool card (clean-layout handoff, verbatim) ──── */

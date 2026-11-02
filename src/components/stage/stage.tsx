@@ -73,8 +73,8 @@ export function Stage({ banners }: { banners: Banner[] }) {
   if (!stageVisible) {
     /* S1 — stage stays hidden; composer shows loading model state underneath */
     return (
-      <div className="flex-1 px-4 pt-[min(18vh,140px)] pb-6 sm:px-6">
-        <div className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col gap-4">
+      <div className="flex-1 pt-[min(18vh,140px)] pb-6">
+        <div className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col gap-4 px-4 sm:px-6">
           <div
             className="flex items-center gap-2 text-[12px] muted"
             role="status"
@@ -105,8 +105,8 @@ export function Stage({ banners }: { banners: Banner[] }) {
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <main className="scroll-thin min-h-0 flex-1 overflow-y-auto px-4 pt-[min(18vh,140px)] pb-6 sm:px-6">
-        <div className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col">
+      <main className="scroll-thin min-h-0 flex-1 overflow-y-auto pt-[min(18vh,140px)] pb-6">
+        <div className="mx-auto flex w-full max-w-[var(--stage-max)] flex-col px-4 sm:px-6">
           <StageGreeting />
           <SuggestionChips />
           <QuickActions iconOnly={vw < 768} />

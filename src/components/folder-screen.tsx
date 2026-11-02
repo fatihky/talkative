@@ -50,8 +50,8 @@ export function FolderScreen() {
   const latest = latestChats(chats, folderId);
 
   return (
-    <main className="scroll-thin min-h-0 flex-1 overflow-y-auto px-4 pt-[min(18vh,140px)] pb-6 sm:px-6">
-      <div className="mx-auto flex w-full max-w-[640px] flex-col">
+    <main className="scroll-thin min-h-0 flex-1 overflow-y-auto pt-[min(18vh,140px)] pb-6">
+      <div className="mx-auto flex w-full max-w-[640px] flex-col px-4 sm:px-6">
         <div className="flex items-center gap-2">
           <I n="folder" s={18} className="shrink-0 text-[var(--accent)]" />
           <h1 className="min-w-0 truncate text-[20px] font-semibold leading-[1.35] text-[var(--text)]">
