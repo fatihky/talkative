@@ -9,6 +9,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
+
 ### Added
 
 - Add an `append` action to the `memory` tool: it adds a line to an existing fact (creating the key when it doesn't exist yet) instead of replacing it, so accumulating facts like a list of decisions no longer need a full rewrite; memory cards label the call `APPENDED` (`SAVED`/`LISTED`/`FORGOT` for the other actions) instead of always `SAVED`.
