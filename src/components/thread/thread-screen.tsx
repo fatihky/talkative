@@ -19,8 +19,10 @@
  *   shell's, inert while the palette is open.
  * - the header carries the title, a branch-count badge, and a ⋯ menu
  *   with the same chat actions as the sidebar row (rename, pin, system
- *   prompt, move to…, export, delete); rename there opens a prompt
- *   dialog since the sidebar's inline editor isn't on screen.
+ *   prompt, move to…, export, delete), plus a "Find in chat" item that
+ *   opens the same FindBar as the shortcut and the search button; rename
+ *   there opens a prompt dialog since the sidebar's inline editor isn't
+ *   on screen.
  * - bottom-follow scrolling: pinned while the reader is at the bottom,
  *   unpinned by an upward scroll mid-stream, re-pinned on chat switch
  *   or when the total message count grows — the count spans all
@@ -335,6 +337,7 @@ export function ThreadScreen() {
                 actions.renameChat(chatId, title);
             },
             onMove: () => setMenu('move'),
+            onFind: openFind,
           })}
         />
         <MoveMenu

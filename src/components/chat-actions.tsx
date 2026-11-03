@@ -6,6 +6,9 @@
  * - One list feeds both places so they can't drift: rename, pin/unpin,
  *   system prompt, move to…, export as text, and delete behind a confirm
  *   dialog.
+ * - Find in chat only appears where the caller passes `onFind` (the thread
+ *   header, whose FindBar lives on the same screen); the sidebar menu has
+ *   no thread to search, so it just omits the item.
  * - Rename differs by surface: the sidebar starts its inline editor and
  *   the thread header opens a prompt dialog, so the label comes in.
  * - "Move to…" is offered only when at least one folder exists, and it
@@ -29,6 +32,7 @@ export function chatActionsMenu({
   moveHint = false,
   onRename,
   onMove,
+  onFind,
 }: {
   chat: Pick<ChatSummary, 'id' | 'title' | 'pinnedAt'> &
     Partial<Pick<ChatSummary, 'systemPrompt'>>;
@@ -38,10 +42,13 @@ export function chatActionsMenu({
   moveHint?: boolean;
   onRename: () => void;
   onMove: () => void;
+  /* the thread header's FindBar; omitted where there is no rendered thread */
+  onFind?: () => void;
 }): MenuItem[] {
   /* the system prompt only matters once the chat exists */
   const promptReady = 'systemPrompt' in chat;
   return [
+    ...(onFind ? [{ label: 'Find in chat', onSelect: onFind }] : []),
     { label: renameLabel, onSelect: onRename },
     {
       label: chat.pinnedAt ? 'Unpin' : 'Pin to top',
