@@ -5,8 +5,9 @@
  * - saving doesn't mutate the turn: it sends the edited copy as a
  *   sibling branch, preserving the original and its replies.
  * - empty or whitespace-only text can't be saved.
- * - Enter follows the enterToSend pref (an account setting), ⌘/Ctrl+Enter
- *   always saves, Escape cancels.
+ * - Enter saves on desktop; on mobile it follows the enterToSend pref, so
+ *   the preference only changes small-screen inputs. ⌘/Ctrl+Enter always
+ *   saves, Escape cancels.
  * - opens focused with the caret at the end of the text; the box fits
  *   2–12 rows of content.
  * - queued messages reuse it in a compact row: same keys, a "Save" label
@@ -15,7 +16,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { usePrefsStore } from '../../stores';
+import { useLayoutStore, usePrefsStore } from '../../stores';
 
 export function EditBox({
   initial,
@@ -33,6 +34,8 @@ export function EditBox({
 }) {
   const [text, setText] = useState(initial);
   const enterToSend = usePrefsStore((s) => s.enterToSend);
+  /* the Enter preference is mobile-only; desktop always saves on Enter */
+  const saveOnEnter = useLayoutStore((s) => s.vw < 768) ? enterToSend : true;
   const ref = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     const el = ref.current;
@@ -66,7 +69,7 @@ export function EditBox({
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           const mod = e.metaKey || e.ctrlKey;
-          if (e.key === 'Enter' && (mod || (!e.shiftKey && enterToSend))) {
+          if (e.key === 'Enter' && (mod || (!e.shiftKey && saveOnEnter))) {
             e.preventDefault();
             save();
           }

@@ -9,9 +9,10 @@
  *   `theme` key back.
  * - The Enter-key choice is account-level (`enterToSend` in UserPrefs):
  *   it is patched to /api/user-preferences and follows the user to every
- *   device, with the local copy kept for an instant reload. The radio
- *   also names the shortcut that overrides it — Shift+Enter always breaks
- *   a line and ⌘/Ctrl+Enter always sends.
+ *   device, with the local copy kept for an instant reload. It only
+ *   affects mobile inputs, though — desktop always sends with Enter. The
+ *   radio also names the shortcut that overrides it — Shift+Enter always
+ *   breaks a line and ⌘/Ctrl+Enter always sends.
  * - Defaults: theme `system`, Enter sends, spellcheck on.
  */
 'use client';
@@ -74,7 +75,8 @@ export function AppearanceSettings() {
           </div>
           <p className="text-[11px] muted">
             Shift+Enter always inserts a new line, {mod}+Enter always sends.
-            Saved to your account, so it applies on every device.
+            Saved to your account; applies on phones and tablets only —
+            desktop always sends with Enter.
           </p>
         </fieldset>
         <label className="mt-4 flex cursor-pointer items-center justify-between text-[13px]">

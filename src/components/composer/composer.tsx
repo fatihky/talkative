@@ -14,9 +14,10 @@
  *   navigates before the server answers; a thread sends via sendReply,
  *   which queues the turn while a reply is streaming and drains the
  *   queue in order once the run settles.
- * - Enter sends per the enterToSend pref (an account setting, see
- *   stores/prefs), ⌘/Ctrl+Enter always sends, Shift+Enter inserts a
- *   newline, Escape blurs.
+ * - Enter sends on desktop; on mobile it follows the enterToSend pref
+ *   (an account setting, see stores/prefs), so the preference only
+ *   changes small-screen inputs. ⌘/Ctrl+Enter always sends, Shift+Enter
+ *   inserts a newline, Escape blurs.
  * - pasted or picked files upload through attachFiles into the tray; a
  *   storage failure keeps the metadata so the composer isn't blocked.
  * - the textarea auto-grows to 40% of the viewport, then scrolls
@@ -33,6 +34,7 @@ import {
   setComposerEl,
   useDraftStore,
   useEstimate,
+  useLayoutStore,
   usePrefsStore,
   usePrivateStore,
   useThreadsStore,
@@ -87,6 +89,8 @@ export function Composer() {
   });
   const enterToSend = usePrefsStore((s) => s.enterToSend);
   const spellcheck = usePrefsStore((s) => s.spellcheck);
+  /* the Enter preference is mobile-only; desktop always sends on Enter */
+  const sendOnEnter = useLayoutStore((s) => s.vw < 768) ? enterToSend : true;
 
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -123,7 +127,7 @@ export function Composer() {
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const mod = e.metaKey || e.ctrlKey;
-    if (e.key === 'Enter' && (mod || (!e.shiftKey && enterToSend))) {
+    if (e.key === 'Enter' && (mod || (!e.shiftKey && sendOnEnter))) {
       e.preventDefault();
       doSend();
       return;

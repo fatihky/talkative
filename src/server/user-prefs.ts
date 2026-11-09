@@ -9,9 +9,9 @@
  * - The row is a partial object: a key that was never saved is absent, so
  *   the client can keep whatever it has cached instead of being reset to
  *   the default. A missing row means "nothing saved yet".
- * - `enterToSend` decides whether a bare Enter in the composer sends the
- *   message or inserts a newline (Shift+Enter always breaks, ⌘/Ctrl+Enter
- *   always sends).
+ * - `enterToSend` decides whether a bare Enter on mobile sends the message
+ *   or inserts a newline (desktop always sends; Shift+Enter always breaks,
+ *   ⌘/Ctrl+Enter always sends).
  * - parseUserPrefs validates field by field and throws ValidationError on
  *   anything it doesn't recognize, so a typo'd key can't be stored.
  * - saveUserPrefs merges the patch into the stored row and returns the

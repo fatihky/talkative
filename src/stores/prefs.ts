@@ -9,7 +9,8 @@
  * - enterToSend is an account-level preference (UserPrefs, stored under
  *   'user:<id>' in app_settings): boot() keeps the cached copy for the
  *   first paint and then applies the saved one through applyAccountPrefs,
- *   so it follows a user to every device. savePreferences() writes the
+ *   so it follows a user to every device. It only governs mobile inputs,
+ *   though — desktop always sends with Enter. savePreferences() writes the
  *   change both locally (so a reload paints instantly) and to the server;
  *   a failed save toasts and keeps the local value, like tool prefs.
  * - once the user changes enterToSend locally, a late boot fetch can't
@@ -18,10 +19,10 @@
  *   they set data-theme on <html>, resolving 'system' against
  *   prefers-color-scheme, and shell re-runs applyTheme when that query
  *   changes.
- * - enterToSend decides whether a bare Enter sends or inserts a newline
- *   in the composer and the message edit box (⌘/Ctrl+Enter always sends,
- *   Shift+Enter always breaks), and spellcheck is passed through to the
- *   composer textarea.
+ * - enterToSend decides whether a bare Enter on mobile sends or inserts a
+ *   newline in the composer and the message edit box (desktop always
+ *   sends; ⌘/Ctrl+Enter always sends, Shift+Enter always breaks), and
+ *   spellcheck is passed through to the composer textarea.
  * - defaults are theme 'system', enterToSend on, spellcheck on.
  */
 'use client';
@@ -78,7 +79,7 @@ export const prefsActions = {
     if (typeof p.enterToSend !== 'boolean') return;
     prefsActions.setPrefs({ enterToSend: p.enterToSend });
   },
-  /** the composer's Enter key: true sends, false inserts a newline */
+  /** the mobile composer's Enter key: true sends, false inserts a newline */
   setEnterToSend(on: boolean) {
     accountPrefsTouched = true;
     prefsActions.setPrefs({ enterToSend: on });

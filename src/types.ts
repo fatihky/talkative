@@ -619,7 +619,7 @@ export type Prefs = {
  * optional: an absent key was never saved, so the client keeps what it has.
  */
 export type UserPrefs = {
-  /* bare Enter sends the composer's message (true) or inserts a newline (false) */
+  /* on mobile, bare Enter sends the composer's message (true) or inserts a newline (false); desktop always sends */
   enterToSend?: boolean | undefined;
 };
 

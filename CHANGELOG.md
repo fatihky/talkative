@@ -13,6 +13,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 - Add "Find in chat" to the thread header's ⋯ menu, opening the same FindBar as the search button and mod+F.
 
+### Changed
+
+- Scope the composer's Enter-key preference to mobile: desktop always sends with Enter (Shift+Enter breaks the line), while phones and tablets keep the send-or-newline choice.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added

@@ -6,10 +6,11 @@
  * - shows the live token estimate and ~cost of the next send, dimmed
  *   while the draft is empty.
  * - the attach button only appears on wide (≥768px) layouts.
- * - the send-key hint follows the enterToSend pref (Enter vs
- *   ⌘/Ctrl+Enter) and is replaced by "Queued on reconnect" offline. The
- *   hint is a button: clicking it flips the account pref, so the
- *   composer's Enter behaviour can be switched without a trip to settings.
+ * - the send-key hint reflects the active Enter behaviour: desktop always
+ *   sends with Enter, while mobile follows the enterToSend pref. It is
+ *   replaced by "Queued on reconnect" offline and is a button: clicking it
+ *   flips the mobile account pref, so the small-screen behaviour can be
+ *   switched without a trip to settings.
  * - streaming/sending/blockedReason/queueCount pass through to the
  *   SendButton, so sending during a live run queues the turn instead
  *   of being rejected.
@@ -87,8 +88,10 @@ export function ComposerFooter({
 }) {
   const enterToSend = usePrefsStore((s) => s.enterToSend);
   const conn = useNetworkStore((s) => s.connection);
-  const mod = useUIStore((s) => s.mod);
   const wide = useLayoutStore((s) => s.vw >= 768);
+  const mobile = !wide;
+  /* the Enter pref is mobile-only; desktop always sends on Enter */
+  const sendOnEnter = mobile ? enterToSend : true;
 
   return (
     <div className="flex h-7 shrink-0 items-center justify-between border-t border-[var(--border)] px-2">
@@ -117,36 +120,40 @@ export function ComposerFooter({
       <div className="flex items-center gap-2" id="composer-hint">
         <ModelPicker /> <ParamsButton />
         <TimestampToggle />
-        {wide && (
-          <Tip
-            label={
-              enterToSend
+        <Tip
+          label={
+            mobile
+              ? enterToSend
                 ? 'Enter sends the message.\nClick to make Enter start a new line.'
                 : 'Enter starts a new line; the send shortcut still sends.\nClick to make Enter send.'
-            }
-            side="top"
+              : 'Desktop always sends with Enter; Shift+Enter starts a new line.\nClick to change the Enter behaviour on mobile.'
+          }
+          side="top"
+        >
+          <button
+            type="button"
+            aria-pressed={mobile ? !enterToSend : undefined}
+            aria-label="Toggle Enter to send"
+            onClick={() => actions.setEnterToSend(!enterToSend)}
+            className="flex items-center gap-1.5 rounded-[4px] px-1 text-[11px] muted hover:bg-[var(--sunken)] hover:text-[var(--text-2)]"
           >
-            <button
-              type="button"
-              aria-pressed={!enterToSend}
-              aria-label="Toggle Enter to send"
-              onClick={() => actions.setEnterToSend(!enterToSend)}
-              className="flex items-center gap-1.5 rounded-[4px] px-1 text-[11px] muted hover:bg-[var(--sunken)] hover:text-[var(--text-2)]"
-            >
-              {conn === 'offline' ? (
-                'Queued on reconnect'
-              ) : enterToSend ? (
+            {conn === 'offline' ? (
+              'Queued on reconnect'
+            ) : mobile ? (
+              sendOnEnter ? (
                 <>
                   Enter to send <Kbd>⏎</Kbd>
                 </>
               ) : (
-                <>
-                  {mod}+Enter to send <Kbd>{mod}⏎</Kbd>
-                </>
-              )}
-            </button>
-          </Tip>
-        )}
+                'Enter: new line'
+              )
+            ) : (
+              <>
+                Enter to send <Kbd>⏎</Kbd>
+              </>
+            )}
+          </button>
+        </Tip>
         <SendButton
           streaming={streaming}
           sending={sending}
