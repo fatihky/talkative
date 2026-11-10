@@ -218,6 +218,13 @@
       "when": 1793533326760,
       "tag": "0030_key_model_overrides_by_connection_and_model",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794320287089,
+      "tag": "0031_add_memory_revisions",
+      "breakpoints": true
     }
   ]
 }

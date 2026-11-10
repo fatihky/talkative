@@ -30,7 +30,11 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '../../../db';
 import { memories } from '../../../db/schema';
-import { parseMemoryCreate, toMemoryDto } from '../../../server/memories';
+import {
+  parseMemoryCreate,
+  recordMemoryRevision,
+  toMemoryDto,
+} from '../../../server/memories';
 import { handle, ValidationError } from '../../../server/providers';
 
 /* GET /api/memories — most recently touched first, like the tool's list */
@@ -59,12 +63,18 @@ export const POST = (req: Request) =>
       .values({ ...input, userId })
       .returning();
     if (!row) throw new Error('insert failed');
+    await recordMemoryRevision(userId, row.id, row.key, 'created', null, row.value);
     return Response.json(toMemoryDto(row), { status: 201 });
   });
 
-/* DELETE /api/memories — forget everything */
+/* DELETE /api/memories — forget everything; each wiped fact gets a 'deleted' revision */
 export const DELETE = () =>
   handle(async (userId) => {
-    await getDb().delete(memories).where(eq(memories.userId, userId));
+    const removed = await getDb()
+      .delete(memories)
+      .where(eq(memories.userId, userId))
+      .returning();
+    for (const m of removed)
+      await recordMemoryRevision(userId, m.id, m.key, 'deleted', m.value, null);
     return new Response(null, { status: 204 });
   });

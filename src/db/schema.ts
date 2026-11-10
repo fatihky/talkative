@@ -454,6 +454,24 @@ export const memories = pgTable(
 export type MemoryRow = typeof memories.$inferSelect;
 export type NewMemory = typeof memories.$inferInsert;
 
+export const memoryRevisions = pgTable('memory_revisions', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  memoryId: text('memory_id'),
+  key: text('key').notNull(),
+  action: text('action').notNull(), // 'created' | 'updated' | 'appended' | 'deleted'
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type MemoryRevisionRow = typeof memoryRevisions.$inferSelect;
+export type NewMemoryRevision = typeof memoryRevisions.$inferInsert;
+
 /* scratch todos managed by the todo tool; one row per item, scoped to a chat.
    the list is volatile working memory the model uses while generating, so a chat
    being deleted takes its todos with it. */

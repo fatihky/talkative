@@ -35,6 +35,7 @@ import { chatsApi } from '../lib/api';
 import { LS, uid } from '../lib/storage';
 import type { ChatSummary, Suggestion } from '../types';
 import { draftActions, forgetChatTools } from './draft';
+import { clearPersistedQueue } from './threads';
 import { uiActions } from './ui';
 
 type ChatsState = {
@@ -102,6 +103,7 @@ export const chatsActions = {
     const prev = get().items;
     const folderId = prev.find((c) => c.id === id)?.folderId;
     forgetChatTools(id);
+    clearPersistedQueue(id);
     setChatItems(prev.filter((c) => c.id !== id));
     uiActions.navigateTo(folderId ? `/folder/${folderId}` : '/');
     chatsApi.remove(id).catch((e: unknown) => {

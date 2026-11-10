@@ -22,9 +22,10 @@
  * - a failed send never loses the text: the turn goes to 'failed' and
  *   thread.error keeps the exact payload, which retrySend re-posts and
  *   threads.editMessage puts back into the composer.
- * - sendReply appends to thread.queue while a reply is streaming;
- *   drainQueue (registered with onStreamSettled, so finishStream calls
- *   it) sends one at a time and resolves parentId at send time, so each queued turn follows the
+ * - sendReply appends to thread.queue while a reply is streaming (the
+ *   queue is mirrored to localStorage, so a refresh behind a running reply
+ *   keeps it and loadThread restores it); drainQueue (registered with
+ *   onStreamSettled, so finishStream calls it) sends one at a time and resolves parentId at send time, so each queued turn follows the
  *   latest reply. dequeueMessage drops one that hasn't started yet, and
  *   updateQueuedMessage rewrites one in place, restamping its payload from
  *   the composer so an edit also picks up the current model and params.

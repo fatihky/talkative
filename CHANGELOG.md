@@ -12,6 +12,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Add "Find in chat" to the thread header's ⋯ menu, opening the same FindBar as the search button and mod+F.
+- Add a memory changelog: every create, update, append and delete of a memory, from the `memory` tool or the settings UI, is recorded in a new `memory_revisions` table (old and new value) and listed newest first at `GET /api/memory-revisions` (optional `?key=`); run `pnpm db:migrate` to apply.
 
 ### Changed
 
@@ -44,6 +45,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Keep a chat's queued messages across a page refresh: the send queue is mirrored to localStorage (cleared when its last turn is sent, removed or the chat is deleted) and restored when the thread loads, so turns queued behind a running reply are no longer lost and still send once it finishes.
 - Decode the model id that `PUT/GET/DELETE /api/model-overrides/:id` receives: Waku hands api route params through percent-encoded, so every save was stored under an id like `3%3Adeepseek%2Fdeepseek-flash` that the merged catalog never matches — overrides, hides and resets silently did nothing (custom models kept working only because their ids round-trip consistently). Rows saved before this fix under encoded catalog ids can be normalized with `UPDATE model_overrides SET model_id = replace(replace(model_id, '%3A', ':'), '%2F', '/') WHERE model_id ~ '^[0-9]+%3A';`
 - Stop model override saves from dropping already saved overrides: the form prefilled from the merged row and compared against it, so a second save omitted every field the first one had overridden (context window, max output, thinking levels, capabilities, pricing) and the PUT cleared them. Fields now compare against the catalog and are always re-sent while overridden.
 - Keep a custom model's connection when it is hidden or unhidden: hide/unhide no longer nulls its `connectionId`/`remoteId`/`baseUrl` (which made the model vanish from every list), hidden entries now carry the stored override so Unhide restores the row as it was, and a PUT that clears everything finally drops the row instead of leaving a blank one with the "overridden" badge.

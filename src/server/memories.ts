@@ -23,9 +23,49 @@
  *   the collection route can wipe only the caller's memories, and deleting
  *   a user cascades their rows away.
  */
-import type { MemoryRow } from '../db/schema';
+import type { MemoryRow, MemoryRevisionRow } from '../db/schema';
+import { memoryRevisions } from '../db/schema';
 import type { Memory as MemoryDto } from '../types';
 import { ValidationError } from './providers';
+import { getDb } from '../db';
+
+export type MemoryRevision = {
+  id: string;
+  memoryId: string | null;
+  key: string;
+  action: string;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: number;
+};
+
+export const toMemoryRevisionDto = (r: MemoryRevisionRow): MemoryRevision => ({
+  id: r.id,
+  memoryId: r.memoryId,
+  key: r.key,
+  action: r.action,
+  oldValue: r.oldValue,
+  newValue: r.newValue,
+  createdAt: r.createdAt.getTime(),
+});
+
+export const recordMemoryRevision = async (
+  userId: string,
+  memoryId: string | null,
+  key: string,
+  action: 'created' | 'updated' | 'appended' | 'deleted',
+  oldValue: string | null,
+  newValue: string | null,
+) => {
+  await getDb().insert(memoryRevisions).values({
+    userId,
+    memoryId,
+    key,
+    action,
+    oldValue,
+    newValue,
+  });
+};
 
 export const toMemoryDto = (m: MemoryRow): MemoryDto => ({
   id: m.id,

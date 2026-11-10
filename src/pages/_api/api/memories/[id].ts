@@ -35,6 +35,7 @@ import { isUuid } from '../../../../server/chats';
 import {
   memoryNotFound,
   parseMemoryPatch,
+  recordMemoryRevision,
   toMemoryDto,
 } from '../../../../server/memories';
 import { handle, ValidationError } from '../../../../server/providers';
@@ -69,6 +70,15 @@ export const PATCH = (req: Request, { params }: Ctx) =>
       .where(eq(memories.id, row.id))
       .returning();
     if (!updated) throw new Error('update failed');
+    if (updated.key !== row.key || updated.value !== row.value)
+      await recordMemoryRevision(
+        userId,
+        updated.id,
+        updated.key,
+        'updated',
+        row.value,
+        updated.value,
+      );
     return Response.json(toMemoryDto(updated));
   });
 
@@ -78,8 +88,16 @@ export const DELETE = (_req: Request, { params }: Ctx) =>
     const result = await getDb()
       .delete(memories)
       .where(and(eq(memories.id, params.id), eq(memories.userId, userId)))
-      .returning({ id: memories.id });
-    return result.length > 0
-      ? new Response(null, { status: 204 })
-      : memoryNotFound();
+      .returning();
+    const [gone] = result;
+    if (!gone) return memoryNotFound();
+    await recordMemoryRevision(
+      userId,
+      gone.id,
+      gone.key,
+      'deleted',
+      gone.value,
+      null,
+    );
+    return new Response(null, { status: 204 });
   });

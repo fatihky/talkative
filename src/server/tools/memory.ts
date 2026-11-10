@@ -27,6 +27,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { memories } from '../../db/schema';
+import { recordMemoryRevision } from '../memories';
 import type { ServerTool } from './index';
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -82,8 +83,27 @@ export const memory: ServerTool = {
           .then((rows) => rows[0] ?? null);
         if (existing) {
           await db.update(memories).set({ value }).where(byKey);
+          await recordMemoryRevision(
+            ctx.userId,
+            existing.id,
+            key,
+            'updated',
+            existing.value,
+            value,
+          );
         } else {
-          await db.insert(memories).values({ userId: ctx.userId, key, value });
+          const [inserted] = await db
+            .insert(memories)
+            .values({ userId: ctx.userId, key, value })
+            .returning();
+          await recordMemoryRevision(
+            ctx.userId,
+            inserted?.id ?? null,
+            key,
+            'created',
+            null,
+            value,
+          );
         }
         return `saved "${key}"`;
       }
@@ -96,21 +116,53 @@ export const memory: ServerTool = {
           .where(byKey)
           .then((rows) => rows[0] ?? null);
         if (existing) {
-          await db
-            .update(memories)
-            .set({ value: `${existing.value}\n${value}` })
-            .where(byKey);
+          const newValue = `${existing.value}\n${value}`;
+          await db.update(memories).set({ value: newValue }).where(byKey);
+          await recordMemoryRevision(
+            ctx.userId,
+            existing.id,
+            key,
+            'appended',
+            existing.value,
+            newValue,
+          );
         } else {
-          await db.insert(memories).values({ userId: ctx.userId, key, value });
+          const [inserted] = await db
+            .insert(memories)
+            .values({ userId: ctx.userId, key, value })
+            .returning();
+          await recordMemoryRevision(
+            ctx.userId,
+            inserted?.id ?? null,
+            key,
+            'created',
+            null,
+            value,
+          );
         }
         return `appended to "${key}"`;
       }
       case 'delete': {
         if (!key) throw new Error('delete needs key');
+        const existing = await db
+          .select()
+          .from(memories)
+          .where(byKey)
+          .then((rows) => rows[0] ?? null);
         const result = await db
           .delete(memories)
           .where(byKey)
           .returning({ id: memories.id });
+        if (result.length && existing) {
+          await recordMemoryRevision(
+            ctx.userId,
+            existing.id,
+            key,
+            'deleted',
+            existing.value,
+            null,
+          );
+        }
         return result.length ? `deleted "${key}"` : `no memory named "${key}"`;
       }
       default:

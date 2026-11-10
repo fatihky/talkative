@@ -6,8 +6,9 @@
  * - one Thread per chatId: every branch as a flat, oldest-first messages
  *   array linked by parentId, plus leafId (the tip on screen), that chat's
  *   own composer draft, streaming, the failed-send error, the client-side
- *   send queue, and a session-wide sessionCost that nothing renders. all
- *   of it is server-derived or optimistic — none of it is persisted.
+ *   send queue, and a session-wide sessionCost that nothing renders. the
+ *   tree is server-derived or optimistic — only the send queue is persisted
+ *   (see persistQueue), so a refresh behind a running reply doesn't lose it.
  * - Msg widens the server status with the client-only 'sending', 'queued'
  *   and 'failed'; those turns have no row, so neither switchBranch nor
  *   deleteMessage will PATCH a leafId pointing at one, and a delete of an
@@ -81,6 +82,7 @@ import {
   pathToLeaf,
 } from '../lib/export-chat';
 import { removalSet } from '../lib/message-tree';
+import { LS } from '../lib/storage';
 import { DEFAULT_PROVIDERS } from '../lib/tools';
 import type {
   ChatSummary,
@@ -107,6 +109,26 @@ export type QueuedMessage = {
   payload: OutgoingMessage;
   createdAt: number;
 };
+
+/** localStorage key holding one chat's pending send queue */
+const queueKey = (chatId: string) => `queue.${chatId}`;
+
+/**
+ * mirrors a chat's send queue into localStorage. queued turns live only in this
+ * tab, so without this a refresh behind a running reply would drop them.
+ */
+export const persistQueue = (chatId: string, queue: QueuedMessage[]) => {
+  if (queue.length > 0) LS.set(queueKey(chatId), queue);
+  else LS.del(queueKey(chatId));
+};
+
+/** the queue of a chat this tab hasn't seen since the page loaded */
+export const readPersistedQueue = (chatId: string): QueuedMessage[] => {
+  const raw = LS.get<unknown>(queueKey(chatId), []);
+  return Array.isArray(raw) ? (raw as QueuedMessage[]) : [];
+};
+
+export const clearPersistedQueue = (chatId: string) => LS.del(queueKey(chatId));
 
 export type Thread = {
   /* every branch, oldest first; parentId links them into a tree */
@@ -138,7 +160,10 @@ export const putThread = (chatId: string, thread: Thread) =>
 /** shallow-merge into an existing thread; no-op if the thread is gone */
 export const patchThread = (chatId: string, patch: Partial<Thread>) => {
   const t = get().threads[chatId];
-  if (t) putThread(chatId, { ...t, ...patch });
+  if (t) {
+    if (patch.queue) persistQueue(chatId, patch.queue);
+    putThread(chatId, { ...t, ...patch });
+  }
 };
 
 const patchMsg = (chatId: string, msgId: string, patch: Partial<Msg>) => {
@@ -415,7 +440,8 @@ export const threadsActions = {
         leafId,
         draft: '',
         streaming: false,
-        queue: [],
+        /* queued turns live only in this tab; a refresh brings them back from localStorage */
+        queue: readPersistedQueue(chatId),
       });
       upsertChat(chat);
       applyThreadModel(chatId);
@@ -425,6 +451,7 @@ export const threadsActions = {
           void attachStream(chatId, m.id);
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) {
+        clearPersistedQueue(chatId);
         putThread(chatId, {
           messages: [],
           leafId: null,
