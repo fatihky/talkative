@@ -1026,11 +1026,10 @@ export const reasoningRequest = async (
   if (!levels) return {};
   /* a model that reports no selectable level takes none */
   if (levels.length === 0) return {};
-  /* only bifrost announces the efforts an upstream takes, so only there can a
-     level be clamped; elsewhere a model that lists some levels gets the asked
-     one through untouched */
-  if (conn.compatibility !== 'bifrost' || levels.includes(effort))
-    return { effort };
+  /* a level the model lists goes through; anything else (a default 'medium'
+     on a model whose override lists only low/high, say) is clamped to one it
+     does, since upstreams 400 on efforts they don't take */
+  if (levels.includes(effort)) return { effort };
   const to = clampEffort(effort, levels);
   return to === effort
     ? { effort }
