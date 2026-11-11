@@ -1084,6 +1084,14 @@ async function* chatCompletions(
   };
   try {
     const apiKey = decryptSecret(conn.apiKey);
+    const reqBody = JSON.stringify({
+      model,
+      messages: history,
+      stream: true,
+      stream_options: { include_usage: true },
+      ...(tools.length > 0 ? { tools } : {}),
+      ...(reasoningEffort(conn, effort) ?? {}),
+    });
     const res = await fetch(
       `${conn.baseUrl}${COMPLETIONS_PATH[conn.compatibility]}`,
       {
@@ -1099,21 +1107,14 @@ async function* chatCompletions(
             : {}),
           ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         },
-        body: JSON.stringify({
-          model,
-          messages: history,
-          stream: true,
-          stream_options: { include_usage: true },
-          ...(tools.length > 0 ? { tools } : {}),
-          ...(reasoningEffort(conn, effort) ?? {}),
-        }),
+        body: reqBody,
         signal: AbortSignal.any([stop, idle.signal]),
       },
     );
     if (!res.ok || !res.body) {
       const full = await res.text().catch(() => '');
       console.error(
-        `[runs] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}`,
+        `[runs] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}\n[runs] request body: ${reqBody.slice(0, 4000)}`,
       );
       const body = full.slice(0, 300);
       throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);

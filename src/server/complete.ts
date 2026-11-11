@@ -46,6 +46,12 @@ export async function completeText(
   opts: { json?: boolean; timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
   const apiKey = decryptSecret(conn.apiKey);
+  const reqBody = JSON.stringify({
+    model,
+    messages,
+    stream: false,
+    ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+  });
   const res = await fetch(
     `${conn.baseUrl}${COMPLETIONS_PATH[conn.compatibility]}`,
     {
@@ -56,19 +62,14 @@ export async function completeText(
         ...(conn.compatibility === 'openrouter' ? OPENROUTER_ATTRIBUTION : {}),
         ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        stream: false,
-        ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
-      }),
+      body: reqBody,
       signal: opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? 20_000),
     },
   );
   if (!res.ok) {
     const full = await res.text().catch(() => '');
     console.error(
-      `[complete] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}`,
+      `[complete] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}\n[complete] request body: ${reqBody.slice(0, 4000)}`,
     );
     const body = full.slice(0, 300);
     throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);
