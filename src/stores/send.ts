@@ -455,6 +455,7 @@ export const sendActions = {
         modelId: knownModelId(d.modelId)
           ? d.modelId
           : (replyModelId ?? d.modelId),
+        thinkingLevel: d.thinkingLevel,
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),
@@ -472,6 +473,7 @@ export const sendActions = {
       retryToolCall(msgId, callId, {
         /* the reply is continued mid-way, so it stays with the model that started it */
         modelId: knownModelId(m?.modelId) ? m.modelId : d.modelId,
+        thinkingLevel: d.thinkingLevel,
         toolGrants: effectiveGrants(),
         toolProviders: d.toolProviders,
       }),

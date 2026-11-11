@@ -685,7 +685,10 @@ export type RegenerateResult = { chat: ChatSummary; assistant: Message };
 /** answers reply `messageId`'s user turn again as a new sibling branch; read it with `readStream` */
 export const regenerateMessage = (
   messageId: string,
-  body: Pick<OutgoingMessage, 'modelId' | 'toolGrants' | 'toolProviders'>,
+  body: Pick<
+    OutgoingMessage,
+    'modelId' | 'thinkingLevel' | 'toolGrants' | 'toolProviders'
+  >,
 ) =>
   request<RegenerateResult>(`/api/messages/${messageId}/regenerate`, {
     method: 'POST',
@@ -696,7 +699,10 @@ export const regenerateMessage = (
 export const retryToolCall = (
   messageId: string,
   callId: string,
-  body: Pick<OutgoingMessage, 'modelId' | 'toolGrants' | 'toolProviders'>,
+  body: Pick<
+    OutgoingMessage,
+    'modelId' | 'thinkingLevel' | 'toolGrants' | 'toolProviders'
+  >,
 ) =>
   request<RegenerateResult>(`/api/messages/${messageId}/retry`, {
     method: 'POST',
