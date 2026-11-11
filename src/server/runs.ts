@@ -1111,7 +1111,11 @@ async function* chatCompletions(
       },
     );
     if (!res.ok || !res.body) {
-      const body = (await res.text().catch(() => '')).slice(0, 300);
+      const full = await res.text().catch(() => '');
+      console.error(
+        `[runs] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}`,
+      );
+      const body = full.slice(0, 300);
       throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);
     }
     const dec = new TextDecoder();

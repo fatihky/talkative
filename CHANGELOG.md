@@ -21,6 +21,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Log the upstream's response body (up to 4,000 characters) to the server console when a chat or completion request fails, instead of keeping only the first 300 characters in the error.
 - Clamp the reasoning effort to the model's listed levels on every provider compatibility, not just bifrost, so an overridden model listing e.g. only `off`/`low`/`high` no longer gets the default `medium` and a 400 from the upstream.
 
 ## [0.3.0] - 2026-11-03

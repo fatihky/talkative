@@ -66,7 +66,11 @@ export async function completeText(
     },
   );
   if (!res.ok) {
-    const body = (await res.text().catch(() => '')).slice(0, 300);
+    const full = await res.text().catch(() => '');
+    console.error(
+      `[complete] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}`,
+    );
+    const body = full.slice(0, 300);
     throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);
   }
   const json = (await res.json()) as {
