@@ -16,7 +16,12 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Slim the Docker image (about 1.15 GB to about 0.65 GB): the runtime stage installs production dependencies only, drops pnpm, and runs migrations from the bundled `dist/cli/migrate.js`; `@streamdown/mermaid` and `lucide-react` moved to `devDependencies` since they are bundled into `dist`; maintenance commands in the container now run as `node bin/talkative.mjs admin grant <email>` instead of `pnpm`.
 - Scope the composer's Enter-key preference to mobile: desktop always sends with Enter (Shift+Enter breaks the line), while phones and tablets keep the send-or-newline choice.
+
+### Fixed
+
+- Clamp the reasoning effort to the model's listed levels on every provider compatibility, not just bifrost, so an overridden model listing e.g. only `off`/`low`/`high` no longer gets the default `medium` and a 400 from the upstream.
 
 ## [0.3.0] - 2026-11-03
 
