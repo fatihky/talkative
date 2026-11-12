@@ -60,7 +60,7 @@
  */
 import type { ArtifactKind } from './lib/artifacts';
 
-export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
+export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high' | 'max';
 export type ToolId = string;
 export type ProviderId = string;
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';

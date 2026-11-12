@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Add `max` as a thinking effort level in the composer, the model settings and the model overrides, sent to models that list it (e.g. via bifrost's reported efforts or an override).
 - Add "Find in chat" to the thread header's ⋯ menu, opening the same FindBar as the search button and mod+F.
 - Add a memory changelog: every create, update, append and delete of a memory, from the `memory` tool or the settings UI, is recorded in a new `memory_revisions` table (old and new value) and listed newest first at `GET /api/memory-revisions` (optional `?key=`); run `pnpm db:migrate` to apply.
 

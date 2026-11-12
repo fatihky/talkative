@@ -89,7 +89,7 @@ import { useThreadsStore } from './threads';
 import { useToolsStore } from './tools';
 import { uiActions, useUIStore } from './ui';
 
-const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
+const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'max'];
 const WORKSPACE_DEFAULT_MODEL = 'claude-4.5-sonnet';
 
 export const defaultDraft = (modelId: string): Draft => ({

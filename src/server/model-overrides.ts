@@ -50,7 +50,7 @@ import { parseModelId } from './model-id';
 /* only these can be chosen for a user-added model: embeddings can't chat and
    'llm' is the default, so anything else is a typo */
 const KINDS = ['llm', 'decision', 'systemone'] as const;
-const LEVELS: readonly ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
+const LEVELS: readonly ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'max'];
 
 /** the pair a row is keyed by, and the catalog id that names it */
 export type OverrideTarget = { connectionId: number; modelId: string };
@@ -384,7 +384,7 @@ export const parseInput = (target: OverrideTarget, body: unknown): OverrideInput
   }
   if (b.defaultThinkingLevel !== undefined && b.defaultThinkingLevel !== null) {
     if (!LEVELS.includes(b.defaultThinkingLevel as ThinkingLevel))
-      throw new ValidationError('defaultThinkingLevel must be off/low/medium/high');
+      throw new ValidationError('defaultThinkingLevel must be off/low/medium/high/max');
     override.defaultThinkingLevel = b.defaultThinkingLevel as ThinkingLevel;
   }
   if (b.capabilities !== undefined && b.capabilities !== null) {

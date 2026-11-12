@@ -281,7 +281,7 @@ type BifrostModel = {
   };
 };
 
-const EFFORT_LEVELS: ThinkingLevel[] = ['low', 'medium', 'high'];
+const EFFORT_LEVELS: ThinkingLevel[] = ['low', 'medium', 'high', 'max'];
 
 /* bifrost reports reasoning effort levels; unsupported values are ignored */
 const toEffortLevels = (efforts: string[] | undefined): ThinkingLevel[] =>
@@ -386,7 +386,8 @@ type LMStudioModel = {
   has_vision_adapter?: boolean;
 };
 
-const LEVEL_ORDER: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
+/* lm studio has no 'max' level, so its mapping stays on the four it reports */
+const LEVEL_ORDER: Exclude<ThinkingLevel, 'max'>[] = ['off', 'low', 'medium', 'high'];
 
 /* lm studio's binary "on" has no effort level — treat it as medium */
 const toLevels = (opts: LMStudioOption[]): ThinkingLevel[] => {

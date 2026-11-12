@@ -939,7 +939,8 @@ const reportedCost = (cost: ReportedCost | undefined): number | undefined => {
 /* ---------- reasoning effort ---------- */
 
 /* the app's levels from least to most thinking; a catalog effort sits on it
-   ('xhigh'/'max' are upstream names the app itself never stores) */
+   ('xhigh' is an upstream name the app never stores; 'max' is a level the app
+   carries, sent only when the model lists it) */
 const EFFORT_ORDER: string[] = ['off', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 /* one higher than the model's top level is clamped to it; between two reported

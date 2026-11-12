@@ -53,6 +53,7 @@ const LEVEL_LABEL: Record<ThinkingLevel, string> = {
   low: 'low',
   medium: 'med',
   high: 'high',
+  max: 'max',
 };
 const LEVEL_VALUE: Record<string, ThinkingLevel> = {
   off: 'off',
@@ -60,6 +61,7 @@ const LEVEL_VALUE: Record<string, ThinkingLevel> = {
   med: 'medium',
   medium: 'medium',
   high: 'high',
+  max: 'max',
 };
 
 /* ── ModelPicker ───────────────────────────────────────────────── */

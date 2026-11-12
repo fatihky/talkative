@@ -205,7 +205,7 @@ export const parseGenerateInput = (body: unknown): GenerateInput => {
   if (!modelId) throw new ValidationError('modelId is required');
   const thinkingLevel =
     typeof b.thinkingLevel === 'string' &&
-    ['off', 'low', 'medium', 'high'].includes(b.thinkingLevel)
+    ['off', 'low', 'medium', 'high', 'max'].includes(b.thinkingLevel)
       ? (b.thinkingLevel as ThinkingLevel)
       : undefined;
   return {

@@ -56,7 +56,7 @@ import type { Model, ModelCapabilities, ModelKind, ModelOverrideDto, ThinkingLev
 import { actions, useModelOverridesStore, useRecentModelIds } from '../stores';
 import { errorText } from '../stores/models';
 
-const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high'];
+const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'max'];
 const CAPS = ['vision', 'tools', 'audio', 'json', 'fast', 'decisions'] as const;
 const KINDS: ModelKind[] = ['llm', 'decision', 'systemone'];
 const inputCls =
