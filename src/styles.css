@@ -1363,8 +1363,8 @@ select:focus-visible {
   --dec-card: var(--panel);
   --dec-field: var(--bg);
   --dec-ink: var(--text);
-  --dec-stroke: var(--text);
-  --dec-shadow: var(--text);
+  --dec-stroke: var(--border-strong);
+  --dec-shadow: var(--border-strong);
   --dec-card-fg: var(--panel);
   --dec-muted: var(--text-2);
   --dec-faint: var(--text-3);
@@ -1375,9 +1375,9 @@ select:focus-visible {
   --dec-danger: var(--danger);
   --dec-danger-tint: color-mix(in oklch, var(--danger) 12%, transparent);
   --dec-warn: var(--warn);
-  --dec-hair: color-mix(in oklch, var(--text) 16%, transparent);
-  --dec-dash: color-mix(in oklch, var(--text) 48%, transparent);
-  --dec-hover: color-mix(in oklch, var(--text) 8%, transparent);
+  --dec-hair: var(--border);
+  --dec-dash: var(--border-strong);
+  --dec-hover: var(--sunken);
   --dec-mono: var(--font-mono);
 
   min-height: 0;
@@ -1390,20 +1390,15 @@ select:focus-visible {
   color: var(--dec-ink);
   background-color: var(--dec-paper);
   background-image: radial-gradient(
-    color-mix(in oklch, var(--text) 11%, transparent) 1px,
+    color-mix(in oklch, var(--border-strong) 45%, transparent) 1px,
     transparent 1.4px
   );
   background-size: 22px 22px;
 }
 
 [data-theme="dark"] .dec-stage {
-  --dec-stroke: oklch(80% 0.014 250);
-  --dec-shadow: oklch(8% 0.01 250);
   --dec-card-fg: var(--bg);
   --dec-accent-fg: oklch(14% 0.02 250);
-  --dec-hair: color-mix(in oklch, var(--text) 16%, transparent);
-  --dec-dash: color-mix(in oklch, var(--text) 40%, transparent);
-  --dec-hover: color-mix(in oklch, var(--text) 9%, transparent);
 }
 
 @keyframes dec-shake {
@@ -1435,7 +1430,7 @@ select:focus-visible {
   background: var(--dec-card);
   border: 2px solid var(--dec-stroke);
   border-radius: 3px;
-  box-shadow: 6px 6px 0 var(--dec-shadow);
+  box-shadow: 2px 2px 0 var(--dec-shadow);
 }
 
 .dec-stack > .dec-card {
@@ -1479,7 +1474,7 @@ select:focus-visible {
 :where(.dec-card) input:not(.dec-title-input):not(.dec-key-input):focus,
 :where(.dec-card) textarea:not(.dec-choice-desc):focus {
   border-color: var(--dec-accent);
-  box-shadow: 3px 3px 0 var(--dec-accent);
+  box-shadow: none;
 }
 
 .dec-card .err {
@@ -1587,8 +1582,8 @@ select:focus-visible {
 }
 
 .dec-seg-btn.is-active {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
+  background: var(--dec-accent);
+  color: var(--dec-accent-fg);
 }
 
 .dec-seg-btn:not(.is-active):hover {
@@ -1724,17 +1719,18 @@ select:focus-visible {
 }
 
 .dec-qchip.is-active {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
+  background: var(--dec-accent);
+  border-color: var(--dec-accent);
+  color: var(--dec-accent-fg);
 }
 
 .dec-qchip.is-active:hover {
-  background: var(--dec-stroke);
+  background: var(--dec-accent);
 }
 
 .dec-qchip.is-active i {
-  color: var(--dec-card-fg);
-  opacity: 0.7;
+  color: var(--dec-accent-fg);
+  opacity: 0.75;
 }
 
 .dec-qrail-actions {
@@ -1780,7 +1776,7 @@ select:focus-visible {
 
 .dec-qstep.add:hover:not(:disabled) {
   background: var(--dec-accent);
-  border-color: var(--dec-stroke);
+  border-color: var(--dec-accent);
   color: var(--dec-accent-fg);
 }
 
@@ -1876,7 +1872,7 @@ select:focus-visible {
 
 .dec-key-wrap:focus-within {
   border-color: var(--dec-accent);
-  box-shadow: 2px 2px 0 var(--dec-accent);
+  box-shadow: none;
 }
 
 .dec-key-tag {
@@ -1928,8 +1924,8 @@ select:focus-visible {
 }
 
 .dec-typeseg button.is-active {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
+  background: var(--dec-accent);
+  color: var(--dec-accent-fg);
 }
 
 .dec-typeseg button:not(.is-active):hover {
@@ -1963,7 +1959,7 @@ select:focus-visible {
 .dec-model-btn:focus-visible {
   outline: none;
   border-color: var(--dec-accent);
-  box-shadow: 3px 3px 0 var(--dec-accent);
+  box-shadow: none;
 }
 
 .dec-model-name {
@@ -2185,8 +2181,9 @@ select:focus-visible {
 }
 
 .dec-add:hover:not(:disabled) {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
+  background: var(--dec-tint);
+  border-color: var(--dec-accent);
+  color: var(--dec-accent);
   border-style: solid;
 }
 
@@ -2256,8 +2253,8 @@ select:focus-visible {
 }
 
 .dec-btn.ghost:hover:not(:disabled) {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
+  background: var(--dec-hover);
+  color: var(--dec-ink);
 }
 
 .dec-btn.ghost.armed {
@@ -2266,20 +2263,21 @@ select:focus-visible {
 }
 
 .dec-btn.solid {
-  background: var(--dec-stroke);
-  color: var(--dec-card-fg);
-  box-shadow: 3px 3px 0 var(--dec-accent);
+  background: var(--dec-accent);
+  border-color: var(--dec-accent);
+  color: var(--dec-accent-fg);
+  box-shadow: 1px 1px 0 var(--dec-shadow);
 }
 
 .dec-btn.solid:hover:not(:disabled) {
-  background: var(--dec-accent);
-  border-color: var(--dec-stroke);
+  background: color-mix(in oklch, var(--dec-accent) 88%, var(--dec-ink));
+  border-color: var(--dec-accent);
   color: var(--dec-accent-fg);
-  box-shadow: 3px 3px 0 var(--dec-shadow);
+  box-shadow: 1px 1px 0 var(--dec-shadow);
 }
 
 .dec-btn.solid:active:not(:disabled) {
-  transform: translate(3px, 3px);
+  transform: translate(1px, 1px);
   box-shadow: 0 0 0 var(--dec-shadow);
 }
 
@@ -2370,7 +2368,7 @@ select:focus-visible {
 .dec-pv-opt.right {
   border-color: var(--dec-accent);
   background: var(--dec-tint);
-  box-shadow: 3px 3px 0 var(--dec-accent);
+  box-shadow: none;
 }
 
 .dec-pv-opt.right .dec-badge {
@@ -2463,8 +2461,8 @@ select:focus-visible {
 }
 
 .dec-sum-row:hover {
-  box-shadow: 2px 2px 0 var(--dec-shadow);
-  transform: translate(-1px, -1px);
+  box-shadow: none;
+  transform: none;
 }
 
 .dec-sum-row.is-active {
@@ -2499,8 +2497,8 @@ select:focus-visible {
 }
 
 .dec-run-row:hover {
-  border-color: var(--dec-stroke);
-  box-shadow: 3px 3px 0 var(--dec-shadow);
+  border-color: var(--dec-accent);
+  box-shadow: 1px 1px 0 var(--dec-shadow);
   transform: translate(-1px, -1px);
 }
 
@@ -2532,7 +2530,7 @@ select:focus-visible {
 .dec-example:hover {
   border-color: var(--dec-accent);
   background: var(--dec-tint);
-  box-shadow: 3px 3px 0 var(--dec-accent);
+  box-shadow: 1px 1px 0 var(--dec-accent);
   transform: translate(-1px, -1px);
 }
 
@@ -2565,7 +2563,7 @@ select:focus-visible {
     gap: 12px;
   }
   .dec-card {
-    box-shadow: 4px 4px 0 var(--dec-shadow);
+    box-shadow: 1px 1px 0 var(--dec-shadow);
   }
   .dec-head {
     padding: 6px 8px;
