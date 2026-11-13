@@ -177,98 +177,114 @@ export function DecisionsClient() {
 
   return (
     <main className="dec-stage scroll-thin">
-      <div className="dec-card">
-        <header className="dec-head">
-          <div className="dec-brand">
-            <span className="dec-mark" />
-            <h1>DECISIONS</h1>
-          </div>
-          <div className="dec-head-actions">
-            <button
-              type="button"
-              className="dec-btn solid"
-              onClick={() => actions.newDecision()}
-            >
-              <I n="plus" s={12} w={2.6} />
-              <span>NEW DECISION</span>
-            </button>
-          </div>
-        </header>
+      <div className="dec-stack">
+        <div className="dec-card">
+          <header className="dec-head">
+            <div className="dec-brand">
+              <span className="dec-mark" />
+              <h1>DECISIONS</h1>
+            </div>
+            <div className="dec-head-actions">
+              <button
+                type="button"
+                className="dec-btn solid"
+                onClick={() => actions.newDecision()}
+              >
+                <I n="plus" s={12} w={2.6} />
+                <span>NEW DECISION</span>
+              </button>
+            </div>
+          </header>
 
-        <div className="dec-meta">
-          <span>
-            PREDICATE &middot; CHOICE &middot; SCORE &middot; MODEL EVALUATION
-          </span>
-          <span>
-            {settled
-              ? `${items.length} ${items.length === 1 ? 'RUN' : 'RUNS'}`
-              : 'LOADING…'}
-          </span>
+          <div className="dec-meta">
+            <span>
+              PREDICATE &middot; CHOICE &middot; SCORE &middot; MODEL EVALUATION
+            </span>
+            <span>
+              {settled
+                ? `${items.length} ${items.length === 1 ? 'RUN' : 'RUNS'}`
+                : 'LOADING…'}
+            </span>
+          </div>
+
+          {error && (
+            <div className="dec-error-banner" role="alert">
+              <I n="alert" s={14} w={2.2} />
+              <div>
+                <div className="dec-error-title">COULDN’T LOAD DECISIONS</div>
+                <div className="dec-error-body">{error}</div>
+              </div>
+            </div>
+          )}
+
+          {empty && !settled && (
+            <div className="dec-sec py-8 text-center">
+              <span className="dec-status">LOADING DECISIONS…</span>
+            </div>
+          )}
+
+          {empty && settled && (
+            <div className="dec-sec py-5 text-center">
+              <p className="text-[12px] text-[var(--dec-muted)]">
+                No stored runs yet — start blank above or pick a template below.
+              </p>
+            </div>
+          )}
+
+          {!empty && (
+            <section className="dec-sec">
+              <div className="dec-sec-head">
+                <span className="dec-sec-label">
+                  <b>01</b> / STORED RUNS
+                  <span className="dec-cnum">{items.length}</span>
+                </span>
+                <span className="dec-hint">NEWEST EDIT FIRST</span>
+              </div>
+              <div>
+                {items.map((r, i) => (
+                  <RunRow key={r.id} r={r} index={i} models={models} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
-        {error && (
-          <div className="dec-error-banner" role="alert">
-            <I n="alert" s={14} w={2.2} />
-            <div>
-              <div className="dec-error-title">COULDN’T LOAD DECISIONS</div>
-              <div className="dec-error-body">{error}</div>
-            </div>
-          </div>
-        )}
-
-        {empty && !settled && (
-          <div className="dec-sec py-8 text-center">
-            <span className="dec-status">LOADING DECISIONS…</span>
-          </div>
-        )}
-
-        {!empty && (
-          <section className="dec-sec">
-            <div className="dec-sec-head">
-              <span className="dec-sec-label">
-                <b>01</b> / STORED RUNS
-                <span className="dec-cnum">{items.length}</span>
-              </span>
-              <span className="dec-hint">NEWEST EDIT FIRST</span>
-            </div>
-            <div>
-              {items.map((r, i) => (
-                <RunRow key={r.id} r={r} index={i} models={models} />
-              ))}
-            </div>
-          </section>
-        )}
-
         {empty && settled ? (
-          <section className="dec-sec">
-            <div className="dec-sec-head">
-              <span className="dec-sec-label">
-                <b>01</b> / START FROM AN EXAMPLE
-                <span className="dec-cnum">{DECISION_EXAMPLES.length}</span>
-              </span>
-              <span className="dec-hint">PICK A TEMPLATE OR START BLANK</span>
+          <section className="dec-card" aria-label="Examples">
+            <div className="dec-sec">
+              <div className="dec-sec-head">
+                <span className="dec-sec-label">
+                  <b>EX</b> / START FROM AN EXAMPLE
+                  <span className="dec-cnum">{DECISION_EXAMPLES.length}</span>
+                </span>
+                <span className="dec-hint">PICK A TEMPLATE OR START BLANK</span>
+              </div>
+              <p className="mb-2.5 text-[12px] text-[var(--dec-muted)]">
+                Evaluate text against typed questions — a probability, one of
+                your choices, or a score across ordered levels — with a decision
+                model.
+              </p>
+              <ExampleList />
             </div>
-            <p className="mb-2.5 text-[12px] text-[var(--dec-muted)]">
-              Evaluate text against typed questions — a probability, one of your
-              choices, or a score across ordered levels — with a decision model.
-            </p>
-            <ExampleList />
           </section>
         ) : (
           !empty && (
-            <section className="dec-sec">
-              <details className="dec-details">
-                <summary className="dec-sec-label">
-                  <I n="chevron-right" s={12} w={2.4} className="dec-chev" />
-                  <span>
-                    <b>02</b> / START FROM AN EXAMPLE
-                  </span>
-                  <span className="dec-cnum">{DECISION_EXAMPLES.length}</span>
-                </summary>
-                <div className="mt-2.5">
-                  <ExampleList />
-                </div>
-              </details>
+            <section className="dec-card" aria-label="Examples">
+              <div className="dec-sec">
+                <details className="dec-details">
+                  <summary className="dec-sec-label">
+                    <I n="chevron-right" s={12} w={2.4} className="dec-chev" />
+                    <span>
+                      <b>EX</b> / START FROM AN EXAMPLE
+                    </span>
+                    <span className="dec-cnum">{DECISION_EXAMPLES.length}</span>
+                    <span className="dec-hint ml-auto">TEMPLATES</span>
+                  </summary>
+                  <div className="mt-2.5">
+                    <ExampleList />
+                  </div>
+                </details>
+              </div>
             </section>
           )
         )}

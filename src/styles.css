@@ -1421,6 +1421,14 @@ select:focus-visible {
   }
 }
 
+.dec-stack {
+  width: min(720px, 100%);
+  margin-block: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .dec-card {
   width: min(720px, 100%);
   margin-block: auto;
@@ -1428,6 +1436,11 @@ select:focus-visible {
   border: 2px solid var(--dec-stroke);
   border-radius: 3px;
   box-shadow: 6px 6px 0 var(--dec-shadow);
+}
+
+.dec-stack > .dec-card {
+  width: 100%;
+  margin-block: 0;
 }
 
 :where(.dec-card) button {
@@ -2547,6 +2560,9 @@ select:focus-visible {
 @media (max-width: 600px) {
   .dec-stage {
     padding: 10px 8px;
+  }
+  .dec-stack {
+    gap: 12px;
   }
   .dec-card {
     box-shadow: 4px 4px 0 var(--dec-shadow);

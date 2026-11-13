@@ -17,6 +17,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Separate the "Start from an example" section on `/decisions` into its own card below the stored runs list.
 - Redesign `/decisions` and `/decisions/[slug]` around a neo-brutalist card with `BUILD` / `RESULTS` tabs, a scrollable question rail, up/down choice and level reordering, two-step question delete and draft reset/revert, inline field validation, and per-option probability inspection in both light and dark themes.
 - Slim the Docker image (about 1.15 GB to about 0.65 GB): the runtime stage installs production dependencies only, drops pnpm, and runs migrations from the bundled `dist/cli/migrate.js`; `@streamdown/mermaid` and `lucide-react` moved to `devDependencies` since they are bundled into `dist`; maintenance commands in the container now run as `node bin/talkative.mjs admin grant <email>` instead of `pnpm`.
 - Scope the composer's Enter-key preference to mobile: desktop always sends with Enter (Shift+Enter breaks the line), while phones and tablets keep the send-or-newline choice.
