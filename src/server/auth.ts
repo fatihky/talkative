@@ -3,7 +3,7 @@
  *
  * Business logic:
  * - getSession reads the incoming request headers via Waku's
- *   getHeaders and hands them to better-auth, which resolves the
+ *   getRequest().headers and hands them to better-auth, which resolves the
  *   session cookie; it returns null (not a throw) for an anonymous
  *   visitor, so callers decide what "no session" means.
  * - requireAuth wraps getSession and throws 'Unauthorized' when there is
@@ -12,11 +12,11 @@
  *   pages such as AuthGuard use the soft getSession and redirect, while
  *   requireAuth is the throwing variant for guarded server actions.
  */
-import { getHeaders } from 'waku/router/server';
+import { getRequest } from 'waku/router/server';
 import { auth } from '../lib/auth';
 
 export async function getSession() {
-  const headers = getHeaders();
+  const { headers } = getRequest();
   const session = await auth.api.getSession({
     headers,
   });

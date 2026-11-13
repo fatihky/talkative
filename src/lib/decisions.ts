@@ -38,6 +38,26 @@ export const MIN_DECISION_CHOICES = 2;
 export const MAX_DECISION_CHOICES = 20;
 export const MIN_DECISION_LEVELS = 2;
 export const MAX_DECISION_LEVELS = 10;
+export const MAX_DECISION_INPUT = 100_000;
+export const MAX_DECISION_INSTRUCTIONS = 4_000;
+export const MAX_DECISION_CRITERION = 1_000;
+export const MAX_DECISION_TITLE = 255;
+export const MAX_DECISION_OPTION_KEY = 100;
+
+export type DecisionProblemField =
+  | 'model'
+  | 'input'
+  | 'questions'
+  | 'name'
+  | 'prompt'
+  | 'choices'
+  | 'levels';
+
+export type DecisionProblem = {
+  field: DecisionProblemField;
+  questionIndex?: number;
+  message: string;
+};
 
 /** the editor's working copy of a run; `id` is client-minted until it is evaluated */
 export type DecisionDraft = {
@@ -111,46 +131,99 @@ export const newQuestion = (
   return { name, type, instructions: '' };
 };
 
-/** every reason this draft can't be evaluated yet; empty means it can */
-export const decisionProblems = (d: DecisionDraft | null): string[] => {
-  if (!d) return ['Nothing to run'];
-  const out: string[] = [];
-  if (!d.modelId) out.push('Pick a model');
-  if (!d.input.trim()) out.push('Add the input to evaluate');
-  if (d.questions.length === 0) out.push('Add at least one question');
+/** structured list of reasons this draft can't be evaluated yet, pointing at the offending control */
+export const decisionProblemDetails = (
+  d: DecisionDraft | null,
+): DecisionProblem[] => {
+  if (!d) return [{ field: 'questions', message: 'Nothing to run' }];
+  const out: DecisionProblem[] = [];
+  if (!d.modelId) out.push({ field: 'model', message: 'Pick a model' });
+  if (!d.input.trim())
+    out.push({ field: 'input', message: 'Add the input to evaluate' });
+  if (d.questions.length === 0)
+    out.push({ field: 'questions', message: 'Add at least one question' });
   if (d.questions.length > MAX_DECISION_QUESTIONS)
-    out.push(`At most ${MAX_DECISION_QUESTIONS} questions per run`);
+    out.push({
+      field: 'questions',
+      message: `At most ${MAX_DECISION_QUESTIONS} questions per run`,
+    });
   const names = new Set<string>();
   d.questions.forEach((q, i) => {
     const label = q.name || `Question ${i + 1}`;
     if (!DECISION_NAME_RE.test(q.name))
-      out.push(`${label}: name needs letters, digits, "_" or "-"`);
-    else if (names.has(q.name)) out.push(`${label}: name is used twice`);
+      out.push({
+        field: 'name',
+        questionIndex: i,
+        message: `${label}: name needs letters, digits, "_" or "-"`,
+      });
+    else if (names.has(q.name))
+      out.push({
+        field: 'name',
+        questionIndex: i,
+        message: `${label}: name is used twice`,
+      });
     names.add(q.name);
-    if (!q.instructions.trim()) out.push(`${label}: add instructions`);
+    if (!q.instructions.trim())
+      out.push({
+        field: 'prompt',
+        questionIndex: i,
+        message: `${label}: add instructions`,
+      });
     if (q.type === 'choice') {
       const values = (q.choices ?? []).map((c) => c.value.trim());
       if (values.some((v) => v === ''))
-        out.push(`${label}: every choice needs a value`);
+        out.push({
+          field: 'choices',
+          questionIndex: i,
+          message: `${label}: every choice needs a value`,
+        });
       else if (values.length < MIN_DECISION_CHOICES)
-        out.push(`${label}: a choice needs ${MIN_DECISION_CHOICES} options`);
+        out.push({
+          field: 'choices',
+          questionIndex: i,
+          message: `${label}: a choice needs ${MIN_DECISION_CHOICES} options`,
+        });
       else if (new Set(values).size !== values.length)
-        out.push(`${label}: two choices share a value`);
+        out.push({
+          field: 'choices',
+          questionIndex: i,
+          message: `${label}: two choices share a value`,
+        });
       else if (values.length > MAX_DECISION_CHOICES)
-        out.push(`${label}: at most ${MAX_DECISION_CHOICES} options`);
+        out.push({
+          field: 'choices',
+          questionIndex: i,
+          message: `${label}: at most ${MAX_DECISION_CHOICES} options`,
+        });
     }
     if (q.type === 'score') {
       const labels = (q.levels ?? []).map((l) => l.label.trim());
       if (labels.some((l) => l === ''))
-        out.push(`${label}: every level needs a label`);
+        out.push({
+          field: 'levels',
+          questionIndex: i,
+          message: `${label}: every level needs a label`,
+        });
       else if (labels.length < MIN_DECISION_LEVELS)
-        out.push(`${label}: a score needs ${MIN_DECISION_LEVELS} levels`);
+        out.push({
+          field: 'levels',
+          questionIndex: i,
+          message: `${label}: a score needs ${MIN_DECISION_LEVELS} levels`,
+        });
       else if (labels.length > MAX_DECISION_LEVELS)
-        out.push(`${label}: at most ${MAX_DECISION_LEVELS} levels`);
+        out.push({
+          field: 'levels',
+          questionIndex: i,
+          message: `${label}: at most ${MAX_DECISION_LEVELS} levels`,
+        });
     }
   });
   return out;
 };
+
+/** every reason this draft can't be evaluated yet; empty means it can */
+export const decisionProblems = (d: DecisionDraft | null): string[] =>
+  decisionProblemDetails(d).map((p) => p.message);
 
 /** a ready-to-run starting point shown on an empty /decisions list */
 export type DecisionExample = {

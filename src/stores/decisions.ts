@@ -41,6 +41,7 @@ import {
   type DecisionDraft,
   type DecisionExample,
   decisionProblems,
+  MAX_DECISION_LEVELS,
   newQuestion,
 } from '../lib/decisions';
 import { isDecisionCapable } from '../lib/models';
@@ -250,34 +251,95 @@ export const decisionsActions = {
   },
 
   setDecisionQuestionType(index: number, type: DecisionQuestionType) {
-    patchQuestion(index, (q) => ({
-      ...q,
-      type,
-      /* switching type seeds what the new shape requires, and drops what it can't use */
-      ...(type === 'choice'
-        ? {
-            choices:
-              q.choices && q.choices.length > 0
-                ? q.choices
-                : ([
-                    { value: '' },
-                    { value: '' },
-                  ] as DecisionQuestion['choices']),
-            levels: undefined,
-          }
-        : type === 'score'
-          ? {
-              levels:
-                q.levels && q.levels.length > 0
-                  ? q.levels
-                  : ([
-                      { label: '' },
-                      { label: '' },
-                    ] as DecisionQuestion['levels']),
-              choices: undefined,
-            }
-          : { choices: undefined, levels: undefined }),
-    }));
+    patchQuestion(index, (q) => {
+      if (q.type === type) return q;
+      if (type === 'choice') {
+        const seeded =
+          q.choices && q.choices.length > 0
+            ? q.choices
+            : q.levels && q.levels.length > 0
+              ? q.levels.map((l) => ({
+                  value: l.label,
+                  ...(l.description ? { description: l.description } : {}),
+                }))
+              : ([{ value: '' }, { value: '' }] as DecisionQuestion['choices']);
+        return {
+          name: q.name,
+          type,
+          instructions: q.instructions,
+          choices: seeded,
+        };
+      }
+      if (type === 'score') {
+        const seeded =
+          q.levels && q.levels.length > 0
+            ? q.levels
+            : q.choices && q.choices.length > 0
+              ? q.choices.slice(0, MAX_DECISION_LEVELS).map((c) => ({
+                  label: c.value,
+                  ...(c.description ? { description: c.description } : {}),
+                }))
+              : ([{ label: '' }, { label: '' }] as DecisionQuestion['levels']);
+        return {
+          name: q.name,
+          type,
+          instructions: q.instructions,
+          levels: seeded,
+        };
+      }
+      return {
+        name: q.name,
+        type,
+        instructions: q.instructions,
+        ...(q.criteria ? { criteria: q.criteria } : {}),
+      };
+    });
+  },
+
+  moveDecisionQuestionEntry(index: number, from: number, dir: -1 | 1) {
+    patchQuestion(index, (q) => {
+      const to = from + dir;
+      if (q.type === 'choice' && q.choices) {
+        if (to < 0 || to >= q.choices.length) return q;
+        const next = [...q.choices];
+        const item = next[from];
+        const target = next[to];
+        if (!item || !target) return q;
+        next[from] = target;
+        next[to] = item;
+        return { ...q, choices: next };
+      }
+      if (q.type === 'score' && q.levels) {
+        if (to < 0 || to >= q.levels.length) return q;
+        const next = [...q.levels];
+        const item = next[from];
+        const target = next[to];
+        if (!item || !target) return q;
+        next[from] = target;
+        next[to] = item;
+        return { ...q, levels: next };
+      }
+      return q;
+    });
+  },
+
+  resetDecisionDraft() {
+    const cur = get().draft;
+    if (!cur) return;
+    const run = get().items.find((r) => r.id === cur.id);
+    if (run) {
+      LS.del('decisions.draft');
+      set({ draft: toDraft(run), runError: run.error });
+      return;
+    }
+    persist({
+      id: cur.id,
+      modelId: cur.modelId || defaultModelId(),
+      title: '',
+      input: '',
+      questions: [newQuestion('predicate', [])],
+    });
+    set({ runError: undefined });
   },
 
   renameDecisionQuestion(index: number, name: string) {
@@ -299,17 +361,16 @@ export const decisionsActions = {
   },
 
   /** stores the run and evaluates it; failures land in runError rather than throwing */
-  async runDecision() {
+  async runDecision(): Promise<boolean> {
     const draft = get().draft;
-    if (!draft || get().running) return;
+    if (!draft || get().running) return false;
     const problems = decisionProblems(draft);
     if (problems.length > 0) {
-      set({ runError: problems[0] });
       uiActions.toast(
         problems[0] ?? 'This decision isn’t ready to run',
         'warn',
       );
-      return;
+      return false;
     }
     set({ running: true, runError: undefined });
     const title = draft.title.trim();
@@ -331,10 +392,15 @@ export const decisionsActions = {
         status: 'ready',
         ...(run.error ? { runError: run.error } : { runError: undefined }),
       });
-      if (run.error) uiActions.toast(`Decision failed — ${run.error}`, 'error');
+      if (run.error) {
+        uiActions.toast(`Decision failed — ${run.error}`, 'error');
+        return false;
+      }
+      return true;
     } catch (e) {
       set({ running: false, runError: errorText(e) });
       uiActions.toast(`Decision failed — ${errorText(e)}`, 'error');
+      return false;
     }
   },
 

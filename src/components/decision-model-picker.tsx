@@ -32,16 +32,27 @@ import type { Model } from '../types';
 
 const GROUP_ORDER = ['systemone', 'decision', 'llm'] as const;
 
-export function DecisionModelPicker() {
+export function DecisionModelPicker({
+  invalid = false,
+  shakeKey = 0,
+}: {
+  invalid?: boolean;
+  shakeKey?: number;
+} = {}) {
   const items = useModelsStore((s) => s.items);
   const status = useModelsStore((s) => s.status);
   const selectedId = useDecisionsStore((s) => s.draft?.modelId ?? '');
   const [open, setOpen] = useState(false);
+  const [shaking, setShaking] = useState(false);
   const [query, setQuery] = useState('');
   const [idx, setIdx] = useState(0);
   const anchor = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const listId = 'dmp-model-list';
+
+  useEffect(() => {
+    if (shakeKey > 0 && invalid) setShaking(true);
+  }, [shakeKey, invalid]);
 
   const groups = useMemo(
     () =>
@@ -105,19 +116,21 @@ export function DecisionModelPicker() {
       aria-controls={open ? listId : undefined}
       aria-label="Select decision model"
       onClick={() => setOpen((o) => !o)}
-      className="flex h-8 w-full items-center gap-2 rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[13px] outline-none focus:border-[var(--accent)]"
+      onAnimationEnd={() => setShaking(false)}
+      className={`dec-model-btn${open ? ' is-open' : ''}${invalid ? ' err' : ''}${shaking ? ' shake' : ''}`}
     >
-      {label === '' ? (
-        <span className="text-[var(--text-3)]">Select a model…</span>
+      {label === '' || !selected ? (
+        <span className="dec-model-placeholder">Select a model…</span>
       ) : (
-        <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+        <span className="dec-model-name">{label}</span>
       )}
-      {selected && (
-        <span className="num shrink-0 text-[10px] muted">
-          {selected.provider}
+      {selected?.kind && selected.kind !== 'llm' && (
+        <span className="dec-model-tag">
+          {selected.kind === 'systemone' ? 'SYS1' : 'DEC'}
         </span>
       )}
-      <I n="chevron-down" s={10} className="shrink-0 opacity-60" />
+      {selected && <span className="dec-model-prov">{selected.provider}</span>}
+      <I n="chevron-down-sm" s={12} w={2.4} className="shrink-0" />
     </button>
   );
 
@@ -203,6 +216,10 @@ export function DecisionModelPicker() {
                       onHover={() =>
                         setIdx(shown.findIndex((s) => s.id === m.id))
                       }
+                      onPick={() => {
+                        actions.setDecisionModel(m.id);
+                        setOpen(false);
+                      }}
                     />
                   ))}
                 </div>
@@ -227,11 +244,13 @@ function DecisionModelOption({
   active,
   selected,
   onHover,
+  onPick,
 }: {
   m: Model;
   active: boolean;
   selected: boolean;
   onHover: () => void;
+  onPick: () => void;
 }) {
   const kindTag =
     m.kind === 'systemone' || m.kind === 'decision' ? (
@@ -247,9 +266,7 @@ function DecisionModelOption({
       role="option"
       aria-selected={selected}
       onMouseEnter={onHover}
-      onClick={() => {
-        actions.setDecisionModel(m.id);
-      }}
+      onClick={onPick}
       className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 ${
         active ? 'bg-[var(--sunken)]' : ''
       } ${selected ? 'shadow-[inset_2px_0_0_0_var(--accent)]' : ''}`}
