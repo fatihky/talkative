@@ -94,6 +94,9 @@ const P = {
   audio: 'M11 5L6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7M18.5 6a9 9 0 0 1 0 12',
   /* curly braces around a dot (JSON capability badge) */
   json: 'M8 4c-1.7 0-2 1-2 2.5v1.5c0 1.5-1 2-2 2 1 0 2 .5 2 2v1.5c0 1.5.3 2.5 2 2.5M16 4c1.7 0 2 1 2 2.5v1.5c0 1.5 1 2 2 2-1 0-2 .5-2 2v1.5c0 1.5-.3 2.5-2 2.5M12 12h.01',
+  download: 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3',
+  upload: 'M12 15V3M7 8l5-5 5 5M4 17v3h16v-3',
+  table: 'M3 5h18v14H3zM3 10h18M3 14.5h18M9 5v14M15 5v14',
 };
 
 export function I({

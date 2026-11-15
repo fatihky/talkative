@@ -92,18 +92,65 @@ export const POST = (req: Request) =>
     /* the upstream name: a custom model's own, else what the id carries */
     const remoteId = custom?.custom?.remoteId ?? parsed?.remoteId;
 
-    const db = getDb();
-    const existing = input.id ? await findDecision(db, userId, input.id) : null;
-    /* an id the caller doesn't own may still be somebody else's primary key */
-    if (input.id && !existing && (await decisionIdTaken(db, input.id)))
-      throw new ValidationError('decision id already exists');
-
     /* the endpoint is chosen by the picked model's kind; a re-run whose model is
        no longer in the catalog keeps the kind it ran with */
     const catalog = await getCatalog(conn);
     const model = custom
       ? custom.model
       : catalog.items.find((m) => m.id === input.modelId);
+
+    if (input.stateless) {
+      const kind: DecisionKind =
+        model?.kind === 'systemone' ? 'systemone' : 'decision';
+      const supported =
+        kind === 'systemone' ? supportsSystemOne : supportsDecisions;
+      if (!supported(conn.compatibility))
+        throw new ValidationError(
+          `${conn.name} does not support ${
+            kind === 'systemone' ? 'System One' : 'decisions'
+          }`,
+        );
+      const now = Date.now();
+      const baseDto = {
+        id: input.id ?? crypto.randomUUID(),
+        kind,
+        title: input.title ?? deriveTitle(input.input, input.questions),
+        modelId: input.modelId,
+        input: input.input,
+        questions: input.questions,
+        createdAt: now,
+        updatedAt: now,
+      };
+      try {
+        const outcome = await runDecision(
+          conn,
+          {
+            model: remoteId ?? parsed?.remoteId ?? input.modelId,
+            input: input.input,
+            questions: input.questions,
+          },
+          { kind, signal: req.signal },
+        );
+        return Response.json({
+          ...baseDto,
+          answers: outcome.answers,
+          ...(outcome.usage ? { usage: outcome.usage } : {}),
+          latencyMs: outcome.latencyMs,
+        });
+      } catch (e) {
+        if (e instanceof ValidationError) throw e;
+        const error = e instanceof Error ? e.message : String(e);
+        console.warn(`[decisions] stateless run failed: ${error}`);
+        return Response.json({ ...baseDto, error });
+      }
+    }
+
+    const db = getDb();
+    const existing = input.id ? await findDecision(db, userId, input.id) : null;
+    /* an id the caller doesn't own may still be somebody else's primary key */
+    if (input.id && !existing && (await decisionIdTaken(db, input.id)))
+      throw new ValidationError('decision id already exists');
+
     const kind: DecisionKind =
       model?.kind === 'systemone'
         ? 'systemone'

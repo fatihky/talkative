@@ -29,7 +29,9 @@ import type {
   DecisionAnswer,
   DecisionQuestion,
   DecisionQuestionType,
+  MessageUsage,
 } from '../types';
+import { uuid } from './storage';
 
 export const DECISION_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 
@@ -43,6 +45,37 @@ export const MAX_DECISION_INSTRUCTIONS = 4_000;
 export const MAX_DECISION_CRITERION = 1_000;
 export const MAX_DECISION_TITLE = 255;
 export const MAX_DECISION_OPTION_KEY = 100;
+export const MAX_DECISION_BATCH_ITEMS = 100;
+export const MAX_DECISION_BATCH_LABEL = 80;
+
+export type DecisionBatchItemStatus =
+  | 'idle'
+  | 'queued'
+  | 'running'
+  | 'done'
+  | 'error';
+
+export type DecisionBatchItem = {
+  id: string;
+  label?: string | undefined;
+  input: string;
+  status: DecisionBatchItemStatus;
+  answers?: DecisionAnswer[] | undefined;
+  error?: string | undefined;
+  usage?: MessageUsage | undefined;
+  latencyMs?: number | undefined;
+  evaluatedAt?: number | undefined;
+};
+
+export const newBatchItem = (
+  input = '',
+  label?: string,
+): DecisionBatchItem => ({
+  id: uuid(),
+  ...(label?.trim() ? { label: label.trim() } : {}),
+  input,
+  status: 'idle',
+});
 
 export type DecisionProblemField =
   | 'model'
@@ -56,6 +89,7 @@ export type DecisionProblemField =
 export type DecisionProblem = {
   field: DecisionProblemField;
   questionIndex?: number;
+  batchIndex?: number;
   message: string;
 };
 
@@ -66,6 +100,9 @@ export type DecisionDraft = {
   title: string;
   input: string;
   questions: DecisionQuestion[];
+  /* when true, the editor evaluates multiple inputs in batch mode instead of single `input` */
+  batchMode?: boolean | undefined;
+  batchItems?: DecisionBatchItem[] | undefined;
 };
 
 export const QUESTION_TYPES: {
@@ -138,8 +175,31 @@ export const decisionProblemDetails = (
   if (!d) return [{ field: 'questions', message: 'Nothing to run' }];
   const out: DecisionProblem[] = [];
   if (!d.modelId) out.push({ field: 'model', message: 'Pick a model' });
-  if (!d.input.trim())
+  if (d.batchMode) {
+    const items = d.batchItems ?? [];
+    const nonEmpty = items.filter((it) => it.input.trim() !== '');
+    if (nonEmpty.length === 0)
+      out.push({
+        field: 'input',
+        batchIndex: 0,
+        message: 'Add at least one batch input to evaluate',
+      });
+    else if (items.length > MAX_DECISION_BATCH_ITEMS)
+      out.push({
+        field: 'input',
+        message: `At most ${MAX_DECISION_BATCH_ITEMS} batch rows per run`,
+      });
+    items.forEach((it, idx) => {
+      if (it.input.length > MAX_DECISION_INPUT)
+        out.push({
+          field: 'input',
+          batchIndex: idx,
+          message: `Row ${idx + 1}: input exceeds ${MAX_DECISION_INPUT.toLocaleString()} characters`,
+        });
+    });
+  } else if (!d.input.trim()) {
     out.push({ field: 'input', message: 'Add the input to evaluate' });
+  }
   if (d.questions.length === 0)
     out.push({ field: 'questions', message: 'Add at least one question' });
   if (d.questions.length > MAX_DECISION_QUESTIONS)
@@ -230,6 +290,7 @@ export type DecisionExample = {
   title: string;
   blurb: string;
   input: string;
+  batchInputs?: { label?: string | undefined; input: string }[] | undefined;
   questions: DecisionQuestion[];
 };
 
@@ -732,4 +793,639 @@ export const levelLabels = (
     (q?.levels ?? []).map((l, i) => [String(i), l.label]),
   );
   return { ...fromQuestion, ...fromLegend };
+};
+
+/* ---------- batch sample sets, import parser, aggregation & export ---------- */
+
+const EXAMPLE_BATCH_SETS: Record<
+  string,
+  { label: string; input: string }[]
+> = {
+  'Triage a support ticket': [
+    {
+      label: 'TKT-4421',
+      input:
+        'Hi — my card was charged twice for order #4421 and I can’t find any way to get a refund. Please fix this today.',
+    },
+    {
+      label: 'TKT-4422',
+      input:
+        'Clicking "Export PDF" on the analytics dashboard throws a 500 error in production for all of our workspace admins since this morning.',
+    },
+    {
+      label: 'TKT-4423',
+      input:
+        'Would love to see dark mode support in the mobile iOS app! No rush, just sharing feedback from our design team.',
+    },
+    {
+      label: 'TKT-4424',
+      input:
+        'Our SSO SAML certificate rotated 10 minutes ago and now 180 employees are locked out of their accounts before our client demo.',
+    },
+  ],
+  'Read a product review': [
+    {
+      label: 'REV-01',
+      input:
+        'Ordered this coffee grinder last month. Grind setting drifts between cups and the funnel is a pain to clean, but the motor is quiet and it looks great.',
+    },
+    {
+      label: 'REV-02',
+      input:
+        'Best espresso grinder I have ever owned. Zero retention, stepless dial stays locked in, and customer service sent a spare burr set for free.',
+    },
+    {
+      label: 'REV-03',
+      input:
+        'Stopped spinning after four days. Smelled like burnt plastic and the return portal says my serial number is invalid. Complete waste of $280.',
+    },
+    {
+      label: 'REV-04',
+      input:
+        'Solid build quality for pour-over coffee, though a bit loud in the morning. Worth it when on sale, maybe not at full retail price.',
+    },
+  ],
+  'Screen a pull request': [
+    {
+      label: 'PR-812',
+      input:
+        'Refactors the payment service into smaller modules and adds a retry wrapper for idempotency. Touches 14 files, no tests, and the retry wrapper swallows timeout errors.',
+    },
+    {
+      label: 'PR-815',
+      input:
+        'Fixes off-by-one pagination bug in GET /api/invoices when page=1. 12 lines changed across 2 files, includes regression unit test.',
+    },
+    {
+      label: 'PR-819',
+      input:
+        'Adds multi-region read replica routing to the database pool. Includes load tests and failover specs, 6 files changed.',
+    },
+    {
+      label: 'PR-822',
+      input:
+        'Bumps typo in README.md installation command from npm to pnpm. 1 file, 1 line changed.',
+    },
+  ],
+  'Moderate a comment': [
+    {
+      label: 'CMT-101',
+      input:
+        'I guess you and your shill army already cashed out. Total scam — everyone should know you bought those reviews.',
+    },
+    {
+      label: 'CMT-102',
+      input:
+        'I disagree with the benchmark methodology in section 3 — testing on cold cache skews the latency numbers by 4x.',
+    },
+    {
+      label: 'CMT-103',
+      input:
+        'Post your home address again and see what happens to your family tonight.',
+    },
+    {
+      label: 'CMT-104',
+      input:
+        'FREE CRYPTO AIRDROP!! Click t.me/fast-sol-bonus now to claim 50 SOL before midnight!!',
+    },
+  ],
+};
+
+/** returns a multi-row sample batch for an example (or synthesizes one from examples) */
+export const exampleBatchInputs = (
+  example?: DecisionExample,
+): { label: string; input: string }[] => {
+  if (example?.batchInputs && example.batchInputs.length > 0)
+    return example.batchInputs.map((b, i) => ({
+      label: b.label ?? `ITEM-${String(i + 1).padStart(2, '0')}`,
+      input: b.input,
+    }));
+  if (example && EXAMPLE_BATCH_SETS[example.title])
+    return EXAMPLE_BATCH_SETS[example.title] ?? [];
+  if (example) {
+    return [
+      { label: 'ITEM-01', input: example.input },
+      ...DECISION_EXAMPLES.filter((e) => e.title !== example.title)
+        .slice(0, 2)
+        .map((e, i) => ({
+          label: `ITEM-0${i + 2}`,
+          input: e.input,
+        })),
+    ];
+  }
+  return EXAMPLE_BATCH_SETS['Triage a support ticket'] ?? [];
+};
+
+export type BatchImportMode = 'auto' | 'lines' | 'blocks' | 'csv' | 'json';
+
+/* minimal RFC-4180 CSV/TSV parser that handles quoted fields and embedded newlines */
+const parseDelimited = (text: string, sep: string): string[][] => {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else if (ch === '"' && cur.trim() === '') {
+      inQuotes = true;
+    } else if (ch === sep) {
+      row.push(cur.trim());
+      cur = '';
+    } else if (ch === '\r' || ch === '\n') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur.trim());
+      if (row.some((c) => c !== '')) rows.push(row);
+      row = [];
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  row.push(cur.trim());
+  if (row.some((c) => c !== '')) rows.push(row);
+  return rows;
+};
+
+const INPUT_HEADER_RE =
+  /^(input|text|content|prompt|body|message|review|comment|evidence|description|query|statement)$/i;
+const LABEL_HEADER_RE = /^(id|label|name|title|key|row|ticket|ref|code)$/i;
+
+/** parses pasted text or uploaded file contents into `{ label?, input }[]` rows */
+export const parseBatchImport = (
+  raw: string,
+  mode: BatchImportMode = 'auto',
+): { label?: string; input: string }[] => {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  const tryJson = (): { label?: string; input: string }[] | null => {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      const arr = Array.isArray(parsed)
+        ? parsed
+        : typeof parsed === 'object' &&
+            parsed !== null &&
+            Array.isArray((parsed as { items?: unknown }).items)
+          ? (parsed as { items: unknown[] }).items
+          : null;
+      if (arr) {
+        const out: { label?: string; input: string }[] = [];
+        for (const item of arr) {
+          if (typeof item === 'string' && item.trim()) {
+            out.push({ input: item.trim() });
+          } else if (typeof item === 'object' && item !== null) {
+            const obj = item as Record<string, unknown>;
+            const inputKey = Object.keys(obj).find((k) =>
+              INPUT_HEADER_RE.test(k),
+            );
+            const labelKey = Object.keys(obj).find((k) =>
+              LABEL_HEADER_RE.test(k),
+            );
+            const val = inputKey ? obj[inputKey] : Object.values(obj)[0];
+            const lbl = labelKey ? obj[labelKey] : undefined;
+            if (typeof val === 'string' && val.trim()) {
+              out.push({
+                input: val.trim(),
+                ...(typeof lbl === 'string' || typeof lbl === 'number'
+                  ? { label: String(lbl).trim() }
+                  : {}),
+              });
+            }
+          }
+        }
+        if (out.length > 0) return out;
+      }
+    } catch {
+      /* try JSONL (one JSON value per line) */
+      const lines = trimmed
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (
+        lines.length > 0 &&
+        lines.every((l) => l.startsWith('{') || l.startsWith('"'))
+      ) {
+        const out: { label?: string; input: string }[] = [];
+        for (const l of lines) {
+          try {
+            const item = JSON.parse(l) as unknown;
+            if (typeof item === 'string' && item.trim()) {
+              out.push({ input: item.trim() });
+            } else if (typeof item === 'object' && item !== null) {
+              const obj = item as Record<string, unknown>;
+              const inputKey = Object.keys(obj).find((k) =>
+                INPUT_HEADER_RE.test(k),
+              );
+              const labelKey = Object.keys(obj).find((k) =>
+                LABEL_HEADER_RE.test(k),
+              );
+              const val = inputKey ? obj[inputKey] : Object.values(obj)[0];
+              const lbl = labelKey ? obj[labelKey] : undefined;
+              if (typeof val === 'string' && val.trim()) {
+                out.push({
+                  input: val.trim(),
+                  ...(typeof lbl === 'string' || typeof lbl === 'number'
+                    ? { label: String(lbl).trim() }
+                    : {}),
+                });
+              }
+            }
+          } catch {
+            return null;
+          }
+        }
+        if (out.length > 0) return out;
+      }
+    }
+    return null;
+  };
+
+  const tryCsv = (): { label?: string; input: string }[] => {
+    const firstLine = trimmed.split(/\r?\n/)[0] ?? '';
+    const sep = firstLine.includes('\t') ? '\t' : ',';
+    const rows = parseDelimited(trimmed, sep);
+    if (rows.length === 0) return [];
+    const head = rows[0] ?? [];
+    const inputIdx = head.findIndex((c) => INPUT_HEADER_RE.test(c));
+    const labelIdx = head.findIndex((c) => LABEL_HEADER_RE.test(c));
+    const hasHeader =
+      rows.length > 1 && (inputIdx !== -1 || labelIdx !== -1);
+    const dataRows = hasHeader ? rows.slice(1) : rows;
+    const effInputIdx =
+      inputIdx !== -1 ? inputIdx : (head.length >= 2 ? 1 : 0);
+    const effLabelIdx =
+      labelIdx !== -1
+        ? labelIdx
+        : head.length >= 2 && effInputIdx !== 0
+          ? 0
+          : -1;
+    const out: { label?: string; input: string }[] = [];
+    for (const r of dataRows) {
+      const inp = (r[effInputIdx] ?? r.join(' ')).trim();
+      if (!inp) continue;
+      const lbl = effLabelIdx >= 0 ? (r[effLabelIdx] ?? '').trim() : '';
+      out.push({
+        input: inp,
+        ...(lbl ? { label: lbl.slice(0, MAX_DECISION_BATCH_LABEL) } : {}),
+      });
+    }
+    return out;
+  };
+
+  if (mode === 'json') return tryJson() ?? [];
+  if (mode === 'csv') return tryCsv();
+  if (mode === 'blocks') {
+    return trimmed
+      .split(/\n\s*(?:---+\s*\n|\n)+/)
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((input) => ({ input }));
+  }
+  if (mode === 'lines') {
+    return trimmed
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const tabIdx = line.indexOf('\t');
+        if (tabIdx > 0 && tabIdx <= MAX_DECISION_BATCH_LABEL) {
+          const label = line.slice(0, tabIdx).trim();
+          const input = line.slice(tabIdx + 1).trim();
+          if (input) return { label, input };
+        }
+        return { input: line };
+      });
+  }
+
+  /* auto mode */
+  if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+    const j = tryJson();
+    if (j && j.length > 0) return j;
+  }
+  const firstLine = trimmed.split(/\r?\n/)[0] ?? '';
+  if (
+    firstLine.includes('\t') ||
+    (firstLine.includes(',') &&
+      firstLine
+        .split(',')
+        .some(
+          (c) =>
+            INPUT_HEADER_RE.test(c.trim().replace(/^"|"$/g, '')) ||
+            LABEL_HEADER_RE.test(c.trim().replace(/^"|"$/g, '')),
+        ))
+  ) {
+    const c = tryCsv();
+    if (c.length > 0) return c;
+  }
+  if (/\n\s*---+\s*\n/.test(trimmed)) {
+    return trimmed
+      .split(/\n\s*---+\s*\n/)
+      .map((b) => b.trim())
+      .filter(Boolean)
+      .map((input) => ({ input }));
+  }
+  return parseBatchImport(trimmed, 'lines');
+};
+
+export type BatchQuestionSummary = {
+  question: DecisionQuestion;
+  answeredCount: number;
+  refusedCount: number;
+  /* predicate */
+  trueCount?: number | undefined;
+  falseCount?: number | undefined;
+  trueRate?: number | null | undefined;
+  avgProbability?: number | null | undefined;
+  /* choice */
+  choiceCounts?:
+    | { value: string; count: number; share: number }[]
+    | undefined;
+  topChoice?: { value: string; count: number; share: number } | null | undefined;
+  avgConfidence?: number | null | undefined;
+  /* score */
+  avgScore?: number | null | undefined;
+  minScore?: number | null | undefined;
+  maxScore?: number | null | undefined;
+  nearestLabel?: string | undefined;
+  maxLevelIndex?: number | undefined;
+};
+
+/** computes aggregate statistics for one question across all evaluated batch rows */
+export const summarizeBatchQuestion = (
+  q: DecisionQuestion,
+  items: DecisionBatchItem[],
+): BatchQuestionSummary => {
+  let answeredCount = 0;
+  let refusedCount = 0;
+  const answers: DecisionAnswer[] = [];
+
+  for (const it of items) {
+    if (it.status !== 'done' || !it.answers) continue;
+    const a = it.answers.find((x) => x.name === q.name);
+    if (!a) continue;
+    if (a.type === 'refusal') {
+      refusedCount++;
+    } else {
+      answeredCount++;
+      answers.push(a);
+    }
+  }
+
+  if (q.type === 'predicate') {
+    let trueCount = 0;
+    let falseCount = 0;
+    let probSum = 0;
+    let probN = 0;
+    for (const a of answers) {
+      if (a.probability !== undefined) {
+        probSum += a.probability;
+        probN++;
+        if (a.probability >= 0.5) trueCount++;
+        else falseCount++;
+      }
+    }
+    return {
+      question: q,
+      answeredCount,
+      refusedCount,
+      trueCount,
+      falseCount,
+      trueRate: probN > 0 ? trueCount / probN : null,
+      avgProbability: probN > 0 ? probSum / probN : null,
+    };
+  }
+
+  if (q.type === 'choice') {
+    const map = new Map<string, number>();
+    for (const c of q.choices ?? []) {
+      if (c.value.trim()) map.set(c.value.trim(), 0);
+    }
+    let confSum = 0;
+    let confN = 0;
+    for (const a of answers) {
+      if (a.choice !== undefined) {
+        map.set(a.choice, (map.get(a.choice) ?? 0) + 1);
+      }
+      const b = answerBar(a);
+      if (b !== null) {
+        confSum += b;
+        confN++;
+      }
+    }
+    const choiceCounts = Array.from(map.entries())
+      .map(([value, count]) => ({
+        value,
+        count,
+        share: answeredCount > 0 ? count / answeredCount : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+    const topChoice =
+      choiceCounts[0] && choiceCounts[0].count > 0 ? choiceCounts[0] : null;
+    return {
+      question: q,
+      answeredCount,
+      refusedCount,
+      choiceCounts,
+      topChoice,
+      avgConfidence: confN > 0 ? confSum / confN : null,
+    };
+  }
+
+  /* score */
+  let scoreSum = 0;
+  let scoreN = 0;
+  let minScore = Number.POSITIVE_INFINITY;
+  let maxScore = Number.NEGATIVE_INFINITY;
+  for (const a of answers) {
+    if (a.score !== undefined) {
+      scoreSum += a.score;
+      scoreN++;
+      if (a.score < minScore) minScore = a.score;
+      if (a.score > maxScore) maxScore = a.score;
+    }
+  }
+  const avgScore = scoreN > 0 ? scoreSum / scoreN : null;
+  const maxLevelIndex = Math.max(1, (q.levels?.length ?? 2) - 1);
+  const nearestLabel =
+    avgScore !== null
+      ? q.levels?.[Math.round(avgScore)]?.label
+      : undefined;
+  return {
+    question: q,
+    answeredCount,
+    refusedCount,
+    avgScore,
+    minScore: scoreN > 0 ? minScore : null,
+    maxScore: scoreN > 0 ? maxScore : null,
+    nearestLabel,
+    maxLevelIndex,
+  };
+};
+
+const csvCell = (val: string | number | boolean | null | undefined): string => {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+};
+
+/** formats batch (or single) results as a CSV string */
+export const formatBatchCsv = (
+  questions: DecisionQuestion[],
+  items: DecisionBatchItem[],
+): string => {
+  const headers: string[] = [
+    'row',
+    'label',
+    'input',
+    'status',
+    'latency_ms',
+    'error',
+  ];
+  for (const q of questions) {
+    headers.push(q.name);
+    if (q.type === 'predicate') {
+      headers.push(`${q.name}_probability`);
+    } else if (q.type === 'choice') {
+      headers.push(`${q.name}_confidence`);
+    } else {
+      headers.push(`${q.name}_level`);
+      headers.push(`${q.name}_confidence`);
+    }
+  }
+  const lines = [headers.map(csvCell).join(',')];
+  items.forEach((it, idx) => {
+    const row: (string | number | boolean | null | undefined)[] = [
+      idx + 1,
+      it.label ?? '',
+      it.input,
+      it.status,
+      it.latencyMs ?? '',
+      it.error ?? '',
+    ];
+    for (const q of questions) {
+      const a = it.answers?.find((x) => x.name === q.name);
+      if (!a) {
+        row.push('', '');
+        if (q.type === 'score') row.push('');
+        continue;
+      }
+      if (a.type === 'refusal') {
+        row.push('REFUSED', '');
+        if (q.type === 'score') row.push('');
+        continue;
+      }
+      if (q.type === 'predicate') {
+        row.push(
+          a.probability !== undefined ? a.probability >= 0.5 : '',
+          a.probability !== undefined ? Number(a.probability.toFixed(4)) : '',
+        );
+      } else if (q.type === 'choice') {
+        const conf = answerBar(a);
+        row.push(
+          a.choice ?? '',
+          conf !== null ? Number(conf.toFixed(4)) : '',
+        );
+      } else {
+        const conf = answerBar(a);
+        const lvl =
+          a.score !== undefined
+            ? levelLabels(a, q)[String(Math.round(a.score))] ?? ''
+            : '';
+        row.push(
+          a.score !== undefined ? Number(a.score.toFixed(4)) : '',
+          lvl,
+          conf !== null ? Number(conf.toFixed(4)) : '',
+        );
+      }
+    }
+    lines.push(row.map(csvCell).join(','));
+  });
+  return lines.join('\n');
+};
+
+/** formats batch (or single) results as tab-separated values for spreadsheet paste */
+export const formatBatchTsv = (
+  questions: DecisionQuestion[],
+  items: DecisionBatchItem[],
+): string => {
+  const clean = (s: string) => s.replace(/[\t\r\n]+/g, ' ').trim();
+  const headers = [
+    '#',
+    'Label',
+    'Input',
+    ...questions.map((q) => q.name),
+    'Status',
+    'Latency (ms)',
+  ];
+  const lines = [headers.join('\t')];
+  items.forEach((it, idx) => {
+    const qCells = questions.map((q) => {
+      const a = it.answers?.find((x) => x.name === q.name);
+      if (!a) return '—';
+      if (a.type === 'refusal') return 'Refused';
+      if (a.type === 'score' && a.score !== undefined) {
+        const lbl = levelLabels(a, q)[String(Math.round(a.score))];
+        return lbl ? `${lbl} (${a.score.toFixed(2)})` : a.score.toFixed(2);
+      }
+      if (a.type === 'predicate' && a.probability !== undefined) {
+        return `${a.probability >= 0.5 ? 'TRUE' : 'FALSE'} (${pct(a.probability)})`;
+      }
+      return answerValue(a);
+    });
+    lines.push(
+      [
+        String(idx + 1),
+        clean(it.label ?? ''),
+        clean(it.input),
+        ...qCells.map(clean),
+        it.status,
+        it.latencyMs !== undefined ? String(it.latencyMs) : '',
+      ].join('\t'),
+    );
+  });
+  return lines.join('\n');
+};
+
+/** formats the full batch evaluation and aggregate summaries as formatted JSON */
+export const formatBatchJson = (
+  draft: Pick<DecisionDraft, 'id' | 'title' | 'modelId' | 'questions'>,
+  items: DecisionBatchItem[],
+): string => {
+  const summaries = Object.fromEntries(
+    draft.questions.map((q) => [q.name, summarizeBatchQuestion(q, items)]),
+  );
+  return JSON.stringify(
+    {
+      id: draft.id,
+      title: draft.title || 'Untitled batch decision',
+      modelId: draft.modelId,
+      exportedAt: new Date().toISOString(),
+      questions: draft.questions,
+      summary: summaries,
+      items: items.map((it, index) => ({
+        row: index + 1,
+        ...(it.label ? { label: it.label } : {}),
+        input: it.input,
+        status: it.status,
+        ...(it.latencyMs !== undefined ? { latencyMs: it.latencyMs } : {}),
+        ...(it.usage ? { usage: it.usage } : {}),
+        ...(it.error ? { error: it.error } : {}),
+        ...(it.answers ? { answers: it.answers } : {}),
+      })),
+    },
+    null,
+    2,
+  );
 };

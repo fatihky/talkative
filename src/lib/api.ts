@@ -390,17 +390,22 @@ export const notesApi = {
 
 export const decisionsApi = {
   list: () => request<DecisionRun[]>('/api/decisions'),
-  /** stores the run and evaluates it; a failed evaluation resolves with `error` set on the run */
-  evaluate: (input: {
-    id?: string;
-    modelId: string;
-    title?: string;
-    input: string;
-    questions: DecisionQuestion[];
-  }) =>
+  /** stores the run (unless `stateless` is set) and evaluates it; a failed evaluation resolves with `error` set on the run */
+  evaluate: (
+    input: {
+      id?: string;
+      modelId: string;
+      title?: string;
+      input: string;
+      questions: DecisionQuestion[];
+      stateless?: boolean;
+    },
+    signal?: AbortSignal,
+  ) =>
     request<DecisionRun>('/api/decisions', {
       method: 'POST',
       body: JSON.stringify(input),
+      ...(signal ? { signal } : {}),
     }),
   patch: (id: string, patch: { title: string }) =>
     request<DecisionRun>(`/api/decisions/${id}`, {

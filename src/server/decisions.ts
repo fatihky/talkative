@@ -241,6 +241,8 @@ export type DecisionRunInput = {
   title?: string | undefined;
   input: string;
   questions: DecisionQuestion[];
+  /* when true, evaluates upstream and returns the DTO without writing to the DB (used for batch rows) */
+  stateless?: boolean | undefined;
 };
 
 /** validates a POST /api/decisions body into the canonical run shape */
@@ -248,6 +250,8 @@ export const parseDecisionRun = (body: unknown): DecisionRunInput => {
   const b = (body ?? {}) as Record<string, unknown>;
   if (b.id !== undefined && (typeof b.id !== 'string' || !isUuid(b.id)))
     throw new ValidationError('id must be a uuid');
+  if (b.stateless !== undefined && typeof b.stateless !== 'boolean')
+    throw new ValidationError('stateless must be a boolean');
   const modelId = typeof b.modelId === 'string' ? b.modelId.trim() : '';
   if (!modelId) throw new ValidationError('modelId is required');
   if (typeof b.input !== 'string' || !b.input.trim())
@@ -274,6 +278,7 @@ export const parseDecisionRun = (body: unknown): DecisionRunInput => {
     ...(title !== undefined ? { title } : {}),
     input: b.input,
     questions,
+    ...(b.stateless !== undefined ? { stateless: b.stateless } : {}),
   };
 };
 
