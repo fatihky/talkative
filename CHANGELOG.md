@@ -23,12 +23,14 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Redesign `/decisions` and `/decisions/[slug]` around a neo-brutalist card with `BUILD` / `RESULTS` tabs, a scrollable question rail, up/down choice and level reordering, two-step question delete and draft reset/revert, inline field validation, and per-option probability inspection in both light and dark themes.
 - Slim the Docker image (about 1.15 GB to about 0.65 GB): the runtime stage installs production dependencies only, drops pnpm, and runs migrations from the bundled `dist/cli/migrate.js`; `@streamdown/mermaid` and `lucide-react` moved to `devDependencies` since they are bundled into `dist`; maintenance commands in the container now run as `node bin/talkative.mjs admin grant <email>` instead of `pnpm`.
 - Scope the composer's Enter-key preference to mobile: desktop always sends with Enter (Shift+Enter breaks the line), while phones and tablets keep the send-or-newline choice.
+- Edit several models' overrides at once on `/settings/providers`: each row keeps its own open editor, and the form moved to `components/model-override-form.tsx`.
 
 ### Fixed
 
 - Send the composer's thinking effort with regenerate and tool-call retry; both left it out, so the server always used `medium`.
 - Log the upstream's response body and the request body (each up to 4,000 characters) to the server console when a chat or completion request fails, instead of keeping only the first 300 characters of the response in the error.
 - Clamp the reasoning effort to the model's listed levels on every provider compatibility, not just bifrost, so an overridden model listing e.g. only `off`/`low`/`high` no longer gets the default `medium` and a 400 from the upstream.
+- Let a model's override be edited while another model's save is still in flight; the finished save no longer closes the newly opened editor, and Save is no longer disabled by an unrelated row's save.
 
 ## [0.3.0] - 2026-11-03
 
