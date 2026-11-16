@@ -16,7 +16,8 @@
  *   following the bottom so the reader stays on the hit.
  * - mod+F / Ctrl+F (or the header's search button) opens FindBar over the
  *   branch on screen, through a 'thread' keyboard scope stacked above the
- *   shell's, inert while the palette is open.
+ *   shell's, inert while the palette is open. A ?find=1 query (the sidebar
+ *   row's "Find in chat") opens it the same way and is then dropped from the URL.
  * - the header carries the title, a branch-count badge, and a ⋯ menu
  *   with the same chat actions as the sidebar row (rename, pin, system
  *   prompt, move to…, export, delete), plus a "Find in chat" item that
@@ -35,8 +36,8 @@
  */
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'waku';
+import { type ComponentProps, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useRouter } from 'waku';
 import { useParams_UNSTABLE } from 'waku/router/client';
 import { I } from '../../lib/icons';
 import { useKeyboardScope } from '../../lib/keyboard';
@@ -62,6 +63,8 @@ import { ErrorCard } from './error-card';
 import { EditBox } from './edit-box';
 import { FindBar } from './find-bar';
 import { MessageBubble } from './message-bubble';
+
+type RoutePath = Extract<ComponentProps<typeof Link>['to'], string>;
 
 /* the tooltip a closed reasoning/tool card's stand-in hits carry */
 const HIDDEN_LABEL = 'Match inside a closed reasoning or tool card';
@@ -230,6 +233,18 @@ export function ThreadScreen() {
       paintHiddenHighlights([], HIDDEN_LABEL);
     };
   }, [chatId]);
+
+  /* a sidebar row's "Find in chat" lands on ?find=1: open the bar once, then drop the flag.
+     Declared after the chat-switch reset above, so the bar survives that reset. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: router.replace is stable per navigation
+  useEffect(() => {
+    const p = new URLSearchParams(router.query);
+    if (!p.has('find')) return;
+    p.delete('find');
+    const qs = p.toString();
+    setFind((k) => (k ?? 0) + 1);
+    void router.replace(`/c/${chatId}${qs ? `?${qs}` : ''}` as RoutePath);
+  }, [router.query, chatId]);
 
   /* find-in-chat; a scope above the shell's so it wins mod+f, skipped while the palette is up */
   const kb = useKeyboardScope('thread');

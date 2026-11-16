@@ -9,9 +9,10 @@
  * - A spinner shows while the chat is streaming a reply or classifying;
  *   a pin icon marks pinned chats, and a small gear marks chats carrying
  *   their own system prompt, so an overridden chat is visible at a glance.
- * - Actions menu: rename, pin/unpin, system prompt, export as text, and
- *   delete gated behind a confirm dialog — the same list the thread
- *   header shows, built by chatActionsMenu.
+ * - Actions menu: find in chat, rename, pin/unpin, system prompt, export as
+ *   text, and delete gated behind a confirm dialog — the same list the thread
+ *   header shows, built by chatActionsMenu. Find in chat routes to the chat
+ *   with `?find=1`, which the thread screen turns into an open FindBar.
  * - "Move to…" is offered only when at least one folder exists; picking it
  *   swaps to the move menu, which the actions menu's onClose leaves open.
  * - Draggable for filing into folders, disabled while renaming; on touch
@@ -19,8 +20,8 @@
  */
 'use client';
 
-import { useRef, useState } from 'react';
-import { Link } from 'waku';
+import { type ComponentProps, useRef, useState } from 'react';
+import { Link, useRouter } from 'waku';
 import { I } from '../../lib/icons';
 import { Menu, Tip } from '../../lib/popover';
 import {
@@ -35,6 +36,8 @@ import { chatActionsMenu } from '../chat-actions';
 import { DRAG_MIME, type Drag, indent } from './drag';
 import { MoveMenu } from './move-menu';
 import { Draggable } from './touch-drag';
+
+type RoutePath = Extract<ComponentProps<typeof Link>['to'], string>;
 
 export function ChatRow({
   chat,
@@ -53,6 +56,7 @@ export function ChatRow({
 }) {
   const [menu, setMenu] = useState<'actions' | 'move' | null>(null);
   const menuAnchor = useRef<HTMLButtonElement | null>(null);
+  const router = useRouter();
   const [title, setTitle] = useState(chat.title);
   const hasFolders = useFoldersStore((s) => s.items.length > 0);
   const mobile = useLayoutStore((s) => s.vw < 768);
@@ -148,6 +152,10 @@ export function ChatRow({
             /* on phones a drag is the quicker way in, so say so */
             moveHint: mobile,
             onRename: () => setRenaming(true),
+            onFind: () => {
+              actions.setMobileNav(false);
+              void router.push(`/c/${chat.id}?find=1` as RoutePath);
+            },
             /* the actions menu's onClose only clears 'actions', so the picker stays up */
             onMove: () => setMenu('move'),
           })}
