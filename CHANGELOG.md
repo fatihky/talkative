@@ -20,6 +20,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Bump Docker actions (setup-qemu to v4, setup-buildx to v4, login to v4, metadata to v6, build-push to v7) in the release workflow to run natively on Node 24.
 - Build Docker images using `--platform=$BUILDPLATFORM` for the build and production-deps stages so multi-arch images (ARM64) install dependencies and compile natively instead of running under slow QEMU emulation.
 - Separate the "Start from an example" section on `/decisions` into its own card below the stored runs list.
 - Redesign `/decisions` and `/decisions/[slug]` around a neo-brutalist card with `BUILD` / `RESULTS` tabs, a scrollable question rail, up/down choice and level reordering, two-step question delete and draft reset/revert, inline field validation, and per-option probability inspection in both light and dark themes.
