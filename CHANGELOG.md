@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Add a GitHub Actions release workflow (`.github/workflows/release.yml`) that publishes a GitHub Release from `CHANGELOG.md` and pushes a multi-arch (`linux/amd64`, `linux/arm64`) Docker image to `ghcr.io/fatihky/talkative` when a `v*` tag is pushed or dispatched manually.
 - Add a batch decisions editor and results table on `/decisions` and `/decisions/[slug]` with editable input rows, bulk paste and CSV/TSV/JSON/JSONL import, starter sample batches, concurrent stateless evaluation (`POST /api/decisions` with `stateless: true`), per-question aggregate summary cards, sortable/filterable results tables, probability distribution inspection, and CSV/JSON/TSV export.
 - Add `max` as a thinking effort level in the composer, the model settings and the model overrides, sent to models that list it (e.g. via bifrost's reported efforts or an override).
 - Add "Find in chat" to the thread header's ⋯ menu, opening the same FindBar as the search button and mod+F.
@@ -26,8 +27,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Edit several models' overrides at once on `/settings/providers`: each row keeps its own open editor, and the form moved to `components/model-override-form.tsx`.
 - Saving, resetting or hiding a model override on `/settings/providers` patches the list from the write's answer instead of refetching the whole catalog.
 - List override rows whose connection is gone or disabled under "Unmatched overrides" at the top of `/settings/providers`, with a delete action.
-
 - Group hidden models by provider under "Hidden" on `/settings/providers`, showing each remote id without its `<connectionId>:` database prefix.
+
 ### Fixed
 
 - Send the composer's thinking effort with regenerate and tool-call retry; both left it out, so the server always used `medium`.
