@@ -27,6 +27,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Saving, resetting or hiding a model override on `/settings/providers` patches the list from the write's answer instead of refetching the whole catalog.
 - List override rows whose connection is gone or disabled under "Unmatched overrides" at the top of `/settings/providers`, with a delete action.
 
+- Group hidden models by provider under "Hidden" on `/settings/providers`, showing each remote id without its `<connectionId>:` database prefix.
 ### Fixed
 
 - Send the composer's thinking effort with regenerate and tool-call retry; both left it out, so the server always used `medium`.

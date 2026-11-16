@@ -14,8 +14,10 @@
  *   so its other overrides survive both ways; a row with nothing else set
  *   is dropped by the server as "empty".
  * - Hidden models aren't in the payload, so they are kept beside it with
- *   their provider name; the provider filter narrows them too and the
- *   list shows an "Unhide" row.
+ *   their provider name; the provider filter narrows them too. They list
+ *   under a Hidden section, grouped by provider, each row showing its
+ *   remote id (the `${connectionId}:` database prefix is dropped) with an
+ *   "Unhide" button.
  * - Search ANDs every whitespace-separated term against name, id,
  *   provider and capability keywords; the counter turns into shown/total
  *   while filtering.
@@ -111,6 +113,15 @@ export function ModelsSettings({
       (!active || h.provider === active) &&
       terms.every((t) => h.id.toLowerCase().includes(t)),
   );
+
+  /* hidden rows grouped by provider, first-seen order, like the visible groups */
+  const hiddenByProvider = new Map<string, typeof hiddenShown>();
+  for (const h of hiddenShown) {
+    const key = h.provider ?? '';
+    const items = hiddenByProvider.get(key);
+    if (items) items.push(h);
+    else hiddenByProvider.set(key, [h]);
+  }
 
   const recentIds = useRecentModelIds(5);
   /* the models chats were last carried by, newest work first; ones the catalog
@@ -348,19 +359,29 @@ export function ModelsSettings({
                 {hiddenShown.length}
               </span>
             </div>
-            {hiddenShown.map(({ id }) => (
-              <div
-                key={id}
-                className="flex min-h-8 items-center gap-2 border-b border-[var(--border)] py-1 text-[12px] last:border-b-0"
-              >
-                <span className="num flex-1 truncate muted">{id}</span>
-                <button
-                  type="button"
-                  onClick={() => unhide(id)}
-                  className="ctl-ghost h-6 shrink-0 rounded-[6px] px-1.5 text-[11px]"
-                >
-                  Unhide
-                </button>
+            {[...hiddenByProvider].map(([provider, rows], gi) => (
+              <div key={provider} className={gi > 0 ? 'mt-2' : undefined}>
+                <div className="mb-1 flex items-center gap-1.5 break-words text-[11px] muted">
+                  <span>{provider || 'Unknown provider'}</span>
+                  <span className="num">{rows.length}</span>
+                </div>
+                {rows.map(({ id }) => (
+                  <div
+                    key={id}
+                    className="flex min-h-8 items-center gap-2 border-b border-[var(--border)] py-1 text-[12px] last:border-b-0"
+                  >
+                    <span className="num flex-1 truncate muted">
+                      {remoteIdOf(id)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => unhide(id)}
+                      className="ctl-ghost h-6 shrink-0 rounded-[6px] px-1.5 text-[11px]"
+                    >
+                      Unhide
+                    </button>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -377,6 +398,10 @@ export function ModelsSettings({
     </section>
   );
 }
+
+/* a model id is `${connectionId}:${remoteId}`; the remote id may hold colons
+   of its own, so only the leading connection id is dropped */
+const remoteIdOf = (id: string) => id.replace(/^\d+:/, '');
 
 function CapBadges({ caps }: { caps: Model['capabilities'] }) {
   const on = CAP_BADGES.filter((b) => caps[b.key]);
