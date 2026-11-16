@@ -58,7 +58,15 @@ export const GET = (req: Request) =>
       if (!provider) return [];
       return [{ id, provider, override: overrideDto(o, !listed.has(id)) }];
     });
+    /* a row whose connection is gone or disabled is in no list at all; it's
+       surfaced here so settings can offer to delete it */
+    const orphans = [...overrides].flatMap(([id, o]) =>
+      providerOf(o.connectionId)
+        ? []
+        : [{ id, override: overrideDto(o, true) }],
+    );
     return Response.json({
+      orphans,
       items: merged.map((m) => {
         const o = overrides.get(m.id);
         return o ? { ...m, overrides: overrideDto(o, !listed.has(m.id)) } : m;

@@ -270,8 +270,17 @@ export type ModelOverridesResponse = {
     provider?: string | undefined;
     override?: ModelOverrideDto | undefined;
   }[];
+  /* rows whose connection is gone or disabled: in no list, so only deletable */
+  orphans: { id: string; override: ModelOverrideDto }[];
   syncedAt: number;
   connections: { id: number; name: string }[];
+};
+
+/* what one id's list entry is after a write: the merged model when it's
+   listed (null when hidden or gone), and the stored row when there is one */
+export type ModelOverrideResult = {
+  model: Model | null;
+  override: ModelOverrideDto | null;
 };
 
 /* model ids address rows, and a catalog id may contain '/' — encoded for the path */
@@ -303,13 +312,13 @@ export type ModelOverrideBody = {
 export const modelOverridesApi = {
   list: () => request<ModelOverridesResponse>('/api/model-overrides'),
   save: (id: string, override: ModelOverrideBody) =>
-    request<ModelOverrideDto>(overridePath(id), {
+    request<ModelOverrideResult>(overridePath(id), {
       method: 'PUT',
       body: JSON.stringify(override),
     }),
   /* back to what the provider reports, or forget a custom model */
   remove: (id: string) =>
-    request<void>(overridePath(id), { method: 'DELETE' }),
+    request<ModelOverrideResult>(overridePath(id), { method: 'DELETE' }),
 };
 
 export async function fetchModelOverrides(opts: {

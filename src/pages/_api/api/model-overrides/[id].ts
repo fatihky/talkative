@@ -20,7 +20,9 @@
  *   404 otherwise). A PUT for a listed model whose fields are all empty
  *   drops the row, so "clear" and "reset" mean the same thing; a
  *   user-added model's row is the model itself and is never dropped.
- * - DELETE is idempotent: 204 whether or not a row existed.
+ * - PUT and DELETE answer the id's new state (`{ model, override }`, both
+ *   null when the id is gone) so the client patches its lists without a
+ *   refetch. DELETE is idempotent: a missing row answers the same way.
  * - Everything is applied on read, so no catalog cache needs dropping.
  */
 import type { ApiContext } from 'waku/router';
@@ -90,6 +92,28 @@ export const GET = (_req: Request, { params }: Ctx) =>
     );
   });
 
+/* what the caller's list now shows for one id: the merged model when it's
+   listed (null when hidden or gone), and the stored row when there is one */
+const resolve = async (
+  userId: string,
+  t: { connectionId: number; modelId: string },
+) => {
+  const key = `${t.connectionId}:${t.modelId}`;
+  const overrides = await listOverrides(userId);
+  const o = overrides.get(key);
+  const conns = (await listConnections(userId)).filter((c) => c.enabled);
+  const entries = await Promise.all(conns.map((c) => getCatalog(c)));
+  const items: Model[] = entries.flatMap((e) => e.items);
+  const listed = items.some((m) => m.id === key);
+  const { items: merged } = applyOverrides(items, overrides, (cid) =>
+    conns.find((c) => c.id === cid)?.name,
+  );
+  return {
+    model: merged.find((m) => m.id === key) ?? null,
+    override: o ? overrideDto(o, !listed) : null,
+  };
+};
+
 /* PUT /api/model-overrides/:id — set this model's overrides (an all-empty body resets it) */
 export const PUT = (req: Request, { params }: Ctx) =>
   handle(async (userId) => {
@@ -112,10 +136,10 @@ export const PUT = (req: Request, { params }: Ctx) =>
     if (catalog && isEmptyOverride(input.override)) {
       /* nothing left to override: forget the row instead of storing blanks */
       await removeOverride(userId, t.connectionId, t.modelId);
-      return Response.json(overrideDto(input.override, false));
+    } else {
+      await saveOverride(userId, t.connectionId, t.modelId, input);
     }
-    await saveOverride(userId, t.connectionId, t.modelId, input);
-    return Response.json(overrideDto(input.override, !catalog));
+    return Response.json(await resolve(userId, t));
   });
 
 /* DELETE /api/model-overrides/:id — back to what the provider reports */
@@ -124,5 +148,5 @@ export const DELETE = (_req: Request, { params }: Ctx) =>
     const t = target(params.id);
     if (!t) return notFound();
     await removeOverride(userId, t.connectionId, t.modelId);
-    return new Response(null, { status: 204 });
+    return Response.json(await resolve(userId, t));
   });

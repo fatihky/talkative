@@ -24,6 +24,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Slim the Docker image (about 1.15 GB to about 0.65 GB): the runtime stage installs production dependencies only, drops pnpm, and runs migrations from the bundled `dist/cli/migrate.js`; `@streamdown/mermaid` and `lucide-react` moved to `devDependencies` since they are bundled into `dist`; maintenance commands in the container now run as `node bin/talkative.mjs admin grant <email>` instead of `pnpm`.
 - Scope the composer's Enter-key preference to mobile: desktop always sends with Enter (Shift+Enter breaks the line), while phones and tablets keep the send-or-newline choice.
 - Edit several models' overrides at once on `/settings/providers`: each row keeps its own open editor, and the form moved to `components/model-override-form.tsx`.
+- Saving, resetting or hiding a model override on `/settings/providers` patches the list from the write's answer instead of refetching the whole catalog.
+- List override rows whose connection is gone or disabled under "Unmatched overrides" at the top of `/settings/providers`, with a delete action.
 
 ### Fixed
 

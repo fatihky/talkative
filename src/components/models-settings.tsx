@@ -67,6 +67,8 @@ export function ModelsSettings({
 } = {}) {
   const models = useModelOverridesStore((s) => s.items);
   const hidden = useModelOverridesStore((s) => s.hidden);
+  const orphans = useModelOverridesStore((s) => s.orphans);
+  const saving = useModelOverridesStore((s) => s.saving);
   const status = useModelOverridesStore((s) => s.status);
   const connections = useModelOverridesStore((s) => s.connections);
   const router = useRouter();
@@ -219,6 +221,41 @@ export function ModelsSettings({
 
       {actionError && (
         <div className="mb-2 text-[12px] text-[var(--danger)]">{actionError}</div>
+      )}
+
+      {orphans.length > 0 && (
+        <div className="mb-2">
+          <div className="sec-label mb-1 flex items-center gap-1.5 pt-1">
+            <I n="grid" s={12} />
+            <span>Unmatched overrides</span>
+            <span className="num text-[11px] muted">{orphans.length}</span>
+          </div>
+          <div className="mb-1 text-[11px] muted">
+            No enabled provider lists these models, so they don't appear
+            anywhere else. Delete the ones you no longer need.
+          </div>
+          {orphans.map(({ id, override }) => (
+            <div
+              key={id}
+              className="flex min-h-8 items-center gap-2 border-b border-[var(--border)] py-1 text-[12px] last:border-b-0"
+            >
+              <span className="flex-1 truncate font-medium">
+                {override.shortName ?? override.remoteId}
+              </span>
+              <span className="num truncate muted" title={id}>
+                {id}
+              </span>
+              <button
+                type="button"
+                onClick={() => reset(id)}
+                disabled={saving}
+                className="ctl-ghost h-6 shrink-0 rounded-[6px] px-1.5 text-[11px] text-[var(--danger)] disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
       )}
 
       {providers.length > 1 && (

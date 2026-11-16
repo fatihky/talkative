@@ -4,9 +4,10 @@
  * Business logic:
  * - The list is what GET /api/model-overrides answers: every model
  *   from the enabled providers with the user's overrides applied, plus
- *   the custom models they added. Saving or resetting re-reads that
- *   endpoint and mirrors the result into the models store (and its
- *   cache), so the composer, decisions and this page agree at once.
+ *   the custom models they added. Saving or resetting doesn't refetch:
+ *   the write answers with that id's merged entry, which is patched into
+ *   the lists and mirrored into the models store (and its cache), so the
+ *   composer, decisions and this page agree at once.
  * - Hidden models are not in the payload by design; `hidden` holds
  *   their ids so the filter chips can still offer them and reveal an
  *   "Unhide" row instead of losing the entry entirely.
@@ -23,13 +24,19 @@
 
 import { create } from 'zustand';
 import {
-  fetchModelOverrides,
   type ModelOverrideBody,
+  type ModelOverrideResult,
   type ModelOverridesResponse,
   modelOverridesApi,
+  fetchModelOverrides,
 } from '../lib/api';
 import type { Model } from '../types';
-import { applyModels, errorText } from './models';
+import {
+  applyModels,
+  byName,
+  errorText,
+  useModelsStore,
+} from './models';
 import { uiActions } from './ui';
 
 export type OverrideConnection = { id: number; name: string };
@@ -38,6 +45,8 @@ type ModelOverridesState = {
   items: Model[];
   /* models the server left out because the user hid them */
   hidden: ModelOverridesResponse['hidden'];
+  /* rows no list can show (their connection is gone or disabled) */
+  orphans: ModelOverridesResponse['orphans'];
   connections: OverrideConnection[];
   status: 'idle' | 'loading' | 'ready' | 'error';
   error?: string | undefined;
@@ -47,6 +56,7 @@ type ModelOverridesState = {
 export const useModelOverridesStore = create<ModelOverridesState>()(() => ({
   items: [],
   hidden: [],
+  orphans: [],
   connections: [],
   status: 'idle',
   saving: false,
@@ -54,8 +64,8 @@ export const useModelOverridesStore = create<ModelOverridesState>()(() => ({
 
 const set = useModelOverridesStore.setState;
 
-/* bumped per fetch: only the newest one may land, so the page's slow first
-   load (refresh) can't overwrite the reload that follows a save */
+/* bumped per fetch and per write: only the newest may land, so the page's
+   slow first load (refresh) can't overwrite a save that happened meanwhile */
 let seq = 0;
 
 const load = (refresh: boolean) => {
@@ -65,14 +75,9 @@ const load = (refresh: boolean) => {
     .then((r) => {
       if (mine !== seq) return r;
       set({
-        items: r.items.toSorted(
-          (a, b) =>
-            a.shortName.localeCompare(b.shortName, undefined, {
-              sensitivity: 'base',
-              numeric: true,
-            }) || a.id.localeCompare(b.id),
-        ),
+        items: r.items.toSorted(byName),
         hidden: r.hidden,
+        orphans: r.orphans,
         connections: r.connections,
         status: 'ready',
         error: undefined,
@@ -87,6 +92,36 @@ const load = (refresh: boolean) => {
     });
 };
 
+/* folds one id's write result into the lists and the models store, so
+   nothing is refetched: the server already answered with the merged model */
+const applyResult = (id: string, r: ModelOverrideResult) => {
+  seq++;
+  const cur = useModelOverridesStore.getState();
+  const items = r.model
+    ? [...cur.items.filter((m) => m.id !== id), r.model].toSorted(byName)
+    : cur.items.filter((m) => m.id !== id);
+  const hidden = cur.hidden.filter((h) => h.id !== id);
+  /* an orphan has no connection name, so it can't be listed as hidden: it
+     stays an orphan, with the row as now stored, or leaves when deleted */
+  const provider = cur.connections.find(
+    (c) => c.id === r.override?.connectionId,
+  )?.name;
+  if (r.override?.hidden === true && provider) {
+    hidden.push({ id, provider, override: r.override });
+  }
+  const orphans = cur.orphans.filter((o) => o.id !== id);
+  if (!r.model && r.override && !provider) {
+    orphans.push({ id, override: r.override });
+  }
+  set({ items, hidden, orphans, status: 'ready', error: undefined });
+  const models = useModelsStore.getState();
+  applyModels({
+    items,
+    syncedAt: models.lastSyncedAt ?? Date.now(),
+    errors: models.errors,
+  });
+};
+
 export const modelOverridesActions = {
   /* the page's first load: let the server refresh stale provider lists */
   load(refresh = false) {
@@ -97,8 +132,7 @@ export const modelOverridesActions = {
   async save(id: string, override: ModelOverrideBody) {
     set({ saving: true });
     try {
-      await modelOverridesApi.save(id, override);
-      await load(false);
+      applyResult(id, await modelOverridesApi.save(id, override));
     } finally {
       set({ saving: false });
     }
@@ -114,8 +148,7 @@ export const modelOverridesActions = {
   async reset(id: string) {
     set({ saving: true });
     try {
-      await modelOverridesApi.remove(id);
-      await load(false);
+      applyResult(id, await modelOverridesApi.remove(id));
     } finally {
       set({ saving: false });
     }

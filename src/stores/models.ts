@@ -53,7 +53,7 @@ export const errorText = (e: unknown): string =>
   e instanceof Error ? e.message : String(e);
 
 /* alphabetical by display name, case-insensitive and numeric-aware (gpt-4 < gpt-10) */
-const byName = (a: Model, b: Model) =>
+export const byName = (a: Model, b: Model) =>
   a.shortName.localeCompare(b.shortName, undefined, {
     sensitivity: 'base',
     numeric: true,
