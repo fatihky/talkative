@@ -23,11 +23,11 @@ permissions:
 jobs:
   github-release:
     name: GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract changelog section
         run: |
@@ -70,9 +70,9 @@ jobs:
 
   docker:
     name: Docker image (GHCR)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.tag || github.ref_name }}
 
