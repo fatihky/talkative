@@ -1,13 +1,20 @@
-FROM node:24-alpine AS base
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build-base
 RUN npm install -g pnpm@12.9.1
 WORKDIR /app
 
-FROM base AS build
+# run build on the native builder host ($BUILDPLATFORM) so multi-arch builds
+# (e.g. linux/arm64 on an amd64 GitHub runner) don't run Vite/Rolldown/Tailwind
+# under slow QEMU emulation; dist/ is architecture-neutral JavaScript.
+FROM build-base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 # the orm config loads .env if present; init is lazy so nothing connects at build time
 RUN BETTER_AUTH_SECRET=dummydata DATABASE_URL=postgresql://build@localhost/build pnpm build
+
+FROM node:24-alpine AS base
+RUN npm install -g pnpm@12.9.1
+WORKDIR /app
 
 # production dependencies only: the build tooling (typescript, rolldown, webpack,
 # esbuild, drizzle-kit, ...) never reaches the runtime image. pnpm-workspace.yaml
