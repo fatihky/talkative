@@ -12,14 +12,10 @@ COPY . .
 # the orm config loads .env if present; init is lazy so nothing connects at build time
 RUN BETTER_AUTH_SECRET=dummydata DATABASE_URL=postgresql://build@localhost/build pnpm build
 
-FROM node:24-alpine AS base
-RUN npm install -g pnpm@12.9.1
-WORKDIR /app
-
 # production dependencies only: the build tooling (typescript, rolldown, webpack,
 # esbuild, drizzle-kit, ...) never reaches the runtime image. pnpm-workspace.yaml
 # keeps pnpm's settings (allowBuilds, minimumReleaseAgeExclude) in effect.
-FROM base AS deps
+FROM build-base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
