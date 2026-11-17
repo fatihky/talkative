@@ -310,6 +310,7 @@ export function ToolCallView({
   return (
     <div
       ref={rootRef}
+      data-tool-call-id={c.id}
       data-collapsible={open ? 'open' : 'closed'}
       className={`tool-card ${open ? '' : 'collapsed'} ${resolved ? 'resolved' : ''}`}
     >

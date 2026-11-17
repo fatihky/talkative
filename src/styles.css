@@ -186,7 +186,8 @@ body {
   background-color: color-mix(in oklch, var(--warn) 75%, transparent);
 }
 /* the message a search result opened, flashed once */
-.msg.search-flash {
+.msg.search-flash,
+.tool-card.search-flash {
   animation: search-flash 1.6s ease-out;
   border-radius: 8px;
 }

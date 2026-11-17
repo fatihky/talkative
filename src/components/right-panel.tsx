@@ -24,6 +24,9 @@
  *   the artifact body while the stored tab stays 'preview'.
  * - Artifact mode routes between the artifact browser and the raw snippet
  *   preview; context mode shows the notes/grants panel.
+ * - The context tab also lists the open chat's tool calls on the branch on
+ *   screen (hidden on home); clicking one scrolls the thread to its card
+ *   and flashes it, closing the overlay sheet first below 1440px.
  * - The context tab is a read-only summary — the account-wide default
  *   grants, the notes list (each attachable to the next message) and the
  *   selected model (per-message grants still override chat defaults) —
@@ -44,7 +47,7 @@
  */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'waku/router/client';
 import { timeAgo } from '../lib/format';
 import { I } from '../lib/icons';
@@ -58,8 +61,10 @@ import {
   useMemoriesStore,
   useNotesStore,
   useSelectedModel,
+  useThreadsStore,
   useUIStore,
 } from '../stores';
+import { branchPath } from '../stores/threads';
 import { ArtifactPanel } from './artifact-panel';
 import { PreviewPanel, useScopedPreview } from './preview-panel';
 
@@ -339,6 +344,8 @@ function ContextPanel() {
         </div>
       </section>
 
+      <ToolCallsSection />
+
       <section>
         <div className="sec-label mb-1 flex items-center justify-between">
           Notes
@@ -448,6 +455,101 @@ function ContextPanel() {
         per-message grants override chat defaults.
       </section>
     </div>
+  );
+}
+
+/** a duration as the thread's tool cards show it: ms under a second, else seconds */
+const msFmt = (ms: number) =>
+  ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * the open chat's tool calls on the branch on screen, in call order. A click
+ * scrolls the thread to that call's card and flashes it; on the overlay sheet
+ * the panel closes first so the card isn't hidden behind it.
+ */
+function ToolCallsSection() {
+  const context = useUIStore((s) => s.context);
+  const chatId = context === 'new' ? null : context;
+  const thread = useThreadsStore((s) =>
+    chatId ? s.threads[chatId] : undefined,
+  );
+  const inline = useLayoutStore((s) => s.vw >= 1440);
+  const calls = useMemo(() => {
+    if (!thread) return [];
+    return branchPath(thread.messages, thread.leafId).flatMap((m) =>
+      m.role === 'assistant'
+        ? (m.toolCalls ?? []).map((c) => ({ ...c, messageId: m.id }))
+        : [],
+    );
+  }, [thread]);
+
+  if (!chatId) return null;
+
+  const reveal = (callId: string, messageId: string) => {
+    if (!inline) actions.closePanel();
+    requestAnimationFrame(() => {
+      const el =
+        document.querySelector<HTMLElement>(
+          `[data-tool-call-id="${CSS.escape(callId)}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-msg-id="${CSS.escape(messageId)}"]`,
+        );
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.remove('search-flash');
+      void el.offsetWidth;
+      el.classList.add('search-flash');
+      window.setTimeout(() => el.classList.remove('search-flash'), 1700);
+    });
+  };
+
+  return (
+    <section>
+      <div className="sec-label mb-1 flex items-center justify-between">
+        Tool calls
+        {calls.length > 0 && (
+          <span className="num text-[10px] font-normal">{calls.length}</span>
+        )}
+      </div>
+      {calls.length === 0 ? (
+        <div className="text-[12px] muted">No tool calls in this chat.</div>
+      ) : (
+        <div className="flex flex-col">
+          {calls.map((c, i) => (
+            <button
+              key={`${c.messageId}:${c.id}:${i}`}
+              type="button"
+              onClick={() => reveal(c.id, c.messageId)}
+              title={c.status === 'error' ? (c.result ?? 'error') : c.args}
+              className="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted"
+            >
+              <span
+                aria-label={c.status}
+                className="size-1.5 shrink-0 rounded-full"
+                style={{
+                  background:
+                    c.status === 'error'
+                      ? 'var(--danger)'
+                      : c.status === 'running'
+                        ? 'var(--accent)'
+                        : 'var(--text-3)',
+                }}
+              />
+              <span className="shrink-0 font-mono text-[12px]">{c.name}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[10px] muted">
+                {c.args}
+              </span>
+              {c.ms != null && (
+                <span className="num shrink-0 text-[10px] muted">
+                  {msFmt(c.ms)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
