@@ -183,6 +183,11 @@ export type SendInput = GenerateInput & {
   parentId?: string | null | undefined;
   /* a not-yet-created chat's own prompt, stored with the row the first send inserts */
   systemPrompt?: string | null | undefined;
+  /*
+   * a not-yet-created chat's folder, stored with the row the first send inserts so the
+   * first reply already inherits the folder chain's prompts; ignored for an existing chat
+   */
+  folderId?: string | undefined;
   /* prefix every turn in the history sent to the model with its [yyyy/mm/dd HH:mm] timestamp */
   timestamps?: boolean | undefined;
 };
@@ -236,6 +241,12 @@ export const parseSendInput = (body: unknown): SendInput => {
     (typeof b.parentId !== 'string' || !isUuid(b.parentId))
   )
     throw new ValidationError('parentId must be a message id or null');
+  if (
+    b.folderId !== undefined &&
+    b.folderId !== null &&
+    (typeof b.folderId !== 'string' || !isUuid(b.folderId))
+  )
+    throw new ValidationError('folderId must be a folder id or null');
   return {
     ...parseGenerateInput(body),
     content,
@@ -244,6 +255,7 @@ export const parseSendInput = (body: unknown): SendInput => {
     ...(b.systemPrompt !== undefined
       ? { systemPrompt: parseSystemPrompt(b.systemPrompt) }
       : {}),
+    ...(typeof b.folderId === 'string' ? { folderId: b.folderId } : {}),
     timestamps: b.timestamps === true,
   };
 };

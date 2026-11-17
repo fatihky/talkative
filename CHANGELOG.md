@@ -38,6 +38,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Log the upstream's response body and the request body (each up to 4,000 characters) to the server console when a chat or completion request fails, instead of keeping only the first 300 characters of the response in the error.
 - Clamp the reasoning effort to the model's listed levels on every provider compatibility, not just bifrost, so an overridden model listing e.g. only `off`/`low`/`high` no longer gets the default `medium` and a 400 from the upstream.
 - Let a model's override be edited while another model's save is still in flight; the finished save no longer closes the newly opened editor, and Save is no longer disabled by an unrelated row's save.
+- Apply a folder's system prompt to the first reply of a chat started inside it; the chat was filed by a PATCH after the send, so the first run's system turn was built without the folder.
 
 ## [0.3.0] - 2026-11-03
 

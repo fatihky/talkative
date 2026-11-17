@@ -45,9 +45,12 @@
  *   and param overrides (paramScope 'message') plus only the grants the
  *   selected model supports, and remembers the chat's tool selection so
  *   the tool bar restores per chat.
- * - a first send also files the new chat into the folder it was started
- *   from and fires classifyChat non-blocking for its category and tags;
- *   the estimate's cost is added to threads.sessionCost.
+ * - a first send carries the folder it was started from in its payload,
+ *   so the server inserts the row already filed there and the first reply
+ *   inherits the folder prompts (a post-send PATCH used to file it, which
+ *   landed after the run had built its system turn). it also fires
+ *   classifyChat non-blocking for category and tags; the estimate's cost
+ *   is added to threads.sessionCost.
  */
 'use client';
 
@@ -199,8 +202,13 @@ export const sendActions = {
     };
     const payload: OutgoingMessage = {
       ...payloadFor(chatId, text, draft.attachments, null),
-      /* the server stores it on the row it creates, so the first reply already has it */
+      /*
+       * the server stores both on the row it creates, so the first reply already runs
+       * with the chat prompt and the folder chain's prompts. never file the chat with a
+       * PATCH after the send: the run's system turn is built before that lands.
+       */
       ...(systemPrompt ? { systemPrompt } : {}),
+      ...(folderId ? { folderId } : {}),
     };
 
     putThread(chatId, {
@@ -248,15 +256,6 @@ export const sendActions = {
         addSessionCost(est.cost);
         useUIStore.setState({ sending: false, noToolsNote: false });
         applySent(chatId, userMsg.id, res);
-        /* the chat row is created server-side on first send; file it into the folder it was started from */
-        if (folderId) {
-          chatsApi
-            .patch(chatId, { folderId })
-            .then((updated) => upsertChat(updated))
-            .catch(() => {
-              /* the chat stays at the top level if the move is refused */
-            });
-        }
         /* classification: fires on the first user message, non-blocking (§7.2) */
         classifyChat(chatId)
           .then((c) => {

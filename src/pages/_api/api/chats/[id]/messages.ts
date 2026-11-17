@@ -21,7 +21,12 @@
  *   ('New chat' when that name is missing). A first send also carries
  *   the system prompt typed into the composer's chat-scope box, so its
  *   very first reply already runs with it; later sends never overwrite
- *   the stored prompt.
+ *   the stored prompt. Likewise the folder the chat was started from
+ *   (folderId) is written on insert — never by a PATCH after the send —
+ *   because systemTurns() reads the row's folderId when it builds this
+ *   first run's history; anything that shapes the first reply must be on
+ *   the row before that point. An unknown or foreign folder is dropped
+ *   (top level), not a 400.
  * - branching: parentId omitted continues from chat.leafId, null
  *   starts a new root, and anything else must be an assistant message
  *   of this chat (400 'parentId must be a reply in this chat'). Naming
@@ -70,7 +75,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { ApiContext } from 'waku/router';
 import { getDb } from '../../../../../db';
 import type { MessageRow } from '../../../../../db/schema';
-import { chats, messages } from '../../../../../db/schema';
+import { chats, folders, messages } from '../../../../../db/schema';
 import {
   stripText,
   withAttachmentText,
@@ -146,6 +151,21 @@ export const POST = (req: Request, { params }: Ctx) =>
         .where(eq(chats.id, params.id))
         .limit(1);
       if (taken) throw new ValidationError('chat id already exists');
+      /*
+       * filed into its folder on insert, not by a follow-up PATCH: systemTurns() below
+       * reads chat.folderId, so a chat moved in after this request would miss the folder
+       * prompts on its first reply. a folder that isn't the caller's (or was deleted
+       * meanwhile) leaves the chat at the top level rather than failing the send.
+       */
+      const [folder] = input.folderId
+        ? await db
+            .select({ id: folders.id })
+            .from(folders)
+            .where(
+              and(eq(folders.id, input.folderId), eq(folders.userId, userId)),
+            )
+            .limit(1)
+        : [];
       const [created] = await db
         .insert(chats)
         .values({
@@ -159,6 +179,7 @@ export const POST = (req: Request, { params }: Ctx) =>
           firstPrompt: input.content,
           /* the composer's prompt for a chat that doesn't exist yet applies to this first reply too */
           ...(input.systemPrompt ? { systemPrompt: input.systemPrompt } : {}),
+          ...(folder ? { folderId: folder.id } : {}),
         })
         .returning();
       if (!created) throw new Error('insert failed');

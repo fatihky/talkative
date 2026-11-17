@@ -15,6 +15,12 @@
  * - computed per run, never stored: send, regenerate and mid-reply
  *   retry each rebuild it, so a folder or chat prompt edit applies
  *   to the next generation immediately.
+ * - it reads the chat row as it is when the run starts, so whatever
+ *   decides the first reply's prompt (chat.systemPrompt, chat.folderId)
+ *   must be on the row the first send inserts — a PATCH after the send
+ *   arrives too late. A chat started inside a folder once got filed by
+ *   such a follow-up PATCH and its first reply ran without the folder's
+ *   prompt.
  */
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db';
