@@ -580,15 +580,39 @@ export const getCatalog = async (
   if (!opts.refresh && cached && Date.now() - cached.syncedAt < FRESH_MS)
     return cached;
   try {
-    const items = await FETCHERS[conn.compatibility]({
+    const fetcherPromise = FETCHERS[conn.compatibility]({
       ...conn,
       apiKey: decryptSecret(conn.apiKey),
     });
+    const items = await Promise.race([
+      fetcherPromise,
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Connection timed out (${Math.round(FETCH_TIMEOUT_MS / 1000)}s) — host is unresponsive`,
+              ),
+            ),
+          FETCH_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     const entry: CatalogEntry = { items, syncedAt: Date.now() };
     await writeCache(conn.id, entry);
     return entry;
   } catch (e) {
-    const error = errorText(e);
+    let error = errorText(e);
+    const isTimeout =
+      (e instanceof Error &&
+        (e.name === 'TimeoutError' ||
+          e.name === 'AbortError' ||
+          /timeout|aborted|ETIMEDOUT|ECONNRESET/i.test(e.message))) ||
+      error.toLowerCase().includes('timeout') ||
+      error.toLowerCase().includes('timed out');
+    if (isTimeout && !error.startsWith('Connection timed out')) {
+      error = `Connection timed out (${Math.round(FETCH_TIMEOUT_MS / 1000)}s) — host is unresponsive`;
+    }
     /* a decrypt failure is a config problem (missing keyring version), not an
        unreachable upstream — log it loudly so it isn't mistaken for a dead server */
     if (error.startsWith('[secrets]'))

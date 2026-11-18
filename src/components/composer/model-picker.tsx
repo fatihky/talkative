@@ -69,6 +69,9 @@ const LEVEL_VALUE: Record<string, ThinkingLevel> = {
 export function ModelPicker() {
   const model = useSelectedModel();
   const status = useModelsStore((s) => s.status);
+  const isSyncing = useModelsStore((s) => s.isSyncing);
+  const errors = useModelsStore((s) => s.errors);
+  const providerNames = useModelsStore((s) => s.providerNames);
   const items = useModelsStore((s) => s.items);
   const open = useUIStore((s) => s.modelBarPopover) === 'model';
   const vw = useLayoutStore((s) => s.vw);
@@ -99,7 +102,7 @@ export function ModelPicker() {
   }, [open, items, model?.id]);
 
   const label =
-    status === 'loading' || status === 'idle'
+    status === 'loading' || (status === 'idle' && items.length === 0)
       ? null
       : model
         ? vw < 768
@@ -108,6 +111,7 @@ export function ModelPicker() {
         : '—';
 
   const provider = model ? model.provider : null;
+  const hasErrors = Object.keys(errors).length > 0;
 
   const trigger = (
     <button
@@ -125,11 +129,31 @@ export function ModelPicker() {
       }`}
     >
       {label === null ? (
-        <Skeleton w={60} h={10} />
+        <span className="flex items-center gap-1.5 py-0.5">
+          <Skeleton w={60} h={10} />
+          <span
+            className="block size-2.5 shrink-0 animate-spin rounded-full border-2 border-[var(--muted)] border-t-transparent"
+            title="Loading models…"
+          />
+        </span>
       ) : (
         <span className="mp-main min-w-0">
           <span className="truncate">{label}</span>
           {provider && <span className="mp-provider">{provider}</span>}
+        </span>
+      )}
+      {label !== null && isSyncing && (
+        <span
+          className="block size-2.5 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent ml-1"
+          title="Updating models…"
+        />
+      )}
+      {label !== null && !isSyncing && hasErrors && (
+        <span
+          className="ml-1 shrink-0 text-[var(--warn)]"
+          title="Some providers failed or timed out"
+        >
+          <I n="alert" s={12} />
         </span>
       )}
       <I n="chevron-down" s={13} className="caret shrink-0" />
@@ -203,7 +227,43 @@ export function ModelPicker() {
               }
             }}
           />
+          {(isSyncing || status === 'loading') && (
+            <span
+              className="mr-1 block size-3 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent"
+              title="Loading models…"
+            />
+          )}
         </div>
+        {isSyncing && chattable.length > 0 && (
+          <div className="flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--sunken)] px-3 py-1 text-[11px] muted">
+            <span className="block size-2.5 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+            <span>Updating model catalog…</span>
+          </div>
+        )}
+        {hasErrors && (
+          <div className="m-2 flex flex-col gap-1 rounded-[6px] border border-[var(--warn)]/40 bg-[var(--sunken)] p-2 text-[11px]">
+            <div className="flex items-center gap-1 font-medium text-[var(--warn)]">
+              <I n="alert" s={12} className="shrink-0" />
+              <span>Provider issue</span>
+            </div>
+            {Object.entries(errors).map(([id, err]) => {
+              const pName = providerNames[id] ?? `Provider #${id}`;
+              const isTimeout =
+                err.toLowerCase().includes('time') ||
+                err.toLowerCase().includes('timeout');
+              return (
+                <div
+                  key={id}
+                  className="truncate text-[10px] muted"
+                  title={`${pName}: ${err}`}
+                >
+                  <strong className="text-[var(--text)]">{pName}:</strong>{' '}
+                  {isTimeout ? 'Timed out / unresponsive' : err}
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div
           id={listId}
           role="listbox"
@@ -215,6 +275,10 @@ export function ModelPicker() {
             idx={idx}
             query={q}
             chattableCount={chattable.length}
+            status={status}
+            isSyncing={isSyncing}
+            errors={errors}
+            providerNames={providerNames}
             setIdx={setIdx}
           />
         </div>
@@ -229,15 +293,31 @@ function ModelList({
   idx,
   query,
   chattableCount,
+  status,
+  isSyncing,
+  errors,
+  providerNames,
   setIdx,
 }: {
   shown: Model[];
   idx: number;
   query: string;
   chattableCount: number;
+  status: string;
+  isSyncing: boolean;
+  errors: Record<string, string>;
+  providerNames: Record<string, string>;
   setIdx: (i: number) => void;
 }) {
   if (shown.length === 0) {
+    if (status === 'loading' || (isSyncing && chattableCount === 0)) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-[12px] muted">
+          <span className="block size-4 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+          <span>Loading models…</span>
+        </div>
+      );
+    }
     return (
       <div className="px-3 py-4 text-[12px] muted">
         {chattableCount === 0 ? 'No models loaded.' : 'No matching models.'}
@@ -259,25 +339,81 @@ function ModelList({
       groups.push({ provider, models });
   }
 
+  const errorByProviderName = new Map<string, string>();
+  for (const [id, err] of Object.entries(errors)) {
+    const name = providerNames[id];
+    if (name) errorByProviderName.set(name, err);
+  }
+
+  const missingFailedProviders = !query
+    ? Object.entries(errors)
+        .map(([id, err]) => ({
+          name: providerNames[id] ?? `Provider #${id}`,
+          err,
+        }))
+        .filter((p) => !groups.some((g) => g.provider === p.name))
+    : [];
+
   let i = -1;
   return (
     <>
-      {groups.map((g) => (
-        <div key={g.provider || 'all'}>
-          {g.provider && <div className="model-menu-group">{g.provider}</div>}
-          {g.models.map((m) => {
-            i += 1;
-            return (
-              <ModelOption
-                key={m.id}
-                m={m}
-                active={i === idx}
-                onHover={() => setIdx(i)}
-              />
-            );
-          })}
+      {groups.map((g) => {
+        const provErr = g.provider
+          ? errorByProviderName.get(g.provider)
+          : undefined;
+        return (
+          <div key={g.provider || 'all'}>
+            {g.provider && (
+              <div className="model-menu-group flex items-center justify-between">
+                <span>{g.provider}</span>
+                {provErr && (
+                  <span
+                    className="flex items-center gap-1 font-normal text-[10px] text-[var(--warn)]"
+                    title={provErr}
+                  >
+                    <I n="alert" s={10} />
+                    {provErr.toLowerCase().includes('time')
+                      ? 'timed out'
+                      : 'unreachable'}
+                  </span>
+                )}
+              </div>
+            )}
+            {g.models.map((m) => {
+              i += 1;
+              return (
+                <ModelOption
+                  key={m.id}
+                  m={m}
+                  active={i === idx}
+                  onHover={() => setIdx(i)}
+                />
+              );
+            })}
+          </div>
+        );
+      })}
+      {missingFailedProviders.length > 0 && (
+        <div className="mt-1 border-t border-[var(--border)] pt-1">
+          {missingFailedProviders.map((p) => (
+            <div
+              key={p.name}
+              className="flex items-center justify-between px-3 py-1.5 text-[11px] muted opacity-75"
+            >
+              <span className="truncate">{p.name} (0 models)</span>
+              <span
+                className="ml-2 flex shrink-0 items-center gap-1 text-[10px] text-[var(--warn)]"
+                title={p.err}
+              >
+                <I n="alert" s={10} />
+                {p.err.toLowerCase().includes('time')
+                  ? 'timed out'
+                  : 'unreachable'}
+              </span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </>
   );
 }

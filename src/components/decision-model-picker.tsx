@@ -41,6 +41,7 @@ export function DecisionModelPicker({
 } = {}) {
   const items = useModelsStore((s) => s.items);
   const status = useModelsStore((s) => s.status);
+  const isSyncing = useModelsStore((s) => s.isSyncing);
   const selectedId = useDecisionsStore((s) => s.draft?.modelId ?? '');
   const [open, setOpen] = useState(false);
   const [shaking, setShaking] = useState(false);
@@ -227,9 +228,16 @@ export function DecisionModelPicker({
             })}
             {shown.length === 0 && (
               <div className="px-3 py-4 text-[12px] muted">
-                {items.length === 0
-                  ? 'No models loaded.'
-                  : 'No matching models.'}
+                {status === 'loading' || (isSyncing && items.length === 0) ? (
+                  <span className="flex items-center justify-center gap-2 py-4">
+                    <span className="block size-4 shrink-0 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+                    <span>Loading models…</span>
+                  </span>
+                ) : items.length === 0 ? (
+                  'No models loaded.'
+                ) : (
+                  'No matching models.'
+                )}
               </div>
             )}
           </div>

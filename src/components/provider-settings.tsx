@@ -170,7 +170,9 @@ export function ProviderSettings({
                         : cat.status === 'error'
                           ? cat.count > 0
                             ? `${cat.count} models (stale)`
-                            : 'unreachable'
+                            : cat.error?.toLowerCase().includes('time')
+                              ? 'timed out'
+                              : 'unreachable'
                           : `${cat.count} models${cat.syncedAt ? ` · ${timeAgo(cat.syncedAt)}` : ''}`}
                   </span>
                 </div>

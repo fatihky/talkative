@@ -64,6 +64,7 @@ export const GET = (req: Request) =>
         return err ? [[c.id, err]] : [];
       }),
     );
+    const providerNames = Object.fromEntries(all.map((c) => [c.id, c.name]));
     return Response.json({
       items,
       /* oldest list wins so the UI never overstates freshness */
@@ -72,5 +73,6 @@ export const GET = (req: Request) =>
          instead of bringing back the demo catalog */
       providerCount: all.length,
       errors,
+      providerNames,
     });
   });

@@ -42,6 +42,7 @@ export function useBanners(): Banner[] {
     useShallow((s) => ({ status: s.status, lastSyncedAt: s.lastSyncedAt })),
   );
   const providerErrors = useModelsStore(useShallow((s) => s.errors));
+  const providerNames = useModelsStore(useShallow((s) => s.providerNames));
   const providers = useProvidersStore((s) => s.items);
   const onHome = useUIStore((s) => s.context === 'new');
   /* only track token counts while overflowing, so typing doesn't churn the banner list */
@@ -80,10 +81,13 @@ export function useBanners(): Banner[] {
       });
     /* a single provider can fail (bad key, unreachable, or an undecryptable
        stored key) while the merged catalog is still "ready" — surface it */
-    const failed = providers.filter((p) => providerErrors[String(p.id)]);
-    if (failed.length && catalog.status !== 'error') {
-      const names = failed.map((p) => p.name);
-      const first = providerErrors[String(failed[0]?.id)] ?? '';
+    const errKeys = Object.keys(providerErrors);
+    if (errKeys.length && catalog.status !== 'error') {
+      const names = errKeys.map((id) => {
+        const p = providers.find((x) => String(x.id) === id);
+        return p?.name ?? providerNames[id] ?? `Provider #${id}`;
+      });
+      const first = providerErrors[errKeys[0]!] ?? '';
       out.push({
         id: 'b-provider-models',
         level: 'error',
@@ -108,7 +112,7 @@ export function useBanners(): Banner[] {
         ],
       });
     return out;
-  }, [connection, rl, catalog, providerErrors, providers, onHome, ov]);
+  }, [connection, rl, catalog, providerErrors, providerNames, providers, onHome, ov]);
 }
 
 export const bannerActions = {

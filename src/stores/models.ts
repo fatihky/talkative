@@ -36,17 +36,21 @@ import { useNetworkStore } from './network';
 type ModelsState = {
   items: Model[];
   status: 'idle' | 'loading' | 'ready' | 'error';
+  isSyncing: boolean;
   lastSyncedAt: number | null;
   error?: string | undefined;
   /* connection id → upstream error, from GET /api/models */
   errors: Record<string, string>;
+  providerNames: Record<string, string>;
 };
 
 export const useModelsStore = create<ModelsState>()(() => ({
   items: [],
   status: 'idle',
+  isSyncing: false,
   lastSyncedAt: null,
   errors: {},
+  providerNames: {},
 }));
 
 export const errorText = (e: unknown): string =>
@@ -63,15 +67,18 @@ export const applyModels = (m: {
   items: Model[];
   syncedAt: number;
   errors?: Record<string, string> | undefined;
+  providerNames?: Record<string, string> | undefined;
 }) => {
   const items = m.items.toSorted(byName);
-  useModelsStore.setState({
+  useModelsStore.setState((s) => ({
     items,
     status: 'ready',
+    isSyncing: false,
     lastSyncedAt: m.syncedAt,
     error: undefined,
     errors: m.errors ?? {},
-  });
+    providerNames: m.providerNames ?? s.providerNames,
+  }));
   LS.set('cache.models', items);
   LS.set('cache.modelsAt', m.syncedAt);
 };
@@ -80,12 +87,12 @@ export const setModelErrors = (errors: Record<string, string>) =>
   useModelsStore.setState({ errors });
 
 export const failModels = (error: string) => {
-  useModelsStore.setState({ status: 'error', error });
+  useModelsStore.setState({ status: 'error', isSyncing: false, error });
 };
 
 export const modelsActions = {
   retryCatalog() {
-    useModelsStore.setState({ status: 'loading' });
+    useModelsStore.setState({ status: 'loading', isSyncing: true });
     fetchModels(useNetworkStore.getState().dev)
       .then((m) => {
         applyModels(m);

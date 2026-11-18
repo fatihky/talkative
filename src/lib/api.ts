@@ -182,6 +182,7 @@ export type CatalogResponse = {
   providerCount: number;
   /* connection id → upstream error (items may still be served stale from cache) */
   errors: Record<string, string>;
+  providerNames?: Record<string, string>;
 };
 
 export async function fetchModels(
@@ -191,6 +192,7 @@ export async function fetchModels(
   items: Model[];
   syncedAt: number;
   errors: Record<string, string>;
+  providerNames: Record<string, string>;
 }> {
   if (dev.slowNetwork) await delay(1500);
   if (dev.failCatalog)
@@ -207,8 +209,14 @@ export async function fetchModels(
       items: MODELS.map((m) => ({ ...m })),
       syncedAt: Date.now(),
       errors: {},
+      providerNames: {},
     };
-  return { items: res.items, syncedAt: res.syncedAt, errors: res.errors };
+  return {
+    items: res.items,
+    syncedAt: res.syncedAt,
+    errors: res.errors ?? {},
+    providerNames: res.providerNames ?? {},
+  };
 }
 
 export const providersApi = {

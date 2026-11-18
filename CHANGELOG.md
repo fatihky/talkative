@@ -11,6 +11,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Added
 
+- Add loading indicators across the model picker button, popover search bar, and empty states while the model catalog is syncing or refreshing.
 - Add a GitHub Actions release workflow (`.github/workflows/release.yml`) that publishes a GitHub Release from `CHANGELOG.md` and pushes a multi-arch (`linux/amd64`, `linux/arm64`) Docker image to `ghcr.io/fatihky/talkative` when a `v*` tag is pushed or dispatched manually.
 - Add a batch decisions editor and results table on `/decisions` and `/decisions/[slug]` with editable input rows, bulk paste and CSV/TSV/JSON/JSONL import, starter sample batches, concurrent stateless evaluation (`POST /api/decisions` with `stateless: true`), per-question aggregate summary cards, sortable/filterable results tables, probability distribution inspection, and CSV/JSON/TSV export.
 - Add `max` as a thinking effort level in the composer, the model settings and the model overrides, sent to models that list it (e.g. via bifrost's reported efforts or an override).
@@ -45,6 +46,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Surface hanging and unreachable providers clearly with explicit timeout errors, provider name mapping in warning banners, and per-provider status tags in the model picker.
 - Hide the chat composer on the `/decisions` list route, matching the decision detail editor.
 - Register the OpenTelemetry ESM loader hook for real: `instrumentation.mjs` passed a specifier to `module.registerHooks()`, which ignores it, and `@opentelemetry/instrumentation` wasn't a direct dependency. It now uses `import-in-the-middle`'s synchronous hooks, falling back to `module.register()` on older Node versions.
 - Keep `ioredis` and `@opentelemetry/api` out of the server bundle so Redis commands get traced in production (the bundled copy of `ioredis` was never patched) and app spans share the preloaded SDK.

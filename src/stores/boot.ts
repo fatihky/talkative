@@ -221,7 +221,9 @@ export const bootActions = {
 
     /* parallel fetches (§7.1 step 3) */
     if (useModelsStore.getState().status !== 'ready')
-      useModelsStore.setState({ status: 'loading' });
+      useModelsStore.setState({ status: 'loading', isSyncing: true });
+    else
+      useModelsStore.setState({ isSyncing: true });
     if (useChatsStore.getState().status !== 'ready')
       useChatsStore.setState({ status: 'loading' });
 
@@ -338,7 +340,10 @@ export const bootActions = {
     if ('failCatalog' in patch) {
       if (patch.failCatalog)
         failModels('Model catalog unavailable (simulated)');
-      else void fetchModels(dev).then(applyModels);
+      else {
+        useModelsStore.setState({ isSyncing: true });
+        void fetchModels(dev).then(applyModels);
+      }
     }
     if ('rateLimited' in patch) void refreshProviders(dev);
     if ('emptyChats' in patch) {

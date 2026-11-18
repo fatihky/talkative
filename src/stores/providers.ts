@@ -67,7 +67,7 @@ const loadCatalog = async (id: number, refresh = false) => {
       error: r.error,
     });
   } catch (e) {
-    setCatalog(id, { status: 'error', count: 0, error: errorText(e) });
+    setCatalog(id, { status: 'error', count: prev?.count ?? 0, error: errorText(e) });
   }
 };
 
