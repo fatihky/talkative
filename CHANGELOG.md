@@ -27,6 +27,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Match the width of the `/decisions` list page to the detail page card width (`min(1060px, 100%)`).
 - Report `service.version` from `package.json` with telemetry, skip static assets and the compose healthcheck in HTTP traces, record only Postgres statement text (never bound parameters), and turn off the `fs`/`dns`/`net` and unused `openai` and `pino` auto-instrumentations.
 - Flush buffered telemetry on SIGTERM/SIGINT and when the process runs out of work, and honor `OTEL_SDK_DISABLED=true`.
 - Stop tracing a streaming reply's once-a-second progress writes, and keep the request body logged on a provider error out of OTel logs (local console only).
@@ -44,6 +45,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Hide the chat composer on the `/decisions` list route, matching the decision detail editor.
 - Register the OpenTelemetry ESM loader hook for real: `instrumentation.mjs` passed a specifier to `module.registerHooks()`, which ignores it, and `@opentelemetry/instrumentation` wasn't a direct dependency. It now uses `import-in-the-middle`'s synchronous hooks, falling back to `module.register()` on older Node versions.
 - Keep `ioredis` and `@opentelemetry/api` out of the server bundle so Redis commands get traced in production (the bundled copy of `ioredis` was never patched) and app spans share the preloaded SDK.
 - Send the composer's thinking effort with regenerate and tool-call retry; both left it out, so the server always used `medium`.

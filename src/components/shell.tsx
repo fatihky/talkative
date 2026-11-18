@@ -13,8 +13,8 @@
  *   scrolling boundary on the phone, so a pan over it never scrolls the
  *   thread behind the drawer.
  * - /settings and public artifact links (/a/*) render standalone with no
- *   sidebar, composer, or panels; note and decision detail routes also drop
- *   the composer (both are editors, not a chat), and so does /search.
+ *   sidebar, composer, or panels; note editors, decision routes (/decisions
+ *   and /decisions/*), and /search drop the composer (not a chat).
  * - pendingNav — a route path or bare chat id left by the send flow or
  *   banner actions — is pushed once, then cleared.
  * - Global shortcuts (mod+k/n/b/., ctrl+t, ctrl+shift+p, mod+/) are
@@ -196,10 +196,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     );
 
-  /* a note or a decision run is an editor, not a chat, and search is a results page: no composer */
+  /* a note is an editor, decisions screens are not a chat, and search is a results page: no composer */
   const noComposer =
     /^\/notes\/[^/]+/.test(router.path) ||
-    /^\/decisions\/[^/]+/.test(router.path) ||
+    router.path === '/decisions' ||
+    router.path.startsWith('/decisions/') ||
     router.path === '/search';
 
   return (
