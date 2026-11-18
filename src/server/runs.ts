@@ -62,6 +62,7 @@
  *   shape) have no backend: mockReply streams a canned placeholder
  *   so the composer stays usable before any provider is configured.
  */
+import { context } from '@opentelemetry/api';
 import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../db';
 import { getDb } from '../db';
@@ -85,6 +86,15 @@ import { parseModelId } from './model-id';
 import { resolveModel } from './model-overrides';
 import { findConnection } from './providers';
 import { decryptSecret } from './secrets';
+import {
+  type AgentSpan,
+  type CompletionSpan,
+  printLocal,
+  startAgentRun,
+  startCompletion,
+  untraced,
+  withSpan,
+} from './telemetry';
 import { type ActiveTool, invokeTool, toolSpec } from './tools';
 
 const FLUSH_MS = 1000;
@@ -142,6 +152,10 @@ type Run = {
   routing?: MessageRouting;
   listeners: Set<(e: RunEvent) => void>;
   abort: AbortController;
+  /* the reply's `invoke_agent` span; completions and tool calls nest under it */
+  trace: AgentSpan;
+  /* completion round-trips made so far */
+  steps: number;
 };
 
 type WireCall = {
@@ -507,16 +521,31 @@ export const startRun = (opts: {
     listeners: new Set(),
     abort: new AbortController(),
     transient: opts.transient === true,
+    trace: startAgentRun({
+      chatId: opts.chatId,
+      messageId: opts.messageId,
+      userId: opts.userId,
+      modelId: opts.modelId,
+      transient: opts.transient === true,
+      resumed: opts.resume !== undefined,
+      tools: opts.tools.map((t) => t.tool.id),
+      thinkingLevel: opts.thinkingLevel,
+    }),
+    steps: 0,
   };
   runs.set(run.messageId, run);
-  void execute(
-    run,
-    opts.modelId,
-    opts.thinkingLevel,
-    opts.history,
-    opts.tools,
-    opts.resume,
-  );
+  /* the run outlives the request: everything it does (db flushes, completions,
+     tools) is traced under its own root span instead of the request's */
+  context.with(run.trace.ctx, () => {
+    void execute(
+      run,
+      opts.modelId,
+      opts.thinkingLevel,
+      opts.history,
+      opts.tools,
+      opts.resume,
+    );
+  });
 };
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -546,10 +575,13 @@ async function execute(
       revFlushed = at;
       return;
     }
-    flushing = getDb()
-      .update(messages)
-      .set({ content: text, toolCalls, thoughts })
-      .where(eq(messages.id, run.messageId))
+    /* progress flushes run every second; tracing each one would bury the reply */
+    flushing = untraced(() =>
+      getDb()
+        .update(messages)
+        .set({ content: text, toolCalls, thoughts })
+        .where(eq(messages.id, run.messageId)),
+    )
       .then(() => {
         flushed = text.length;
         revFlushed = at;
@@ -582,6 +614,8 @@ async function execute(
   };
 
   let final: RunFinal;
+  /* the exception behind an `error` final, for the reply's span */
+  let failure: unknown;
   try {
     for await (const ev of generate(
       run,
@@ -628,6 +662,7 @@ async function execute(
     }
     final = { status: 'done' };
   } catch (e) {
+    failure = e;
     final = run.abort.signal.aborted
       ? { status: 'stopped' }
       : { status: 'error', error: errorText(e) };
@@ -646,38 +681,47 @@ async function execute(
 
   if (!run.transient) {
     try {
-      const db = getDb();
-      await db
-        .update(messages)
-        .set({
-          content: run.text,
-          toolCalls: run.toolCalls,
-          thoughts: run.thoughts,
-          refusal: run.refusal ?? null,
-          annotations: run.annotations,
-          status: final.status,
-          error: final.error ?? null,
-          usage: run.usage ?? null,
-          usageDetails: run.usageDetails ?? null,
-          routing: run.routing ?? null,
-          latencyMs: run.usage ? Date.now() - startedAt : null,
-        })
-        .where(eq(messages.id, run.messageId));
-      /* add this reply's spend to the chat total: only the exact provider-reported cost (bifrost); never estimated from token rates */
-      const cost = run.usage?.costUsd ?? 0;
-      await db
-        .update(chats)
-        .set({
-          updatedAt: new Date(),
-          ...(cost > 0
-            ? { costUsd: sql`${chats.costUsd} + ${cost.toFixed(6)}` }
-            : {}),
-        })
-        .where(eq(chats.id, run.chatId));
+      await withSpan('talkative.finalize', async () => {
+        const db = getDb();
+        await db
+          .update(messages)
+          .set({
+            content: run.text,
+            toolCalls: run.toolCalls,
+            thoughts: run.thoughts,
+            refusal: run.refusal ?? null,
+            annotations: run.annotations,
+            status: final.status,
+            error: final.error ?? null,
+            usage: run.usage ?? null,
+            usageDetails: run.usageDetails ?? null,
+            routing: run.routing ?? null,
+            latencyMs: run.usage ? Date.now() - startedAt : null,
+          })
+          .where(eq(messages.id, run.messageId));
+        /* add this reply's spend to the chat total: only the exact provider-reported cost (bifrost); never estimated from token rates */
+        const cost = run.usage?.costUsd ?? 0;
+        await db
+          .update(chats)
+          .set({
+            updatedAt: new Date(),
+            ...(cost > 0
+              ? { costUsd: sql`${chats.costUsd} + ${cost.toFixed(6)}` }
+              : {}),
+          })
+          .where(eq(chats.id, run.chatId));
+      });
     } catch (e) {
       console.error(`[runs] finalize failed for ${run.messageId}`, e);
     }
   }
+
+  run.trace.end({
+    status: final.status,
+    error: failure ?? final.error,
+    steps: run.steps,
+    toolCalls: run.toolCalls.length,
+  });
 
   /* the row is final before anyone hears 'done', so a reload right after sees it */
   run.final = final;
@@ -719,31 +763,13 @@ async function* generate(
 ): AsyncGenerator<GenEvent> {
   const parsed = parseModelId(modelId);
   if (!parsed) {
+    run.trace.setAttributes({ 'gen_ai.provider.name': 'talkative.mock' });
     for await (const text of mockReply(modelId, signal))
       yield { type: 'text', text };
     return;
   }
-  const base = await findConnection(run.userId, parsed.connectionId);
-  if (!base) throw new Error('provider connection no longer exists');
-  if (!base.enabled) throw new Error(`provider "${base.name}" is disabled`);
-  /* a user-added model runs through its connection but may name a different
-     upstream model and url than the catalog lists; a catalog model keeps both */
-  const custom = await resolveModel(
-    run.userId,
-    modelId,
-    async () => [],
-    () => base.name,
-  );
-  const override = custom?.custom;
-  const conn = !override?.baseUrl
-    ? base
-    : { ...base, baseUrl: override.baseUrl };
-  const remoteId = override?.remoteId ?? parsed.remoteId;
-  const effort = await reasoningRequest(
-    run.userId,
-    conn,
-    remoteId,
-    thinkingLevel,
+  const { conn, remoteId, effort } = await withSpan('talkative.prepare', () =>
+    prepare(run, parsed, modelId, thinkingLevel),
   );
   const specs = tools.map(toolSpec);
   /* say so when the composer's level isn't the one the model takes; the reply itself isn't affected */
@@ -772,6 +798,7 @@ async function* generate(
   }
   for (let step = first; ; step++) {
     const offer = step < MAX_STEPS - 1 ? specs : [];
+    run.steps++;
     const { text, calls, usage, usageDetails, routing, refusal, annotations } =
       yield* chatCompletions(
         conn,
@@ -783,6 +810,7 @@ async function* generate(
         signal,
       );
     if (usage) run.usage = usage;
+    run.trace.addUsage(usage);
     if (usageDetails) run.usageDetails = usageDetails;
     if (routing) run.routing = routing;
     if (refusal) run.refusal = refusal;
@@ -793,6 +821,43 @@ async function* generate(
     turns.push({ role: 'assistant', content: text || null, tool_calls: calls });
     yield* runTools(run, calls, tools, step, turns, signal);
   }
+}
+
+/* the connection, upstream model id and reasoning effort a reply goes out with */
+async function prepare(
+  run: Run,
+  parsed: NonNullable<ReturnType<typeof parseModelId>>,
+  modelId: string,
+  thinkingLevel: ThinkingLevel | undefined,
+) {
+  const base = await findConnection(run.userId, parsed.connectionId);
+  if (!base) throw new Error('provider connection no longer exists');
+  if (!base.enabled) throw new Error(`provider "${base.name}" is disabled`);
+  /* a user-added model runs through its connection but may name a different
+     upstream model and url than the catalog lists; a catalog model keeps both */
+  const custom = await resolveModel(
+    run.userId,
+    modelId,
+    async () => [],
+    () => base.name,
+  );
+  const override = custom?.custom;
+  const conn = !override?.baseUrl
+    ? base
+    : { ...base, baseUrl: override.baseUrl };
+  const remoteId = override?.remoteId ?? parsed.remoteId;
+  run.trace.setAttributes({
+    'gen_ai.provider.name': conn.compatibility,
+    'gen_ai.request.model': remoteId,
+    'talkative.provider.connection_id': conn.id,
+  });
+  const effort = await reasoningRequest(
+    run.userId,
+    conn,
+    remoteId,
+    thinkingLevel,
+  );
+  return { conn, remoteId, effort };
 }
 
 /*
@@ -1083,6 +1148,15 @@ async function* chatCompletions(
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => idle.abort(), IDLE_MS);
   };
+  const span: CompletionSpan = startCompletion({
+    conn,
+    model,
+    stream: true,
+    step,
+    reasoningEffort: effort.effort,
+    tools,
+    input: history,
+  });
   try {
     const apiKey = decryptSecret(conn.apiKey);
     const reqBody = JSON.stringify({
@@ -1093,9 +1167,8 @@ async function* chatCompletions(
       ...(tools.length > 0 ? { tools } : {}),
       ...(reasoningEffort(conn, effort) ?? {}),
     });
-    const res = await fetch(
-      `${conn.baseUrl}${COMPLETIONS_PATH[conn.compatibility]}`,
-      {
+    const res = await span.within(() =>
+      fetch(`${conn.baseUrl}${COMPLETIONS_PATH[conn.compatibility]}`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -1110,16 +1183,28 @@ async function* chatCompletions(
         },
         body: reqBody,
         signal: AbortSignal.any([stop, idle.signal]),
-      },
+      }),
     );
     if (!res.ok || !res.body) {
       const full = await res.text().catch(() => '');
-      console.error(
+      /* the request body holds the conversation: console only, never OTel logs */
+      printLocal(
+        'error',
         `[runs] ${conn.name} (${model}) → ${res.status}: ${full.slice(0, 4000)}\n[runs] request body: ${reqBody.slice(0, 4000)}`,
       );
       const body = full.slice(0, 300);
-      throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);
+      const err = new Error(
+        `${conn.name} → ${res.status}${body ? `: ${body}` : ''}`,
+      );
+      span.fail(err, { status: res.status, responseBody: body });
+      throw err;
     }
+    /* response metadata for the span; providers repeat these on every chunk */
+    let responseModel: string | undefined;
+    let responseId: string | undefined;
+    const finishReasons: string[] = [];
+    /* reasoning text, kept only for the span's output when content capture is on */
+    let reasoningText = '';
     const dec = new TextDecoder();
     let buf = '';
     let text = '';
@@ -1141,6 +1226,16 @@ async function* chatCompletions(
             args: c.args,
           }),
         );
+      span.end({
+        responseModel,
+        responseId,
+        finishReasons,
+        usage: usage && {
+          ...usage,
+          cacheWriteTokens: usageDetails?.promptDetails?.cachedWriteTokens,
+        },
+        output: { text: text || refusal, reasoning: reasoningText, calls },
+      });
       return {
         text,
         calls,
@@ -1153,6 +1248,7 @@ async function* chatCompletions(
     };
     for await (const chunk of res.body) {
       bump();
+      span.chunk();
       buf += dec.decode(chunk, { stream: true });
       /* sse frames are separated by a blank line; `data:` may span several lines (bifrost pretty-prints) */
       let frame = /^(.*?)\r?\n\r?\n/s.exec(buf);
@@ -1165,6 +1261,7 @@ async function* chatCompletions(
         if (data === '[DONE]') return result();
         const json = JSON.parse(data) as {
           error?: { message?: string };
+          id?: string;
           model?: string;
           usage?: {
             prompt_tokens?: number;
@@ -1206,6 +1303,7 @@ async function* chatCompletions(
             }[];
           };
           choices?: {
+            finish_reason?: string | null;
             delta?: {
               content?: string | null;
               refusal?: string | null;
@@ -1230,6 +1328,11 @@ async function* chatCompletions(
             };
           }[];
         };
+        if (json.model) responseModel = json.model;
+        if (json.id) responseId = json.id;
+        const finish = json.choices?.[0]?.finish_reason;
+        if (finish && !finishReasons.includes(finish))
+          finishReasons.push(finish);
         /* usage is on the last non-[DONE] chunk */
         if (json.usage) {
           const cached =
@@ -1349,11 +1452,17 @@ async function* chatCompletions(
         }
         /* some providers report failures mid-stream as a data frame */
         if (json.error)
-          throw new Error(json.error.message ?? 'upstream stream error');
+          throw Object.assign(
+            new Error(json.error.message ?? 'upstream stream error'),
+            { name: 'UpstreamStreamError' },
+          );
         const delta = json.choices?.[0]?.delta;
         /* openrouter and ollama call it `reasoning`; lm studio, deepseek and vllm `reasoning_content` */
         const thought = delta?.reasoning || delta?.reasoning_content;
-        if (thought) yield { type: 'reasoning', step, text: thought };
+        if (thought) {
+          reasoningText += thought;
+          yield { type: 'reasoning', step, text: thought };
+        }
         if (delta?.content) {
           text += delta.content;
           yield { type: 'text', text: delta.content };
@@ -1390,11 +1499,17 @@ async function* chatCompletions(
     return result();
   } catch (e) {
     /* the idle abort surfaces as an AbortError; name the real cause */
-    if (idle.signal.aborted && !stop.aborted)
-      throw new Error(`${conn.name} stopped responding`);
+    if (idle.signal.aborted && !stop.aborted) {
+      const err = new Error(`${conn.name} stopped responding`);
+      span.fail(err, { type: 'timeout' });
+      throw err;
+    }
+    span.fail(e, { cancelled: stop.aborted });
     throw e;
   } finally {
     clearTimeout(idleTimer);
+    /* the consumer closed the generator early; no-op once the span has ended */
+    span.fail(undefined, { cancelled: true });
   }
 }
 

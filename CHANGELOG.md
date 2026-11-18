@@ -18,8 +18,18 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 - Add "Find in chat" to the thread header's ⋯ menu, opening the same FindBar as the search button and mod+F.
 - Add "Find in chat" to the sidebar chat row's ⋯ menu, opening the chat with its FindBar already up.
 - Add a memory changelog: every create, update, append and delete of a memory, from the `memory` tool or the settings UI, is recorded in a new `memory_revisions` table (old and new value) and listed newest first at `GET /api/memory-revisions` (optional `?key=`); run `pnpm db:migrate` to apply.
+- Add OpenTelemetry GenAI tracing (`src/server/telemetry.ts`): each reply is an `invoke_agent talkative` trace root linked to its request, with a `chat <model>` span per completion round-trip (provider, response model, finish reasons, token usage, cost, time to first chunk) and an `execute_tool <name>` span per tool call; classification, decisions and System One requests get their own spans.
+- Add the `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`, `gen_ai.client.operation.time_to_first_chunk` and `talkative.tool.duration` metrics.
+- Add opt-in recording of prompt, completion, reasoning and tool argument/result text via `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` (`true`/`SPAN_ONLY` on span attributes, `EVENT_ONLY` on a `gen_ai.client.inference.operation.details` log event, `SPAN_AND_EVENT` on both); images are never recorded.
+- Send logs to OpenTelemetry: every `console.*` line becomes a log record correlated with the active span, and the app emits `gen_ai.client.operation.exception`, `talkative.tool.error` and per-reply `talkative.agent.run` events.
+- Add `talkative.prepare` and `talkative.finalize` spans around a reply's model lookup and final writes, and the `gen_ai.client.operation.time_per_output_chunk`, `talkative.agent.runs` and `talkative.agent.runs.active` metrics.
+- Name incoming HTTP spans `<METHOD> <route>` with ids collapsed to `:id`, and set `http.route` on them and on `http.server.request.duration`.
 
 ### Changed
+
+- Report `service.version` from `package.json` with telemetry, skip static assets and the compose healthcheck in HTTP traces, record only Postgres statement text (never bound parameters), and turn off the `fs`/`dns`/`net` and unused `openai` and `pino` auto-instrumentations.
+- Flush buffered telemetry on SIGTERM/SIGINT and when the process runs out of work, and honor `OTEL_SDK_DISABLED=true`.
+- Stop tracing a streaming reply's once-a-second progress writes, and keep the request body logged on a provider error out of OTel logs (local console only).
 
 - Bump Docker actions (setup-qemu to v4, setup-buildx to v4, login to v4, metadata to v6, build-push to v7) in the release workflow to run natively on Node 24.
 - Build Docker images using `--platform=$BUILDPLATFORM` for the build and production-deps stages so multi-arch images (ARM64) install dependencies and compile natively instead of running under slow QEMU emulation.
@@ -34,6 +44,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Fixed
 
+- Register the OpenTelemetry ESM loader hook for real: `instrumentation.mjs` passed a specifier to `module.registerHooks()`, which ignores it, and `@opentelemetry/instrumentation` wasn't a direct dependency. It now uses `import-in-the-middle`'s synchronous hooks, falling back to `module.register()` on older Node versions.
+- Keep `ioredis` and `@opentelemetry/api` out of the server bundle so Redis commands get traced in production (the bundled copy of `ioredis` was never patched) and app spans share the preloaded SDK.
 - Send the composer's thinking effort with regenerate and tool-call retry; both left it out, so the server always used `medium`.
 - Log the upstream's response body and the request body (each up to 4,000 characters) to the server console when a chat or completion request fails, instead of keeping only the first 300 characters of the response in the error.
 - Clamp the reasoning effort to the model's listed levels on every provider compatibility, not just bifrost, so an overridden model listing e.g. only `off`/`low`/`high` no longer gets the default `medium` and a 400 from the upstream.

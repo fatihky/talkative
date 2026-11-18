@@ -42,6 +42,7 @@ import { toolCredentials } from '../../db/schema';
 import { TOOLS } from '../../lib/tools';
 import type { ProviderId, ToolCall, ToolId, ToolStatus } from '../../types';
 import { decryptSecret } from '../secrets';
+import { traceTool } from '../telemetry';
 import {
   envKeysShared,
   envKeyValue,
@@ -275,13 +276,32 @@ const pickProvider = (
   return usable[0]?.id;
 };
 
+type InvokeResult = { ok: boolean; result: string; raw?: string; ms: number };
+
 /** runs one call; never throws, so a failing tool becomes a message the model can react to */
-export const invokeTool = async (
+export const invokeTool = (
   name: string,
   rawArgs: string,
   tools: ActiveTool[],
   ctx: Omit<ToolContext, 'provider' | 'apiKey'>,
-): Promise<{ ok: boolean; result: string; raw?: string; ms: number }> => {
+): Promise<InvokeResult> =>
+  traceTool(
+    {
+      name,
+      callId: ctx.callId,
+      args: rawArgs,
+      provider: tools.find((t) => t.tool.id === name)?.provider,
+      description: tools.find((t) => t.tool.id === name)?.tool.description,
+    },
+    () => runCall(name, rawArgs, tools, ctx),
+  );
+
+const runCall = async (
+  name: string,
+  rawArgs: string,
+  tools: ActiveTool[],
+  ctx: Omit<ToolContext, 'provider' | 'apiKey'>,
+): Promise<InvokeResult> => {
   const t0 = Date.now();
   const done = (ok: boolean, result: string, raw?: string) => ({
     ok,

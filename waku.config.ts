@@ -27,6 +27,18 @@ const allowedHostsPlugin = {
   }),
 };
 
+/* server packages that must load from node_modules at runtime instead of being
+   inlined into dist/server: opentelemetry patches them on require/import
+   (ioredis), or the app has to share the preloaded sdk's global api
+   (@opentelemetry/api). pg is already external. */
+const RUNTIME_EXTERNAL = ['ioredis', '@opentelemetry/api'];
+
+const serverExternalsPlugin = {
+  name: 'server-externals',
+  configEnvironment: (name: string) =>
+    name === 'client' ? undefined : { resolve: { external: RUNTIME_EXTERNAL } },
+};
+
 export default defineConfig({
   vite: {
     plugins: [
@@ -35,6 +47,7 @@ export default defineConfig({
       babel({ presets: [reactCompilerPreset()] }),
       appVersionPlugin,
       allowedHostsPlugin,
+      serverExternalsPlugin,
     ],
   },
 });

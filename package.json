@@ -41,12 +41,16 @@
     "check": "biome check --write"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/auto-instrumentations-node": "^0.83.1",
+    "@opentelemetry/core": "^3.1.1",
+    "@opentelemetry/instrumentation": "^0.301.2",
     "@opentelemetry/sdk-node": "^0.301.2",
     "better-auth": "^1.7.25",
     "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.19",
+    "import-in-the-middle": "^3.5.3",
     "ioredis": "^6.0.0",
     "nanoid": "^6.0.2",
     "pg": "^8.23.1",

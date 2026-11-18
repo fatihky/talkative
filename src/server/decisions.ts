@@ -63,6 +63,7 @@ import type {
 import { isUuid } from './chats';
 import { ValidationError } from './errors';
 import { decryptSecret } from './secrets';
+import { startCompletion } from './telemetry';
 
 /* the OpenAI-style /decisions path per compatibility. ollama has none; null
    means "this compatibility can't serve this endpoint" */
@@ -617,28 +618,50 @@ export const runDecision = async (
       );
   const apiKey = decryptSecret(conn.apiKey);
   const started = Date.now();
-  const res = await fetch(`${conn.baseUrl}${path}`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      accept: 'application/json',
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-    },
-    body: JSON.stringify(payload),
-    signal:
-      opts.signal ?? AbortSignal.timeout(opts.timeoutMs ?? DECISION_TIMEOUT_MS),
+  const span = startCompletion({
+    conn,
+    model: req.model,
+    operation: kind,
+    stream: false,
+    input: [{ role: 'user', content: req.input }],
   });
-  if (!res.ok) {
-    const body = (await res.text().catch(() => '')).slice(0, 300);
-    throw new Error(`${conn.name} → ${res.status}${body ? `: ${body}` : ''}`);
+  try {
+    const res = await span.within(() =>
+      fetch(`${conn.baseUrl}${path}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+          ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal:
+          opts.signal ??
+          AbortSignal.timeout(opts.timeoutMs ?? DECISION_TIMEOUT_MS),
+      }),
+    );
+    if (!res.ok) {
+      const body = (await res.text().catch(() => '')).slice(0, 300);
+      const err = new Error(
+        `${conn.name} → ${res.status}${body ? `: ${body}` : ''}`,
+      );
+      span.fail(err, { status: res.status, responseBody: body });
+      throw err;
+    }
+    const json = (await res.json()) as unknown;
+    const usage = toUsage(json);
+    const answers = normalizeAnswers(req.questions, json, mapForm);
+    span.end({ usage });
+    return {
+      answers,
+      ...(usage ? { usage } : {}),
+      latencyMs: Date.now() - started,
+    };
+  } catch (e) {
+    /* no-op when the span already ended with the http status */
+    span.fail(e);
+    throw e;
   }
-  const json = (await res.json()) as unknown;
-  const usage = toUsage(json);
-  return {
-    answers: normalizeAnswers(req.questions, json, mapForm),
-    ...(usage ? { usage } : {}),
-    latencyMs: Date.now() - started,
-  };
 };
 
 /* ---------- dto ---------- */

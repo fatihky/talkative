@@ -111,6 +111,8 @@ From a checkout, `pnpm build` and then `node bin/talkative.mjs` does the same.
 | `PROVIDER_KEY_ENC_ACTIVE`     | no       | Version **label** used for new writes (e.g. `v1`), not a key. Unset defaults to the last entry in `PROVIDER_KEY_ENC_KEYS`.                                                                                                                                                                                                                                                        |
 | `OTEL_SERVICE_NAME`           | no       | Service name reported with telemetry. Defaults to `talkative`.                                                                                                                                                                                                                                                                                                                    |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no       | OTLP endpoint for traces/metrics/logs (e.g. `http://localhost:4318`). Unset, telemetry is collected but exported to the OTLP default (`http://localhost:4317` over gRPC under `compose.yml`). All other OpenTelemetry SDK variables (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_TRACES_SAMPLER`, …) apply as usual.                                                                         |
+| `OTEL_SDK_DISABLED`           | no       | `true` turns OpenTelemetry off entirely.                                                                                                                                                                                                                                                                                                                                          |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | no | Records prompt, completion and tool text in telemetry: `true`/`SPAN_ONLY` on span attributes, `EVENT_ONLY` on log events, `SPAN_AND_EVENT` on both. Off by default, since it copies user conversations into the telemetry backend; images are never recorded.                                                                                                     |
 | `TAVILY_API_KEY`              | no       | Enables the Tavily `web_search` backend and `http_fetch`.                                                                                                                                                                                                                                                                                                                         |
 | `SERPER_API_KEY`              | no       | Enables the serper.dev `web_search` backend.                                                                                                                                                                                                                                                                                                                                      |
 | `SERPAPI_API_KEY`             | no       | Enables the SerpAPI `web_search` backend.                                                                                                                                                                                                                                                                                                                                         |
@@ -120,6 +122,30 @@ From a checkout, `pnpm build` and then `node bin/talkative.mjs` does the same.
 | `GITHUB_PAT`                  | no       | GitHub token for the GitHub search tools. Optional, but recommended for higher rate limits (required for discussion search).                                                                                                                                                                                                                                                      |
 
 The tool keys above are shared with users according to the admin-only "environment key access" setting: `all`, `admins` (default) or `none`. Users can also add their own keys under **Settings → Tool keys**; those are stored encrypted.
+
+## Observability
+
+`instrumentation.mjs` starts the OpenTelemetry Node SDK before the app loads (`pnpm dev`, `pnpm start`, the `talkative` CLI and the Docker image all preload it). Traces, metrics and logs all go to OTLP by default, configured with the standard `OTEL_*` variables. Buffered telemetry is flushed on SIGTERM/SIGINT and when the process runs out of work.
+
+A reply's trace follows the OpenTelemetry GenAI semantic conventions:
+
+```
+invoke_agent talkative              new trace root, linked to the request that started it
+├─ talkative.prepare                connection, model and reasoning-effort lookup
+├─ chat <model>                     one per completion round-trip (CLIENT)
+│  └─ POST                          the fetch to the provider
+├─ execute_tool <name>              one per tool call
+├─ chat <model>                     the next step, after the tool results
+└─ talkative.finalize               final message/chat writes
+```
+
+`chat` spans carry the provider, request/response model, finish reasons, token usage (input, output, cache read/write, reasoning), cost and `gen_ai.response.time_to_first_chunk`. Failures get a low-cardinality `error.type` (HTTP status, `timeout`, …); a user stop is not an error (`talkative.cancelled=true`). Classification gets its own `chat` spans, and decisions and System One requests get `decision <model>` / `systemone <model>`.
+
+- **HTTP:** incoming spans are named `<METHOD> <route>`, with ids collapsed to `:id` (e.g. `POST /api/chats/:id/messages`). Static assets and the compose healthcheck are skipped.
+- **Auto-instrumentation:** outgoing `fetch`, Postgres (statement text only, never bound parameters), Redis and Node runtime metrics. `fs`, `dns`, `net` and `pino` are off. The once-a-second progress writes of a streaming reply aren't traced.
+- **Metrics:** `gen_ai.client.token.usage`, `gen_ai.client.operation.duration`, `gen_ai.client.operation.time_to_first_chunk`, `gen_ai.client.operation.time_per_output_chunk`, `talkative.tool.duration`, `talkative.agent.runs` (by status) and `talkative.agent.runs.active`, plus the standard `http.*` and `nodejs.*`/`v8js.*` ones.
+- **Logs:** every `console.*` line becomes an OTel log record correlated with the active span (`OTEL_LOGS_EXPORTER=none` leaves the console alone). The app also emits structured events: `gen_ai.client.operation.exception` for a failed completion, `talkative.tool.error` for a failed tool call, and `talkative.agent.run` as a summary of each reply.
+- **Content:** prompt, completion, reasoning and tool argument/result text stays out of telemetry unless `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` asks for it: `true`/`SPAN_ONLY` records it on span attributes, `EVENT_ONLY` on a `gen_ai.client.inference.operation.details` log event, and `SPAN_AND_EVENT` on both. Images are never recorded, and the request body logged on a provider error stays on the local console.
 
 ## Provider API key encryption
 
