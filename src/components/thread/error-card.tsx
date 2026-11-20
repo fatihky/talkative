@@ -29,6 +29,9 @@ export function ErrorCard({ chatId, text }: { chatId: string; text: string }) {
         <I n="alert" s={14} /> Message failed to send
       </div>
       <div className="num mt-1 text-[11px] muted">{text}</div>
+      <div className="mt-1 text-[11px] muted">
+        If this provider is down or crashing, you can edit your message to switch to an operational model provider.
+      </div>
       <div className="mt-2 flex gap-2">
         <button type="button" className="ctl h-7 px-3" onClick={retry}>
           Retry

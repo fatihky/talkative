@@ -28,6 +28,7 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ### Changed
 
+- Let users know across provider warning banners, the model picker popover, the provider settings screen, and the send failure error card that they can continue chatting with operational providers even if a model provider crashes or becomes unreachable.
 - Match the width of the `/decisions` list page to the detail page card width (`min(1060px, 100%)`).
 - Report `service.version` from `package.json` with telemetry, skip static assets and the compose healthcheck in HTTP traces, record only Postgres statement text (never bound parameters), and turn off the `fs`/`dns`/`net` and unused `openai` and `pino` auto-instrumentations.
 - Flush buffered telemetry on SIGTERM/SIGINT and when the process runs out of work, and honor `OTEL_SDK_DISABLED=true`.

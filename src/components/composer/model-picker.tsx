@@ -151,7 +151,7 @@ export function ModelPicker() {
       {label !== null && !isSyncing && hasErrors && (
         <span
           className="ml-1 shrink-0 text-[var(--warn)]"
-          title="Some providers failed or timed out"
+          title="Some providers failed or timed out — operational providers remain available"
         >
           <I n="alert" s={12} />
         </span>
@@ -262,6 +262,11 @@ export function ModelPicker() {
                 </div>
               );
             })}
+            {chattable.length > 0 && (
+              <div className="mt-0.5 text-[10px] text-[var(--text-3)]">
+                You can continue chatting with models from operational providers below.
+              </div>
+            )}
           </div>
         )}
         <div

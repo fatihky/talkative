@@ -94,13 +94,18 @@ export function ProviderSettings({
 
   return (
     <section className="rounded-[8px] border border-[var(--border)] bg-[var(--panel)] p-3">
-      <div className="mb-2 flex items-center">
-        <div className="sec-label">API providers</div>
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="sec-label">API providers</div>
+          <p className="mt-0.5 text-[12px] muted">
+            Even if a model provider crashes, you can continue with those that are still operational.
+          </p>
+        </div>
         {editing === null && (
           <button
             type="button"
             onClick={() => setEditing('new')}
-            className="ctl ml-auto h-7 rounded-[6px] px-2 text-[12px]"
+            className="ctl shrink-0 h-7 rounded-[6px] px-2 text-[12px]"
           >
             Add provider
           </button>

@@ -93,8 +93,8 @@ export function useBanners(): Banner[] {
         level: 'error',
         text:
           names.length === 1
-            ? `Couldn't load models from ${names[0]}${first ? ` — ${first}` : ''}`
-            : `Couldn't load models from ${names.length} providers: ${names.join(', ')}`,
+            ? `Couldn't load models from ${names[0]}${first ? ` — ${first}` : ''}. You can continue with models from operational providers.`
+            : `Couldn't load models from ${names.length} providers: ${names.join(', ')}. You can continue with models from operational providers.`,
         actions: [
           { label: 'Retry', kind: 'retry-catalog' },
           { label: 'Configure provider', kind: 'configure-provider' },
