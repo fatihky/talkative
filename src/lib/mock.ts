@@ -203,42 +203,9 @@ export const STATIC_SUGGESTIONS: Suggestion[] = [
       'Summarize the trade-offs between REST, GraphQL and gRPC in 5 bullets, then say which fits a mobile app backed by many microservices.',
     source: 'static',
   },
-  {
-    id: 's-r4',
-    label: 'Draft a checklist',
-    icon: 'check',
-    prompt:
-      'Draft a production rollout checklist for shipping a database schema migration with zero downtime, covering prep, deploy, verification and rollback.',
-    source: 'static',
-  },
-  {
-    id: 's-r5',
-    label: 'Critique UX copy',
-    icon: 'chat',
-    prompt:
-      'Critique this empty-state copy for tone and brevity, then offer three tighter alternatives: "You don\'t have any projects yet. Projects are where you can organize all of your work. Click the button below to create your very first project and get started!"',
-    source: 'static',
-  },
 ];
 
-export const PINNED_SUGGESTIONS: Suggestion[] = [
-  {
-    id: 's-p1',
-    label: 'Write React UI',
-    icon: 'grid',
-    prompt:
-      'Write a React component in TypeScript for a searchable, keyboard-navigable dropdown. Support arrow keys, Enter to select and Esc to close, and style it with Tailwind.',
-    source: 'pinned',
-  },
-  {
-    id: 's-p2',
-    label: 'Design an API',
-    icon: 'link',
-    prompt:
-      'Design a REST API for a simple todo app with users, lists and items. Give the endpoints, request/response shapes, status codes and how you would paginate and version it.',
-    source: 'pinned',
-  },
-];
+export const PINNED_SUGGESTIONS: Suggestion[] = [];
 
 export const SETTINGS_ITEMS = [
   { id: 'set-theme', label: 'Appearance & theme', kind: 'settings' },
