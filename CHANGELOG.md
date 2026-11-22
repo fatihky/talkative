@@ -9,6 +9,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-22
+
 ### Added
 
 - Add loading indicators across the model picker button, popover search bar, and empty states while the model catalog is syncing or refreshing.
@@ -222,4 +224,5 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 [0.1.1]: https://github.com/fatihky/talkative/releases/tag/v0.1.1
 [0.1.2]: https://github.com/fatihky/talkative/releases/tag/v0.1.2
 [0.2.0]: https://github.com/fatihky/talkative/releases/tag/v0.2.0
-[Unreleased]: https://github.com/fatihky/talkative/compare/v0.2.0...HEAD
+[0.4.0]: https://github.com/fatihky/talkative/releases/tag/v0.4.0
+[Unreleased]: https://github.com/fatihky/talkative/compare/v0.4.0...HEAD
