@@ -44,8 +44,8 @@ import { useKeyboardScope } from '../../lib/keyboard';
 import { Menu, Tip } from '../../lib/popover';
 import {
   findRanges,
+  hiddenHitStandIns,
   openHiddenHits,
-  paintHiddenHighlights,
   paintHighlights,
   queryTerms,
 } from '../../lib/search';
@@ -68,6 +68,7 @@ type RoutePath = Extract<ComponentProps<typeof Link>['to'], string>;
 
 /* the tooltip a closed reasoning/tool card's stand-in hits carry */
 const HIDDEN_LABEL = 'Match inside a closed reasoning or tool card';
+const NO_FIND_HITS = { all: [] as Range[], current: null };
 
 export function ThreadScreen() {
   const params = useParams_UNSTABLE({ from: '/c/[slug]' });
@@ -125,8 +126,11 @@ export function ThreadScreen() {
   /* the hit already revealed, so a growing thread doesn't keep yanking back to it */
   const revealed = useRef<string | null>(null);
   const hitTerms = useMemo(() => queryTerms(hit?.q ?? ''), [hit]);
-  /* the match the find bar centers, merged with the hit's own highlights */
-  const [findCurrent, setFindCurrent] = useState<Range | null>(null);
+  /* the find bar's matches and the one it centers, merged with the hit's own highlights */
+  const [findHits, setFindHits] = useState<{
+    all: Range[];
+    current: Range | null;
+  }>(NO_FIND_HITS);
 
   const all = thread?.messages ?? [];
   const leafId = thread?.leafId ?? null;
@@ -185,16 +189,19 @@ export function ThreadScreen() {
   }, []);
 
   /* one paint for the thread: the search result's words plus the find bar's
-     current match, so the two never clobber each other. A hit inside reasoning
+     matches (its centered one as current), so the two never clobber each other. A hit inside reasoning
      or tool output lives in a collapsed card: open it first, then paint what
      the open cards show and stand in for whatever is still closed. */
   // biome-ignore lint/correctness/useExhaustiveDependencies: messages stand in for the rendered thread
   useEffect(() => {
     const el = contentRef.current;
-    const ranges = el && hitTerms.length ? findRanges(el, hitTerms) : [];
-    paintHighlights(ranges, find ? undefined : (findCurrent ?? undefined));
-    paintHiddenHighlights(ranges, HIDDEN_LABEL);
-  }, [hitTerms, messages, findCurrent, find]);
+    const ranges = [
+      ...(el && hitTerms.length ? findRanges(el, hitTerms) : []),
+      ...findHits.all,
+    ];
+    const standIns = hiddenHitStandIns(ranges, HIDDEN_LABEL);
+    paintHighlights([...ranges, ...standIns], findHits.current ?? undefined);
+  }, [hitTerms, messages, findHits]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: retry once the thread loads or grows
   useEffect(() => {
@@ -227,10 +234,10 @@ export function ThreadScreen() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset on chat switch only
   useEffect(() => {
     setFind(null);
-    setFindCurrent(null);
+    setFindHits(NO_FIND_HITS);
     return () => {
       paintHighlights([]);
-      paintHiddenHighlights([], HIDDEN_LABEL);
+      hiddenHitStandIns([], HIDDEN_LABEL);
     };
   }, [chatId]);
 
@@ -286,7 +293,7 @@ export function ThreadScreen() {
             version={messages}
             focusKey={find}
             onClose={() => setFind(null)}
-            onCurrent={setFindCurrent}
+            onMatches={(all, current) => setFindHits({ all, current })}
             onNavigate={() => {
               pinned.current = false;
             }}

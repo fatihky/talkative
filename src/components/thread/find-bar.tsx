@@ -13,9 +13,10 @@
  *   hits are real ranges; anything still closed is painted through a stand-in
  *   on the card's head (lib/search.tsx) and closes again once no match of the
  *   needle is inside it.
- * - the thread owns the paint: it keeps a search result's own words lit and
- *   shows only the bar's focused match as the current one, so the bar hands it
- *   that match (onCurrent) instead of painting over it.
+ * - the thread owns the paint: it keeps a search result's own words lit
+ *   alongside every match of the needle and shows the bar's focused match as
+ *   the current one, so the bar hands it its matches (onMatches) instead of
+ *   painting over it.
  * - Enter / ↓ goes to the next match and Shift+Enter / ↑ to the previous,
  *   wrapping around; each move centers the match in the scroller and calls
  *   onNavigate so the thread stops following the bottom.
@@ -36,7 +37,7 @@ export function FindBar({
   onClose,
   onNavigate,
   focusKey,
-  onCurrent,
+  onMatches,
 }: {
   rootRef: RefObject<HTMLElement | null>;
   scrollRef: RefObject<HTMLElement | null>;
@@ -46,8 +47,8 @@ export function FindBar({
   onNavigate: () => void;
   /* bumped by the shortcut while already open, to refocus the input */
   focusKey: number;
-  /* the match being centered, for the thread to paint alongside its hit */
-  onCurrent: (r: Range | null) => void;
+  /* every match plus the one being centered, for the thread to paint alongside its hit */
+  onMatches: (all: Range[], current: Range | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [q, setQ] = useState('');
@@ -69,7 +70,7 @@ export function FindBar({
     const needle = q.trim();
     if (!root || !needle) {
       setRanges([]);
-      onCurrent(null);
+      onMatches([], null);
       return;
     }
     /* cards opened for the previous needle may close again; opening the ones
@@ -79,7 +80,7 @@ export function FindBar({
     setRanges(next);
     const i = pick ?? (idx < next.length ? idx : 0);
     setIdx(i);
-    onCurrent(next[i] ?? null);
+    onMatches(next, next[i] ?? null);
     const r = next[i];
     const el = scrollRef.current;
     if (!r || !el) return;
@@ -109,12 +110,12 @@ export function FindBar({
     if (!r) return;
     const root = rootRef.current;
     if (root) openHiddenHits(root, [q.trim()]);
-    onCurrent(r);
+    onMatches(ranges, r);
   }, [ranges, idx]);
 
-  /* drop the focused match when the bar goes away; the thread's own hit stays lit */
+  /* drop the bar's matches when it goes away; the thread's own hit stays lit */
   // biome-ignore lint/correctness/useExhaustiveDependencies: only on unmount
-  useEffect(() => () => onCurrent(null), []);
+  useEffect(() => () => onMatches([], null), []);
 
   const step = (d: 1 | -1) => {
     if (!ranges.length) return;

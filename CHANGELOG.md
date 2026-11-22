@@ -9,6 +9,10 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix find-in-chat not highlighting its matches: every match of the needle is lit again with the focused one in the stronger colour, a search result's words stay lit alongside them, and stand-ins for hits inside closed reasoning/tool cards no longer wipe the visible highlights or pile up in the DOM.
+
 ## [0.4.0] - 2026-11-22
 
 ### Added

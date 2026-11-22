@@ -18,13 +18,13 @@
  *   match, `search-current` for the focused one) so rendered markdown is
  *   never mutated; where the API is missing it paints nothing and only the
  *   scroll-to-match still works.
- * - with `paint` false it still does the open/collapse pass, but leaves the
- *   paint to whoever owns the search (the thread) — a find bar merges its
- *   hits with the search result's instead of clobbering them.
- * - paintHiddenHighlights paints hits a collapsed disclosure hides (reasoning,
- *   tool output) through a zero-size stand-in in its head, so the word still
- *   lights up; the disclosure opens itself whenever its hidden hits include
- *   any of `focus` (the search's terms, or the focused find-bar match).
+ * - the thread owns the paint: it merges a search result's hits with the find
+ *   bar's into one paintHighlights call, so neither clobbers the other.
+ * - hiddenHitStandIns covers hits a collapsed disclosure hides (reasoning,
+ *   tool output) with zero-size stand-ins in its head, so the word still
+ *   lights up once the caller paints them; openHiddenHits opens a disclosure
+ *   whenever its hidden hits include any of `focus` (the search's terms, or
+ *   the find bar's needle).
  */
 'use client';
 
@@ -151,10 +151,6 @@ const HIDDEN_CLS = 'absolute top-0 left-0 size-px overflow-hidden opacity-0';
 /* a disclosure the search opened, so it closes again once no hit is focused */
 const OPENED_ATTR = 'data-search-opened';
 
-type HighlightCtor = new (...r: Range[]) => unknown;
-const HighlightClass = (): HighlightCtor | null =>
-  (globalThis as unknown as { Highlight?: HighlightCtor }).Highlight ?? null;
-
 const isOpen = (d: HTMLElement) =>
   d.matches('details')
     ? (d as HTMLDetailsElement).open
@@ -191,29 +187,24 @@ export const openHiddenHits = (root: ParentNode, focus: string[]) => {
 };
 
 /**
- * paints `ranges` — hits sitting inside a collapsed disclosure, which the
- * browser won't paint — as stand-ins in the disclosure's own first element:
- * each hit gets one (blank, zero-size) character there, so the words' count
- * and colour still show in the card's head while its text stays closed.
- * Stand-ins of the previous paint go first. `paint` false only drops them,
- * leaving the painting to the caller, which merges in its own ranges.
+ * stand-ins for `ranges` that sit inside a collapsed disclosure, which the
+ * browser won't paint: each such hit gets one (blank, zero-size) character in
+ * the disclosure's own first element, so the words' count and colour still
+ * show in the card's head while its text stays closed. Stand-ins of the
+ * previous call are removed first; the caller paints the returned ranges
+ * alongside its own (an empty `ranges` just clears them).
  */
-export const paintHiddenHighlights = (
-  ranges: Range[],
-  label: string,
-  paint = true,
-) => {
+export const hiddenHitStandIns = (ranges: Range[], label: string): Range[] => {
   for (const el of document.querySelectorAll<HTMLElement>(`[${HIDDEN_ATTR}]`))
-    el.removeAttribute(HIDDEN_ATTR);
-  const H = HighlightClass();
-  if (!paint || !ranges.length || !H) return;
+    el.remove();
+  if (!ranges.length) return [];
 
-  const byOwner = new Map<Element, Range[]>();
+  const byOwner = new Map<HTMLElement, Range[]>();
   for (const r of ranges) {
-    const owner = r.commonAncestorContainer.parentElement?.closest(
+    const owner = r.commonAncestorContainer.parentElement?.closest<HTMLElement>(
       'details, [data-collapsible]',
     );
-    if (owner?.firstElementChild)
+    if (owner?.firstElementChild && !isOpen(owner))
       byOwner.set(owner, [...(byOwner.get(owner) ?? []), r]);
   }
 
@@ -236,6 +227,5 @@ export const paintHiddenHighlights = (
       out.push(r);
     });
   }
-  const reg = registry();
-  if (reg) reg.set('search-hit', new H(...out));
+  return out;
 };
