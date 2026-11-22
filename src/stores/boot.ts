@@ -79,7 +79,11 @@ import {
   setDraft,
   useDraftStore,
 } from './draft';
-import { setFolderItems, useFoldersStore } from './folders';
+import {
+  seededCollapsed,
+  setFolderItems,
+  useFoldersStore,
+} from './folders';
 import { useLayoutStore } from './layout';
 import {
   applyModels,
@@ -161,6 +165,7 @@ export const bootActions = {
       items: cFolders,
       status: cFolders.length > 0 ? 'ready' : 'loading',
       expanded: LS.get('folders.expanded', {}),
+      collapsed: seededCollapsed(),
     });
     /* notes cached before they were persisted server-side lack createdAt */
     const cNotes = LS.get<Note[]>('cache.notes', []).filter(

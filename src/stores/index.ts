@@ -52,7 +52,7 @@ export {
   useSelectedModel,
 } from './draft';
 export { type Estimate, useEstimate } from './estimate';
-export { folderPath, isWithin, useFoldersStore } from './folders';
+export { folderPath, isWithin, seededCollapsed, useFoldersStore } from './folders';
 export type { PanelTab, PreviewSnippet } from './layout';
 export { useLayoutStore } from './layout';
 export { useMemoriesStore } from './memories';

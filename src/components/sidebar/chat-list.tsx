@@ -6,7 +6,8 @@
  *   groups (TODAY…OLDER) into one absolutely positioned list; rows are
  *   windowed only past 50 items.
  * - Recency groups from PREVIOUS 7 DAYS down start collapsed; every group
- *   and PINNED toggle via its header.
+ *   and PINNED toggles via its header, and the closed set is persisted in
+ *   the folders store ('sidebar.collapsed') so it survives a reload.
  * - The filter matches chat titles and tags; folders whose name matches
  *   force their subtree open, and folders with no surviving row are pruned.
  * - Pinned chats sort by pinnedAt desc and appear only under PINNED, never
@@ -101,11 +102,7 @@ export function ChatList({
   const status = useChatsStore((s) => s.status);
   const folders = useFoldersStore((s) => s.items);
   const expanded = useFoldersStore((s) => s.expanded);
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    'PREVIOUS 7 DAYS': true,
-    'PREVIOUS 30 DAYS': true,
-    OLDER: true,
-  });
+  const collapsed = useFoldersStore((s) => s.collapsed);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   /* folder id, 'root' for the unfiled area, or null */
@@ -339,9 +336,7 @@ export function ChatList({
                     }}
                     className="flex items-center gap-1 px-3 hover:bg-[var(--sunken)]"
                     aria-expanded={!f.collapsed}
-                    onClick={() =>
-                      setCollapsed((c) => ({ ...c, [f.group]: !f.collapsed }))
-                    }
+                    onClick={() => actions.toggleSection(f.group, !f.collapsed)}
                   >
                     <I
                       n={f.collapsed ? 'chevron-right' : 'chevron-down'}

@@ -12,7 +12,8 @@
  * - Keys are namespaced by feature — cache.* are the stale-while-revalidate
  *   copies the stores write and boot reads once (models, modelsAt, chats,
  *   folders, notes), home.* is composer state (draft, lastModel,
- *   lastParams), plus layout.*, folders.expanded, prefs and theme.
+ *   lastParams), plus layout.*, folders.expanded, sidebar.collapsed, prefs
+ *   and theme.
  * - hasCache reports whether a models or chats cache exists; boot uses it to
  *   show the stage immediately instead of waiting out the cold-start delay.
  * - debouncedSet replaces the pending write for the same key, so the

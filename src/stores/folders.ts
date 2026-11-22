@@ -9,6 +9,10 @@
  *   localStorage 'cache.folders', while `expanded` mirrors to
  *   'folders.expanded' so the tree reopens the same after a reload. boot
  *   seeds both.
+ * - `collapsed` holds the sidebar's closed sections (PINNED and the recency
+ *   groups) and mirrors to 'sidebar.collapsed'; boot seeds it too. Sections
+ *   missing from it fall back to DEFAULT_COLLAPSED, so older installs still
+ *   open with PREVIOUS 7 DAYS and below folded away.
  * - all mutations are optimistic with rollback: the local list changes
  *   first, the request follows, and a rejection restores the previous list
  *   plus an error toast.
@@ -41,6 +45,8 @@ type FoldersState = {
   status: 'idle' | 'loading' | 'ready' | 'error';
   /* folder id → open; persisted so the tree looks the same after reload */
   expanded: Record<string, boolean>;
+  /* section name → closed; persisted alongside `expanded` */
+  collapsed: Record<string, boolean>;
   /* a freshly created folder opens straight into its name field */
   renamingId: string | null;
 };
@@ -49,8 +55,22 @@ export const useFoldersStore = create<FoldersState>()(() => ({
   items: [],
   status: 'idle',
   expanded: {},
+  collapsed: {},
   renamingId: null,
 }));
+
+/* recency groups past YESTERDAY start folded on a fresh install */
+export const DEFAULT_COLLAPSED: Record<string, boolean> = {
+  'PREVIOUS 7 DAYS': true,
+  'PREVIOUS 30 DAYS': true,
+  OLDER: true,
+};
+
+/** stored collapse state, with defaults for anything never toggled */
+export const seededCollapsed = () => ({
+  ...DEFAULT_COLLAPSED,
+  ...LS.get<Record<string, boolean>>('sidebar.collapsed', {}),
+});
 
 const set = useFoldersStore.setState;
 const get = useFoldersStore.getState;
@@ -67,6 +87,11 @@ export const setFolderItems = (items: Folder[]) => {
 const setExpanded = (expanded: Record<string, boolean>) => {
   set({ expanded });
   LS.set('folders.expanded', expanded);
+};
+
+const setCollapsed = (collapsed: Record<string, boolean>) => {
+  set({ collapsed });
+  LS.set('sidebar.collapsed', collapsed);
 };
 
 /** true when `id` is `ancestor` or sits somewhere beneath it */
@@ -101,6 +126,12 @@ export const foldersActions = {
   toggleFolder(id: string, open?: boolean) {
     const { expanded } = get();
     setExpanded({ ...expanded, [id]: open ?? !expanded[id] });
+  },
+  /* PINNED and the recency groups keep their open/closed state across reloads */
+  toggleSection(group: string, collapsed?: boolean) {
+    const cur = get().collapsed;
+    const isCollapsed = cur[group] === true;
+    setCollapsed({ ...cur, [group]: collapsed ?? !isCollapsed });
   },
   setRenamingFolder(id: string | null) {
     set({ renamingId: id });
