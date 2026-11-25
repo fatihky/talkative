@@ -79,6 +79,8 @@ export function ModelPicker() {
   const searchRef = useRef<HTMLInputElement | null>(null);
   const [idx, setIdx] = useState(0);
   const [query, setQuery] = useState('');
+  /* providers whose model rows are hidden; in-memory, kept across open/close */
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const listId = 'mpb-model-list';
 
   const q = query.trim().toLowerCase();
@@ -87,6 +89,19 @@ export function ModelPicker() {
   const shown = q
     ? chattable.filter((m) => modelSearchText(m).toLowerCase().includes(q))
     : chattable;
+  /* keyboard navigation only reaches rows that are visible; a search flattens
+     the list, so collapsed groups are ignored while a query is typed */
+  const navigable = q
+    ? shown
+    : shown.filter((m) => !collapsed.has(m.provider));
+
+  const toggleProvider = (provider: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(provider)) next.delete(provider);
+      else next.add(provider);
+      return next;
+    });
 
   useEffect(() => {
     if (open) {
@@ -200,7 +215,7 @@ export function ModelPicker() {
             aria-controls={listId}
             aria-label="Search models"
             aria-activedescendant={
-              shown[idx] ? `opt-${shown[idx]?.id}` : undefined
+              navigable[idx] ? `opt-${navigable[idx]?.id}` : undefined
             }
             placeholder="Search models…"
             value={query}
@@ -211,7 +226,7 @@ export function ModelPicker() {
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setIdx((i) => Math.min(shown.length - 1, i + 1));
+                setIdx((i) => Math.min(navigable.length - 1, i + 1));
               }
               if (e.key === 'ArrowUp') {
                 e.preventDefault();
@@ -219,7 +234,7 @@ export function ModelPicker() {
               }
               if (e.key === 'Enter') {
                 e.preventDefault();
-                const m = shown[idx];
+                const m = navigable[idx];
                 if (m) {
                   actions.setModel(m.id);
                   actions.closeModelBarPopover(true);
@@ -284,6 +299,8 @@ export function ModelPicker() {
             isSyncing={isSyncing}
             errors={errors}
             providerNames={providerNames}
+            collapsed={collapsed}
+            onToggleProvider={toggleProvider}
             setIdx={setIdx}
           />
         </div>
@@ -302,6 +319,8 @@ function ModelList({
   isSyncing,
   errors,
   providerNames,
+  collapsed,
+  onToggleProvider,
   setIdx,
 }: {
   shown: Model[];
@@ -312,6 +331,8 @@ function ModelList({
   isSyncing: boolean;
   errors: Record<string, string>;
   providerNames: Record<string, string>;
+  collapsed: Set<string>;
+  onToggleProvider: (provider: string) => void;
   setIdx: (i: number) => void;
 }) {
   if (shown.length === 0) {
@@ -366,11 +387,30 @@ function ModelList({
         const provErr = g.provider
           ? errorByProviderName.get(g.provider)
           : undefined;
+        /* collapsing is a browse aid only; a search always shows every match */
+        const isCollapsed = !query && collapsed.has(g.provider);
         return (
           <div key={g.provider || 'all'}>
             {g.provider && (
-              <div className="model-menu-group flex items-center justify-between">
-                <span>{g.provider}</span>
+              <button
+                type="button"
+                aria-expanded={!isCollapsed}
+                onClick={() => onToggleProvider(g.provider)}
+                className="model-menu-group flex w-full items-center justify-between text-left hover:text-[var(--text)]"
+              >
+                <span className="flex min-w-0 items-center gap-1">
+                  <I
+                    n="chevron-down"
+                    s={10}
+                    className={`shrink-0 transition-transform ${
+                      isCollapsed ? '-rotate-90' : ''
+                    }`}
+                  />
+                  <span className="truncate">{g.provider}</span>
+                  <span className="font-normal text-[var(--text-3)]">
+                    {g.models.length}
+                  </span>
+                </span>
                 {provErr && (
                   <span
                     className="flex items-center gap-1 font-normal text-[10px] text-[var(--warn)]"
@@ -382,19 +422,20 @@ function ModelList({
                       : 'unreachable'}
                   </span>
                 )}
-              </div>
+              </button>
             )}
-            {g.models.map((m) => {
-              i += 1;
-              return (
-                <ModelOption
-                  key={m.id}
-                  m={m}
-                  active={i === idx}
-                  onHover={() => setIdx(i)}
-                />
-              );
-            })}
+            {!isCollapsed &&
+              g.models.map((m) => {
+                i += 1;
+                return (
+                  <ModelOption
+                    key={m.id}
+                    m={m}
+                    active={i === idx}
+                    onHover={() => setIdx(i)}
+                  />
+                );
+              })}
           </div>
         );
       })}
