@@ -5,6 +5,8 @@
     https://openrouter.ai/docs/guides/overview/models.md
   Model list API reference:
     https://openrouter.ai/docs/api/api-reference/models/list-all-models-and-their-properties.md
+  Embedding model list (GET /api/v1/embeddings/models, marked kind "embedding"):
+    https://openrouter.ai/docs/api/api-reference/embeddings/list-all-embeddings-models.md
   Chat completions:
     https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion.md
   App attribution (rankings, Apps tabs, analytics):

@@ -29,7 +29,7 @@ import { errorText } from '../stores/models';
 
 const LEVELS: ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'max'];
 const CAPS = ['vision', 'tools', 'audio', 'json', 'fast', 'decisions'] as const;
-const KINDS: ModelKind[] = ['llm', 'decision', 'systemone'];
+const KINDS: ModelKind[] = ['llm', 'embedding', 'decision', 'systemone'];
 const inputCls =
   'h-7 w-full rounded-[6px] border border-[var(--border)] bg-[var(--sunken)] px-2 text-[12px] outline-none focus:border-[var(--accent)]';
 

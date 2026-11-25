@@ -25,7 +25,8 @@
  *   still work.
  * - one fetcher per compatibility: openai GET /v1/models, openrouter
  *   GET /api/v1/models (links.next pagination, plus a System One pass
- *   for `output_modalities=decisions`), bifrost GET
+ *   for `output_modalities=decisions` and an embedding pass over
+ *   /api/v1/embeddings/models that is skipped on failure), bifrost GET
  *   /v1/models (opaque page_token), lmstudio GET /api/v1/models,
  *   ollama GET /api/tags; pagination is capped at 20 pages so a
  *   misbehaving upstream can't loop forever, and each request times
@@ -36,9 +37,13 @@
  *   input modalities; lm studio's binary "on" and ollama's boolean
  *   `think` map to off/medium, and lm studio decision models' vision
  *   is read from the top-level `has_vision_adapter` (they carry no
- *   `capabilities`); embedding-only ollama models are filtered out
- *   because they can't chat, and ollama's `decision` capability
- *   marks a model `kind: 'systemone'`.
+ *   `capabilities`); embedding models are listed with `kind:
+ *   'embedding'` (lm studio `type`, ollama's embedding-only
+ *   capabilities, openrouter's /api/v1/embeddings/models) so they can
+ *   be told apart from chat models, and ollama's `decision` capability
+ *   marks a model `kind: 'systemone'`. openai's spec has no kind, so
+ *   an id containing "embed" (text-embedding-3-small, bge-embed, …) is
+ *   the only hint there; a wrong guess is fixed with a kind override.
  * - local servers (lmstudio, ollama) also surface architecture /
  *   quantization / format / size metadata; a loaded lm studio
  *   instance's context wins over max_context_length because it's
@@ -160,18 +165,26 @@ const fetchOpenAI = async (conn: Conn): Promise<Model[]> => {
   const json = (await getJson(`${conn.baseUrl}/v1/models`, conn)) as {
     data?: OpenAIModel[];
   };
-  return (json.data ?? []).map((m) => ({
-    ...base(conn, m.id),
-    shortName: m.id,
-    /* the spec exposes no capability info — thinking stays "unknown"; tools are assumed,
-       since nearly every compatible server accepts them and errors clearly if not */
-    capabilities: { ...NO_CAPS, tools: true, decisions: true },
-    thinkingLevels: undefined,
-    context: {
-      window: m.context_window ?? m.max_model_len ?? m.context_length ?? null,
-      maxOutput: 0,
-    },
-  }));
+  return (json.data ?? []).map((m) => {
+    /* the spec has no model kind, so an embedding model is recognised by its id alone */
+    const embedding = /embed/i.test(m.id);
+    return {
+      ...base(conn, m.id),
+      kind: (embedding ? 'embedding' : 'llm') satisfies ModelKind,
+      shortName: m.id,
+      /* the spec exposes no capability info — thinking stays "unknown"; tools are assumed,
+         since nearly every compatible server accepts them and errors clearly if not.
+         embedding models answer neither chat nor decisions */
+      capabilities: embedding
+        ? { ...NO_CAPS }
+        : { ...NO_CAPS, tools: true, decisions: true },
+      thinkingLevels: undefined,
+      context: {
+        window: m.context_window ?? m.max_model_len ?? m.context_length ?? null,
+        maxOutput: 0,
+      },
+    };
+  });
 };
 
 /* ---------- openrouter: GET /api/v1/models ---------- */
@@ -233,7 +246,8 @@ const fetchOpenRouter = async (conn: Conn): Promise<Model[]> => {
             json:
               params.has('response_format') || params.has('structured_outputs'),
             fast: false,
-            decisions: true,
+            /* embedding models answer neither chat nor decisions */
+            decisions: kind !== 'embedding',
           },
           thinkingLevels: reasoning ? ['off', 'low', 'medium', 'high'] : [],
           context: {
@@ -253,6 +267,15 @@ const fetchOpenRouter = async (conn: Conn): Promise<Model[]> => {
   };
   await collect('/api/v1/models', 'llm');
   await collect('/api/v1/models?output_modalities=decisions', 'systemone');
+  /* embedding models live on their own endpoint (unpaginated when no limit is sent).
+     a failure here must not hide the chat list, so it's logged and skipped. */
+  try {
+    await collect('/api/v1/embeddings/models', 'embedding');
+  } catch (e) {
+    console.warn(
+      `[catalog] connection ${conn.id} (${conn.name}): embedding models unavailable: ${errorText(e)}`,
+    );
+  }
   return out;
 };
 
@@ -471,16 +494,12 @@ const fetchOllama = async (conn: Conn): Promise<Model[]> => {
     models?: OllamaModel[];
   };
   return (json.models ?? [])
-    .filter((m) => {
-      const caps = m.capabilities;
-      /* embedding-only models can't chat */
-      return (
-        !caps || caps.includes('completion') || !caps.includes('embedding')
-      );
-    })
     .map((m) => {
       const caps = m.capabilities ? new Set(m.capabilities) : null;
       const thinking = caps?.has('thinking') ?? false;
+      /* embedding-only models can't chat, so they're listed as embedding models */
+      const embedding =
+        caps !== null && caps.has('embedding') && !caps.has('completion');
       const meta = {
         architecture: m.details?.families?.length
           ? m.details.families.join(',')
@@ -493,8 +512,13 @@ const fetchOllama = async (conn: Conn): Promise<Model[]> => {
         ...base(conn, m.model),
         shortName: m.name,
         /* `decision` marks a System One model (nimble, jev, tev, clef, …): it
-           answers /v1/systemone natively; anything else is a chat llm */
-        kind: caps?.has('decision') ? ('systemone' as const) : ('llm' as const),
+           answers /v1/systemone natively; an embedding-only model is an
+           embedding; anything else is a chat llm */
+        kind: (caps?.has('decision')
+          ? 'systemone'
+          : embedding
+            ? 'embedding'
+            : 'llm') satisfies ModelKind,
         capabilities: {
           ...NO_CAPS,
           thinking,

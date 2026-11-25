@@ -12,6 +12,8 @@ The log starts on 2026-10-14; changes made before that are not backfilled.
 ### Added
 
 - Add collapsible provider groups to the model picker list; a group header toggles its models, collapsed rows are skipped by arrow keys and Enter, and a search still shows every match.
+- Add embedding models to the catalog: ollama embedding-only models and openrouter's `/api/v1/embeddings/models` are listed as `embedding` (badged in settings, kept out of the chat and decision pickers), and openai-compatible ids containing "embed" are classified the same way.
+- Add `embedding` as a model kind in the model override form so a provider's model can be marked as an embedding model by hand.
 
 ### Fixed
 

@@ -24,7 +24,7 @@
  *   flags a catalog row can't express: hidden and, for user-added models,
  *   the connection/base url a run needs.
  * - the server is the authority on what user-added models can do:
- *   parseInput forces kind to llm/decision/systemone and derives
+ *   parseInput forces kind to llm/embedding/decision/systemone and derives
  *   `thinking` from the levels, so a row can never claim thinking with
  *   no level to offer (which the composer treats as "none") or the
  *   reverse.
@@ -47,9 +47,10 @@ import type {
 import { ValidationError } from './errors';
 import { parseModelId } from './model-id';
 
-/* only these can be chosen for a user-added model: embeddings can't chat and
-   'llm' is the default, so anything else is a typo */
-const KINDS = ['llm', 'decision', 'systemone'] as const;
+/* only these can be chosen for a model: 'llm' is the default, and embedding
+   models are set here when a provider doesn't report them (openai's spec has
+   no kind) so they can be told apart from chat models */
+const KINDS = ['llm', 'embedding', 'decision', 'systemone'] as const;
 const LEVELS: readonly ThinkingLevel[] = ['off', 'low', 'medium', 'high', 'max'];
 
 /** the pair a row is keyed by, and the catalog id that names it */
